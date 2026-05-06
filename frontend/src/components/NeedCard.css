@@ -1,0 +1,145 @@
+.need-card {
+  background: #fff;
+  border: 1px solid #dbeafe;
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: 0.2s ease;
+  height: 100%;
+}
+
+.need-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.need-image-container {
+  position: relative;
+  width: 100%;
+  height: 180px;
+  overflow: hidden;
+  background: #eaf3ff;
+}
+
+.need-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.need-placeholder {
+  width: 100%;
+  height: 100%;
+  background: #f7df8a;
+}
+
+.progress-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #eaf3ff;
+  color: #2f3b52;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.need-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.need-title {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.need-location,
+.need-description,
+.need-progress-text {
+  margin: 0 0 12px 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.progress-bar {
+  height: 100%;
+  background: #8fb9ff;
+}
+
+.items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+  padding: 12px;
+  background: #f8fbff;
+  border-radius: 10px;
+  flex-grow: 1;
+}
+
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #334155;
+}
+
+.item-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #8fb9ff;
+}
+
+.item-name {
+  flex: 1;
+}
+
+.item-quantity {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.need-footer {
+  display: flex;
+  justify-content: space-between;
+  alignItems: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.need-org {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.need-contact-btn {
+  padding: 8px 12px;
+  background: #eaf3ff;
+  color: #5f8fe8;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}

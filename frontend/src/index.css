@@ -1,18 +1,60 @@
-:root {
-  font-family: Inter, system-ui, Arial, sans-serif;
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #f1f5f9; /* Un gri-albastru foarte deschis */
+  color: #1e293b;
 }
 
 * {
   box-sizing: border-box;
 }
 
-html, body {
-  margin: 0;
-  padding: 0;
-  background: #111;
-  color: #fff;
+/* Fundalul cu pătrățele discrete */
+.pattern-bg {
+  background-color: #f1f5f9;
+  background-image: radial-gradient(#cbd5e1 0.5px, transparent 0.5px);
+  background-size: 20px 20px;
 }
 
-#root {
-  min-height: 100vh;
+/* Containerul cu efect de sticlă */
+.glass-container {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 20px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+/* Stiluri pentru formulare (Post Donation) */
+.modern-input, .modern-select, .modern-textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  font-size: 15px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.modern-input:focus, .modern-select:focus, .modern-textarea:focus {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.1);
+}
+
+.modern-textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.modern-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #334155;
+  font-size: 14px;
+}
+
+.form-group {
+  margin-bottom: 16px;
 }

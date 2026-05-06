@@ -1,54 +1,86 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import Layout from "./components/Layout";
+import Layout from "./components/common/Layout";
+import ProtectedRoute from "./components/ProtectedRoute";
 import Home from "./pages/Home";
+import Donations from "./pages/Donations";
 import Needs from "./pages/Needs";
+import PostNeed from "./pages/PostNeed";
 import PostDonation from "./pages/PostDonation";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Profile from "./pages/Profile";
-import { useEffect, useState } from "react";
+import Messages from "./pages/Messages";
+import Chat from "./pages/Chat";
+import EditNeed from "./pages/EditNeed";
+import MapPage from "./pages/Map";
 
 export default function App() {
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    const savedUser = localStorage.getItem("demoUser");
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-  }, []);
-
-  function handleLogin(userData) {
-    setUser(userData);
-    localStorage.setItem("demoUser", JSON.stringify(userData));
-  }
-
-  function handleLogout() {
-    setUser(null);
-    localStorage.removeItem("demoUser");
-  }
-
   return (
-    <Layout user={user} onLogout={handleLogout}>
+    <Layout>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/donations" element={<Donations />} />
         <Route path="/needs" element={<Needs />} />
+        <Route path="/map" element={<MapPage />} />
+
         <Route
-          path="/donate"
-          element={user ? <PostDonation /> : <Navigate to="/login" />}
+          path="/postdonation"
+          element={
+            <ProtectedRoute>
+              <PostDonation />
+            </ProtectedRoute>
+          }
         />
+
         <Route
-          path="/login"
-          element={<Login onLogin={handleLogin} />}
+          path="/postneed"
+          element={
+            <ProtectedRoute>
+              <PostNeed />
+            </ProtectedRoute>
+          }
         />
+
         <Route
-          path="/register"
-          element={<Register onRegister={handleLogin} />}
+          path="/editneed/:id"
+          element={
+            <ProtectedRoute>
+              <EditNeed />
+            </ProtectedRoute>
+          }
         />
+
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+
         <Route
           path="/profile"
-          element={user ? <Profile user={user} /> : <Navigate to="/login" />}
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
         />
+
+        <Route
+          path="/messages"
+          element={
+            <ProtectedRoute>
+              <Messages />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/chat/:otherEmail"
+          element={
+            <ProtectedRoute>
+              <Chat />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Layout>
   );

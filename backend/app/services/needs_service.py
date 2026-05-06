@@ -1,0 +1,82 @@
+from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
+from models.need import NeedModel
+from models.user import User
+from schemas.need import NeedCreate
+
+def get_all(db: Session):
+    needs = db.query(NeedModel).all()
+    result = []
+
+    for need in needs:
+        need_dict = {
+            "id": need.id,
+            "title": need.title,
+            "description": need.description,
+            "location": need.location,
+            "organization_email": need.organization_email,
+            "image": need.image,
+            "items": need.items,
+            "created_at": need.created_at
+        }
+
+        user = db.query(User).filter(User.email == need.organization_email).first()
+        if user and user.organization_name:
+            need_dict["organization_name"] = user.organization_name
+        else:
+            need_dict["organization_name"] = need.organization_email
+
+        result.append(need_dict)
+
+    return result
+
+def create_new(db: Session, payload: NeedCreate):
+    need_data = payload.model_dump(exclude_unset=True)
+    need_data["items"] = [item.model_dump() for item in payload.items]
+
+    db_need = NeedModel(**need_data)
+    db.add(db_need)
+    db.commit()
+    db.refresh(db_need)
+    return db_need
+
+def get_by_id(db: Session, need_id: int):
+    return db.query(NeedModel).filter(NeedModel.id == need_id).first()
+
+def update_item_brought(db: Session, need_id: int, item_index: int, brought: int):
+    db_need = db.query(NeedModel).filter(NeedModel.id == need_id).first()
+    if not db_need:
+        return None, "not_found"
+
+    if item_index < 0 or item_index >= len(db_need.items):
+        return None, "invalid_index"
+
+    db_need.items[item_index]["brought"] = min(brought, db_need.items[item_index]["quantity"])
+    flag_modified(db_need, "items")
+
+    db.commit()
+    db.refresh(db_need)
+    return db_need, None
+
+def update_by_id(db: Session, need_id: int, update_data: dict):
+    db_need = db.query(NeedModel).filter(NeedModel.id == need_id).first()
+    if not db_need:
+        return None
+
+    for key, value in update_data.items():
+        if hasattr(db_need, key):
+            setattr(db_need, key, value)
+
+    flag_modified(db_need, "items")
+    db.commit()
+    db.refresh(db_need)
+    return db_need
+
+def delete_by_id(db: Session, need_id: int):
+    db_need = db.query(NeedModel).filter(NeedModel.id == need_id).first()
+    if not db_need:
+        return None
+
+    db.delete(db_need)
+    db.commit()
+    return db_need

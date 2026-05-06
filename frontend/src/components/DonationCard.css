@@ -1,0 +1,218 @@
+.donation-card {
+  background: #fff;
+  border: 1px solid #dbeafe;
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: 0.2s ease;
+}
+
+.donation-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.donation-image-container {
+  position: relative;
+  height: 180px;
+  overflow: hidden;
+}
+
+.donation-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.donation-placeholder {
+  width: 100%;
+  height: 100%;
+}
+
+.placeholder-clothes {
+  background: #cfe8f7;
+}
+
+.placeholder-food {
+  background: #fff4cc;
+}
+
+.placeholder-hygiene {
+  background: #d9f3ff;
+}
+
+.placeholder-home {
+  background: #e4f7e7;
+}
+
+.placeholder-education {
+  background: #fce7f3;
+}
+
+.placeholder-default {
+  background: #e5e7eb;
+}
+
+.status-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.status-available {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-reserved {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-delivered {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.status-unavailable {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.donation-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.donation-title {
+  margin: 0;
+  font-size: 16px;
+  color: #1e293b;
+}
+
+.donation-location,
+.donation-description {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.donation-category {
+  margin: 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.donation-category span {
+  color: #475569;
+  font-weight: 600;
+}
+
+.donation-footer-new {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.donation-owner {
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.donation-owner span {
+  font-weight: 600;
+  color: #334155;
+}
+
+.donation-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.reserve-btn,
+.contact-btn,
+.status-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.reserve-btn {
+  flex: 2;
+}
+
+.reserve-btn.available {
+  background: #8fb9ff;
+  color: #fff;
+}
+
+.reserve-btn.reserved {
+  background: #f7df8a;
+  color: #2f3b52;
+}
+
+.reserve-btn:disabled {
+  background: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.contact-btn {
+  flex: 1;
+  background: #eaf3ff;
+  color: #5f8fe8;
+  border: 1px solid #dbeafe;
+}
+
+.status-menu-container {
+  position: relative;
+}
+
+.status-btn {
+  width: 100%;
+  background: #eaf3ff;
+  color: #2f3b52;
+}
+
+.status-dropdown {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  background: #fff;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  min-width: 180px;
+  overflow: hidden;
+  z-index: 100;
+}
+
+.status-option {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.status-option:hover {
+  background: #f8fbff;
+}
+
+.status-option.active {
+  background: #eaf3ff;
+  font-weight: 700;
+}

@@ -1,76 +1,107 @@
-export default function DonationCard({ donation, onReserve }) {
-  const isReserved = donation.status !== "available";
+import "./DonationCard.css";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+const statusLabels = {
+  available: "Available",
+  reserved: "Reserved",
+  delivered: "Delivered",
+  unavailable: "No longer available",
+};
+
+export default function DonationCard({ donation, onReserve, currentUserEmail, isOwner }) {
+  const [showMenu, setShowMenu] = useState(false);
+  const navigate = useNavigate();
+
+  const placeholderClass = `placeholder-${donation.category || "default"}`;
+
+  function handleStatusChange(newStatus) {
+    onReserve(donation.id, newStatus);
+    setShowMenu(false);
+  }
+
+  function handleReserve() {
+    const newStatus = donation.status === "available" ? "reserved" : "available";
+    onReserve(donation.id, newStatus);
+  }
+
+  function handleContact() {
+    if (!currentUserEmail) {
+      navigate("/login");
+      return;
+    }
+
+    navigate(`/chat/${donation.owner_email}?donationId=${donation.id}`);
+  }
 
   return (
-    <div
-      style={{
-        border: "1px solid #2a2a2a",
-        borderRadius: 14,
-        overflow: "hidden",
-        background: "#1a1a1a",
-        boxShadow: "0 8px 30px rgba(0,0,0,0.25)",
-      }}
-    >
-      <div style={{ position: "relative" }}>
-        <img
-          src={donation.image}
-          alt={donation.title}
-          style={{
-            width: "100%",
-            height: 220,
-            objectFit: "cover",
-            display: "block",
-          }}
-        />
+    <div className="donation-card">
+      <div className="donation-image-container">
+        {donation.image ? (
+          <img src={donation.image} alt={donation.title} className="donation-image" />
+        ) : (
+          <div className={`donation-placeholder ${placeholderClass}`}></div>
+        )}
 
-        <div
-          style={{
-            position: "absolute",
-            top: 10,
-            left: 10,
-            padding: "6px 10px",
-            borderRadius: 999,
-            fontSize: 12,
-            border: "1px solid #444",
-            background: isReserved ? "rgba(180, 60, 60, 0.9)" : "rgba(40, 150, 90, 0.9)",
-            color: "#fff",
-          }}
-        >
-          {isReserved ? "reserved" : "available"}
-        </div>
+        <span className={`status-badge status-${donation.status || "available"}`}>
+          {statusLabels[donation.status] || "Available"}
+        </span>
       </div>
 
-      <div style={{ padding: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 15, color: "#fff" }}>
-              {donation.title}
-            </div>
-            <div style={{ fontSize: 12, color: "#bbb", marginTop: 4 }}>
-              {donation.location}
-            </div>
-            <div style={{ fontSize: 12, color: "#bbb", marginTop: 4 }}>
-              Category: <span style={{ color: "#fff" }}>{donation.category}</span>
-            </div>
+      <div className="donation-content">
+        <h3 className="donation-title">{donation.title}</h3>
+        <p className="donation-location">{donation.location}</p>
+        <p className="donation-category">
+          Category: <span>{donation.category}</span>
+        </p>
+
+        {donation.description && (
+          <p className="donation-description">{donation.description}</p>
+        )}
+
+        <div className="donation-footer-new">
+          <div className="donation-owner">
+            By: <span>{donation.donor_name || donation.owner_email}</span>
           </div>
 
-          <button
-            onClick={() => onReserve(donation.id)}
-            disabled={isReserved}
-            style={{
-              height: 36,
-              padding: "0 12px",
-              borderRadius: 10,
-              border: "1px solid #fff",
-              background: isReserved ? "#666" : "#fff",
-              color: isReserved ? "#ddd" : "#111",
-              cursor: isReserved ? "not-allowed" : "pointer",
-              fontWeight: 700,
-              whiteSpace: "nowrap",
-            }}
-          >
-            Reserve
-          </button>
+          {isOwner ? (
+            <div className="status-menu-container">
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                className="status-btn"
+              >
+                Manage Status
+              </button>
+
+              {showMenu && (
+                <div className="status-dropdown">
+                  {Object.keys(statusLabels).map((key) => (
+                    <button
+                      key={key}
+                      className={`status-option ${donation.status === key ? "active" : ""}`}
+                      onClick={() => handleStatusChange(key)}
+                    >
+                      {statusLabels[key]}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="donation-actions">
+              <button
+                onClick={handleReserve}
+                disabled={donation.status === "unavailable"}
+                className={`reserve-btn ${donation.status === "reserved" ? "reserved" : "available"}`}
+              >
+                {donation.status === "reserved" ? "Cancel Reservation" : "Reserve Item"}
+              </button>
+
+              <button onClick={handleContact} className="contact-btn">
+                Contact
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

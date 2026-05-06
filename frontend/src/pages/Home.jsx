@@ -1,104 +1,87 @@
-import { useMemo, useState } from "react";
-import { donations as initial } from "../data/mock";
-import DonationCard from "../components/DonationCard";
+import { useEffect, useState } from "react";
+import { apiFetch } from "../api/api";
+import DonationCard from "../components/DonationCard.jsx";
+import NeedCard from "../components/NeedCard.jsx";
+import PageToolbar from "../components/common/PageToolbar";
+import { colors } from "../styles/theme";
 
 export default function Home() {
-  const [items, setItems] = useState(initial);
-  const [q, setQ] = useState("");
-  const [category, setCategory] = useState("all");
+  const [feedItems, setFeedItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  function reserveDonation(id) {
-    setItems(items.map((d) => (d.id === id ? { ...d, status: "reserved" } : d)));
-  }
+  useEffect(() => {
+    async function loadFeed() {
+      try {
+        const { response, data } = await apiFetch("/home/feed");
+        if (response.ok) {
+          setFeedItems(data);
+        }
+      } catch (err) {
+        console.error("Feed error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadFeed();
+  }, []);
 
-  const categories = useMemo(() => {
-    const set = new Set(items.map((x) => x.category));
-    return ["all", ...Array.from(set)];
-  }, [items]);
+  const filteredItems = feedItems.filter((item) =>
+    item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.category.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  const filtered = useMemo(() => {
-    const query = q.trim().toLowerCase();
-    return items.filter((d) => {
-      const matchesQ =
-        !query ||
-        d.title.toLowerCase().includes(query) ||
-        d.location.toLowerCase().includes(query);
-
-      const matchesCat = category === "all" || d.category === category;
-      return matchesQ && matchesCat;
-    });
-  }, [items, q, category]);
+  if (loading) return <div style={{ padding: 50, textAlign: "center" }}>Se încarcă noutățile...</div>;
 
   return (
-    <div>
-      <h2 style={{ marginTop: 0 }}>Donations Feed</h2>
-      <p style={{ color: "#aaa", marginTop: 6 }}>
-        Browse donations posted by users. Reserve items you need.
-      </p>
+    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 20px" }}>
+      <header style={{ marginBottom: 30 }}>
+        <h1 style={{ color: colors.blue, marginBottom: 5 }}>Descoperă în Iași</h1>
+        <p style={{ color: "#64748b" }}>Vezi cine oferă și cine are nevoie de ajutor în comunitatea ta.</p>
+      </header>
 
-      {/* Controls */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexWrap: "wrap",
-          margin: "14px 0",
-        }}
-      >
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search by title or location..."
-          style={{
-            minWidth: 260,
-            flex: 1,
-            padding: "10px 12px",
-            borderRadius: 12,
-            border: "1px solid #333",
-            background: "#111",
-            color: "#fff",
-            outline: "none",
-          }}
-        />
+      <PageToolbar
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        placeholder="Caută în donații sau nevoi..."
+        buttonText="+ Adaugă ceva"
+        onButtonClick={() => { /* Navighează spre alegere tip postare */ }}
+      />
 
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          style={{
-            padding: "10px 12px",
-            borderRadius: 12,
-            border: "1px solid #333",
-            background: "#111",
-            color: "#fff",
-            outline: "none",
-          }}
-        >
-          {categories.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
+      <div style={styles.grid}>
+        {filteredItems.map((item) => {
+          if (item.item_type === "donation") {
+            return (
+              <DonationCard
+                key={`don-${item.id}`}
+                donation={item}
+              />
+            );
+          } else {
+            return (
+              <NeedCard
+                key={`need-${item.id}`}
+                need={item}
+              />
+            );
+          }
+        })}
       </div>
 
-      {/* Grid like Vinted */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-          gap: 14,
-        }}
-      >
-        {filtered.map((d) => (
-          <DonationCard key={d.id} donation={d} onReserve={reserveDonation} />
-        ))}
-      </div>
-
-      {filtered.length === 0 && (
-        <div style={{ marginTop: 20, color: "#aaa" }}>
-          No results. Try another search/category.
+      {filteredItems.length === 0 && (
+        <div style={{ textAlign: "center", padding: 50, color: "#94a3b8" }}>
+          Nu am găsit nimic care să corespundă căutării tale.
         </div>
       )}
     </div>
   );
 }
+
+const styles = {
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+    gap: "24px",
+    paddingBottom: "50px",
+  },
+};
