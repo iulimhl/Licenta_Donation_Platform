@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { apiFetch } from "../api/api";
+import { colors, radius, shadow } from "../styles/theme";
 
 export default function EditNeed() {
   const navigate = useNavigate();
@@ -10,11 +11,11 @@ export default function EditNeed() {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
 
+  // AM ELIMINAT "image" de aici
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     location: "",
-    image: "",
   });
 
   const [items, setItems] = useState([]);
@@ -36,11 +37,11 @@ export default function EditNeed() {
           return;
         }
 
+        // AM ELIMINAT setarea pentru "image" de aici
         setFormData({
           title: data.title || "",
           description: data.description || "",
           location: data.location || "",
-          image: data.image || "",
         });
 
         setItems(data.items || []);
@@ -96,7 +97,7 @@ export default function EditNeed() {
       const { response } = await apiFetch(`/needs/${id}`, {
         method: "PATCH",
         body: JSON.stringify({
-          ...formData,
+          ...formData, // Trimite doar titlu, descriere și locație
           items,
         }),
       });
@@ -115,209 +116,205 @@ export default function EditNeed() {
   };
 
   if (checking) {
-    return <div style={{ textAlign: "center", marginTop: 60 }}>Loading...</div>;
+    return <div style={{ textAlign: "center", marginTop: 100, color: colors.blueDark, fontWeight: 600 }}>Loading...</div>;
   }
 
   return (
-    <div className="pattern-bg" style={{ minHeight: "100vh", padding: "40px 20px" }}>
-      <div
-        className="glass-container"
-        style={{
+    <div className="pattern-bg" style={{ minHeight: "100vh", padding: "40px 20px", backgroundColor: colors.bg }}>
+
+      <div style={{ maxWidth: "520px", width: "100%", margin: "0 auto" }}>
+
+        {/* HEADER */}
+        <div style={{
+          background: colors.yellowLight,
+          padding: "26px 20px",
+          borderRadius: radius.xl,
           marginBottom: "24px",
-          padding: "24px",
-          textAlign: "center",
-        }}
-      >
-        <h1
-          style={{
-            margin: 0,
-            background: "linear-gradient(135deg, #f59e0b, #d97706)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-            fontSize: "2rem",
-            fontWeight: 700,
-          }}
-        >
-          Edit Need
-        </h1>
-        <p
-          style={{
-            margin: "8px 0 0 0",
-            color: "#64748b",
-          }}
-        >
-          Update your organization need
-        </p>
-      </div>
 
-      <div style={{ maxWidth: 500, width: "100%" }}>
-        <form onSubmit={handleSubmit} style={{ display: "grid", gap: 14 }}>
-          <div>
-            <label style={{ display: "block", marginBottom: 6, fontWeight: 600, color: "#334155", fontSize: 13 }}>
-              Title *
-            </label>
-            <input
-              name="title"
-              type="text"
-              value={formData.title}
-              onChange={handleChange}
-              required
-              style={inputStyle}
-            />
-          </div>
+          boxShadow: shadow.soft,
+          textAlign: "center"
+        }}>
+          <h1 style={{ margin: 0, fontSize: "24px", color: "#856404", fontWeight: 800 }}>
+            Edit need
+          </h1>
+          <p style={{ margin: "6px 0 0 0", color: "#856404", opacity: 0.8, fontSize: "14px", fontWeight: 500 }}>
+            Update your list of requirements
+          </p>
+        </div>
 
-          <div>
-            <label style={{ display: "block", marginBottom: 6, fontWeight: 600, color: "#334155", fontSize: 13 }}>
-              Location *
-            </label>
-            <input
-              name="location"
-              type="text"
-              value={formData.location}
-              onChange={handleChange}
-              required
-              style={inputStyle}
-            />
-          </div>
+        {/* CARD FORMULAR */}
+        <div style={{
+          backgroundColor: colors.card,
+          padding: "32px",
+          borderRadius: radius.xl,
+          boxShadow: shadow.card,
+          border: `1px solid ${colors.border}`
+        }}>
 
-          <div>
-            <label style={{ display: "block", marginBottom: 6, fontWeight: 600, color: "#334155", fontSize: 13 }}>
-              Description
-            </label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              style={{ ...inputStyle, resize: "vertical", height: "80px" }}
-            />
-          </div>
+          <form onSubmit={handleSubmit} style={{ display: "grid", gap: 18 }}>
 
-          <div>
-            <label style={{ display: "block", marginBottom: 6, fontWeight: 600, color: "#334155", fontSize: 13 }}>
-              Image URL
-            </label>
-            <input
-              name="image"
-              type="text"
-              value={formData.image}
-              onChange={handleChange}
-              style={inputStyle}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: "block", marginBottom: 6, fontWeight: 600, color: "#334155", fontSize: 13 }}>
-              Items *
-            </label>
-
-            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <div>
+              <label style={labelStyle}>Title *</label>
               <input
+                name="title"
                 type="text"
-                value={currentItem.name}
-                onChange={handleItemChange}
-                name="name"
-                placeholder="Item name"
-                className="modern-input"
+                value={formData.title}
+                onChange={handleChange}
+                required
+                style={inputStyle}
               />
-              <input
-                type="number"
-                value={currentItem.quantity}
-                onChange={handleItemChange}
-                name="quantity"
-                min="1"
-                className="modern-input"
-                style={{ width: "80px" }}
-              />
-              <button
-                type="button"
-                onClick={addItem}
-                style={{
-                  padding: "12px 16px",
-                  background: "#10b981",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 12,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                Add Item
-              </button>
             </div>
 
-            {items.length > 0 && (
-              <div style={{ display: "grid", gap: 8 }}>
-                {items.map((item, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "10px 12px",
-                      background: "#f1f5f9",
-                      borderRadius: 8,
-                    }}
-                  >
-                    <span style={{ fontSize: 13, color: "#1e293b", fontWeight: 500 }}>
-                      {item.name} <span style={{ color: "#64748b" }}>× {item.quantity}</span>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removeItem(idx)}
+            <div>
+              <label style={labelStyle}>Location *</label>
+              <input
+                name="location"
+                type="text"
+                value={formData.location}
+                onChange={handleChange}
+                required
+                style={inputStyle}
+              />
+            </div>
+
+            <div>
+              <label style={labelStyle}>Description</label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                style={{ ...inputStyle, resize: "vertical", height: "90px" }}
+              />
+            </div>
+
+            {/* BLOCUL PENTRU IMAGINE A FOST ȘTERS DE AICI */}
+
+            {/* STRUCUTRA ADĂUGARE PRODUSE */}
+            <div style={{ borderTop: `1px solid ${colors.border}`, paddingTop: "16px" }}>
+              <label style={labelStyle}>Items *</label>
+
+              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                <input
+                  type="text"
+                  value={currentItem.name}
+                  onChange={handleItemChange}
+                  name="name"
+                  placeholder="Item name"
+                  style={{ ...inputStyle, padding: "10px 14px" }}
+                />
+                <input
+                  type="number"
+                  value={currentItem.quantity}
+                  onChange={handleItemChange}
+                  name="quantity"
+                  min="1"
+                  style={{ ...inputStyle, width: "75px", padding: "10px" }}
+                />
+                <button
+                  type="button"
+                  onClick={addItem}
+                  style={{
+                    padding: "10px 16px",
+                    background: colors.blueDark,
+                    color: colors.white,
+                    border: "none",
+                    borderRadius: radius.md,
+                    fontWeight: 700,
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap"
+                  }}
+                >
+                  Add Item
+                </button>
+              </div>
+
+              {/* LISTA ITEME */}
+              {items.length > 0 && (
+                <div style={{ display: "grid", gap: 8, marginTop: "12px" }}>
+                  {items.map((item, idx) => (
+                    <div
+                      key={idx}
                       style={{
-                        background: "#ef4444",
-                        color: "#fff",
-                        border: "none",
-                        padding: "4px 8px",
-                        borderRadius: 4,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        cursor: "pointer",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "10px 14px",
+                        background: colors.blueLight,
+                        borderRadius: radius.md,
+                        border: `1px solid ${colors.border}`
                       }}
                     >
-                      Remove
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                      <span style={{ fontSize: 13, color: colors.text, fontWeight: 600 }}>
+                        {item.name} <span style={{ color: colors.muted, marginLeft: "4px" }}>× {item.quantity}</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeItem(idx)}
+                        style={{
+                          background: colors.danger,
+                          color: colors.white,
+                          border: "none",
+                          padding: "6px 12px",
+                          borderRadius: radius.sm,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              padding: "12px 16px",
-              borderRadius: 12,
-              border: "none",
-              background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
-              color: "#fff",
-              fontWeight: 700,
-              fontSize: 16,
-              cursor: "pointer",
-              opacity: loading ? 0.5 : 1,
-            }}
-          >
-            {loading ? "Saving..." : "Save Changes"}
-          </button>
-        </form>
+            {/* BUTON SALVARE */}
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                marginTop: "10px",
+                padding: "14px 16px",
+                borderRadius: radius.md,
+                border: "none",
+                background: colors.blueDark,
+                color: colors.white,
+                fontWeight: 800,
+                fontSize: 16,
+                cursor: "pointer",
+                opacity: loading ? 0.5 : 1,
+                boxShadow: shadow.soft
+              }}
+            >
+              {loading ? "Saving..." : "Save Changes"}
+            </button>
+          </form>
+
+        </div>
       </div>
     </div>
   );
 }
 
+const labelStyle = {
+  display: "block",
+  marginBottom: 6,
+  fontWeight: 600,
+  color: colors.text,
+  fontSize: 13
+};
+
 const inputStyle = {
-  padding: "12px 16px",
-  borderRadius: 12,
-  border: "1px solid #e2e8f0",
-  background: "#fff",
-  color: "#334155",
+  padding: "12px 14px",
+  borderRadius: radius.md,
+  border: `2px solid ${colors.border}`,
+  background: colors.bg,
+  color: colors.text,
   fontSize: 14,
   width: "100%",
   boxSizing: "border-box",
   outline: "none",
-  fontFamily: "inherit",
+  fontFamily: "inherit"
 };

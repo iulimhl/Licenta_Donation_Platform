@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Text, Float
+from sqlalchemy import Column, Integer, String, Text, Float, DateTime
+from datetime import datetime
 from db.database import Base
 
 class DonationModel(Base):
@@ -10,7 +11,8 @@ class DonationModel(Base):
     category = Column(String)
     status = Column(String, default="available")
     description = Column(Text, nullable=True)
-    image = Column(String, nullable=True)
-    owner_email = Column(String, nullable=True)
+    image = Column(String, nullable=False)
+    owner_email = Column(String, nullable=False)
     lat = Column(Float, nullable=True)
     lng = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

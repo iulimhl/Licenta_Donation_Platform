@@ -5,12 +5,14 @@ class MessageCreate(BaseModel):
     recipient_email: str
     content: str
     donation_id: int | None = None
+    need_id: int | None = None
 
 class MessageResponse(BaseModel):
     id: int
     sender_email: str
     recipient_email: str
     donation_id: int | None
+    need_id: int | None = None
     content: str
     created_at: datetime
     is_read: bool

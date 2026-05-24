@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import { apiFetch } from "../api/api";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -13,13 +13,20 @@ const blueIcon = L.icon({
   iconAnchor: [12, 41],
 });
 
-const redIcon = L.icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
+const userLocationIcon = L.divIcon({
+  className: "user-location-marker",
+  html: `
+    <div style="
+      background-color: #2563eb;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 3px solid white;
+      box-shadow: 0 0 8px rgba(37, 99, 235, 0.6);
+    "></div>
+  `,
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
 });
 
 export default function MapPage() {
@@ -53,13 +60,12 @@ export default function MapPage() {
   return (
     <div style={{ height: "calc(100vh - 80px)", width: "100%" }}>
       <div style={{ padding: "20px", textAlign: "center", background: "#f8fafc" }}>
-        <h2 style={{ margin: 0, color: "#1e293b" }}>Harta Organizațiilor Partnere</h2>
-        <p style={{ color: "#64748b" }}>Punctele albastre sunt ONG-uri, punctul roșu ești tu.</p>
+        <h2 style={{ margin: 0, color: "#1e293b", fontWeight: 800 }}>Organizations map</h2>
       </div>
 
       <MapContainer
-        center={[45.9432, 24.9668]}
-        zoom={6.5}
+        center={userPos || [47.1585, 27.6014]}
+        zoom={userPos ? 13 : 7}
         style={{ height: "100%", width: "100%" }}
       >
         <TileLayer
@@ -68,20 +74,32 @@ export default function MapPage() {
         />
 
         {userPos && (
-          <Marker position={userPos} icon={redIcon}>
-            <Popup>Ești aici (Locația ta curentă)</Popup>
+          <Marker position={userPos} icon={userLocationIcon}>
+            <Popup>You hare here</Popup>
           </Marker>
         )}
 
         {organizations.map((org) => (
-          <Marker key={org.id} position={[org.lat, org.lng]} icon={blueIcon}>
-            <Popup>
-              <div style={{ padding: "5px" }}>
-                <strong style={{ color: "#6366f1" }}>{org.name}</strong>
-                <p style={{ margin: "5px 0", fontSize: "12px" }}>{org.location}</p>
-              </div>
-            </Popup>
-          </Marker>
+          org.lat && org.lng && (
+            <Marker key={org.id} position={[org.lat, org.lng]} icon={blueIcon}>
+              <Popup>
+                <div style={{ padding: "5px" }}>
+                  <strong style={{ color: "#6366f1", fontSize: "14px" }}>{org.name}</strong>
+                  <p style={{ margin: "5px 0", fontSize: "12px", color: "#475569" }}>{org.location}</p>
+                  <button
+                    onClick={() => window.location.href=`/chat/${org.email}`}
+                    style={{
+                      marginTop: "5px", width: "100%", padding: "4px",
+                      backgroundColor: "#6366f1", color: "white", border: "none",
+                      borderRadius: "4px", cursor: "pointer", fontSize: "11px"
+                    }}
+                  >
+                    Contact
+                  </button>
+                </div>
+              </Popup>
+            </Marker>
+          )
         ))}
       </MapContainer>
     </div>

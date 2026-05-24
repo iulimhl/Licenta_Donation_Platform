@@ -16,7 +16,8 @@ def send_message(payload: MessageCreate, sender_email: str, db: Session = Depend
         sender_email=sender_email,
         recipient_email=payload.recipient_email,
         content=payload.content,
-        donation_id=payload.donation_id
+        donation_id=payload.donation_id,
+        need_id=getattr(payload, 'need_id', None)
     )
 
 @router.get("/conversation", response_model=list[MessageResponse])
@@ -24,12 +25,13 @@ def get_conversation(
     other_email: str,
     user_email: str,
     donation_id: int = Query(None),
+    need_id: int = Query(None),
     db: Session = Depends(get_db)
 ):
     if not user_email:
         raise HTTPException(status_code=400, detail="User email is required")
 
-    return messages_service.get_conversation(db, user_email, other_email, donation_id)
+    return messages_service.get_conversation(db, user_email, other_email, donation_id, need_id)
 
 @router.get("/inbox", response_model=list[InboxConversationResponse])
 def get_inbox(user_email: str, db: Session = Depends(get_db)):

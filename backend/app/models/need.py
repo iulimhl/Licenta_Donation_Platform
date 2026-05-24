@@ -14,7 +14,5 @@ class NeedModel(Base):
     image = Column(String, nullable=True)
     lat = Column(Float, nullable=True)
     lng = Column(Float, nullable=True)
-    
-
     items = Column(JSON, default=list)
 

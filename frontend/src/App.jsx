@@ -12,6 +12,7 @@ import Profile from "./pages/Profile";
 import Messages from "./pages/Messages";
 import Chat from "./pages/Chat";
 import EditNeed from "./pages/EditNeed";
+import EditDonation from "./pages/EditDonation";
 import MapPage from "./pages/Map";
 
 export default function App() {
@@ -49,6 +50,8 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route path="/editdonation/:id" element={<ProtectedRoute><EditDonation /></ProtectedRoute>} />
 
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

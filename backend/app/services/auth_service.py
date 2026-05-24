@@ -15,6 +15,7 @@ def register_new_user(db: Session, payload: UserCreate):
         hashed_password=hashed_pwd,
         user_type=payload.user_type,
         organization_name=payload.organization_name if payload.user_type == "organization" else None,
+        cif=payload.cif if payload.user_type == "organization" else None,
         location=payload.location if payload.user_type == "organization" else None,
         lat=payload.lat if payload.user_type == "organization" else None,
         lng=payload.lng if payload.user_type == "organization" else None,

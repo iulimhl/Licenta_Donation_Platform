@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/api";
+import { colors, radius, shadow } from "../styles/theme";
 
 export default function PostDonation() {
   const [formData, setFormData] = useState({
@@ -13,217 +14,97 @@ export default function PostDonation() {
     lat: null,
     lng: null,
   });
-
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({ ...prev, image: reader.result }));
-      };
+      reader.onloadend = () => setFormData((prev) => ({ ...prev, image: reader.result }));
       reader.readAsDataURL(file);
     }
   };
 
   const handleUseMyLocation = () => {
-    if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser.");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-
-        const address = await reverseGeocode(latitude, longitude);
-
-        setFormData((prev) => ({
-          ...prev,
-          location: address || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
-          lat: latitude,
-          lng: longitude,
-        }));
-      },
-      () => {
-        alert("Could not get your location.");
-      }
-    );
-  };
-
-  const reverseGeocode = async (lat, lng) => {
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`
-      );
-      const data = await response.json();
-      return data.display_name || "";
-    } catch (error) {
-      console.error("Reverse geocoding failed:", error);
-      return "";
-    }
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      const { latitude, longitude } = position.coords;
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`);
+        const data = await res.json();
+        setFormData(prev => ({ ...prev, location: data.display_name || "Detected location", lat: latitude, lng: longitude }));
+      } catch (err) { console.error(err); }
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    setLoading(true);
     const userEmail = localStorage.getItem("userEmail");
-    const dataToSend = {
-      ...formData,
-      owner_email: userEmail,
-    };
-
     try {
       const { response } = await apiFetch("/donations/", {
         method: "POST",
-        body: JSON.stringify(dataToSend),
+        body: JSON.stringify({ ...formData, owner_email: userEmail }),
       });
-
-      if (response.ok) {
-        alert("Donation posted successfully!");
-        navigate("/");
-      } else {
-        alert("Error saving donation.");
-      }
-    } catch (error) {
-      alert("Could not contact backend.");
-    }
+      if (response.ok) navigate("/");
+    } catch (error) { console.error(error); }
+    finally { setLoading(false); }
   };
 
   return (
-    <div className="pattern-bg" style={{ minHeight: "100vh", padding: "40px 20px" }}>
-      <div
-        className="glass-container"
-        style={{
-          marginBottom: "24px",
-          padding: "24px",
-          textAlign: "center",
-        }}
-      >
-        <h1
-          style={{
-            margin: 0,
-            background: "linear-gradient(135deg, #667eea, #764ba2)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-            fontSize: "2rem",
-            fontWeight: 700,
-          }}
-        >
-          Post a Donation
-        </h1>
-        <p style={{ margin: "8px 0 0 0", color: "#64748b" }}>
-          Share what you have with those in need
-        </p>
-      </div>
+    <div style={{ minHeight: "100vh", backgroundColor: colors.bg, padding: "40px 20px" }}>
+      <div style={{ maxWidth: 600, margin: "0 auto" }}>
 
-      <div style={{ maxWidth: 500, width: "100%", margin: "0 auto" }} className="glass-container">
-        <div style={{ padding: "30px" }}>
-          <div
-            style={{
-              background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
-              color: "#fff",
-              padding: "20px 24px",
-              borderRadius: "16px",
-              marginBottom: "20px",
-              textAlign: "center",
-            }}
-          >
-            <p style={{ margin: 0, fontSize: 13, opacity: 0.9 }}>
-              Share items you no longer need with your community
-            </p>
-          </div>
+        {/* Bannerul de stil */}
+        <div style={{
+          background: colors.blueLight, padding: "30px 40px", borderRadius: radius.xl,
+          marginBottom: "30px", boxShadow: shadow.soft
+        }}>
+          <h2 style={{ margin: 0, fontSize: "28px", color: colors.blueDark, fontWeight: 800 }}>Post a donation</h2>
+          <p style={{ margin: "8px 0 0 0", color: colors.blueDark, opacity: 0.8, fontWeight: 500 }}>
+            Share what you don't need anymore
+          </p>
+        </div>
 
-          <form onSubmit={handleSubmit} style={{ display: "grid", gap: 14 }}>
-            <div className="form-group">
-              <label className="modern-label">Title *</label>
-              <input
-                name="title"
-                type="text"
-                placeholder="e.g., Winter jacket"
-                value={formData.title}
-                onChange={handleChange}
-                required
-                className="modern-input"
-              />
+        <div style={{ backgroundColor: colors.card, padding: "40px", borderRadius: radius.xl, boxShadow: shadow.card, border: `1px solid ${colors.border}` }}>
+          <form onSubmit={handleSubmit} style={{ display: "grid", gap: 20 }}>
+            <div>
+              <label style={labelStyle}>Title *</label>
+              <input name="title" type="text" placeholder="e.g. Winter jacket" value={formData.title} onChange={handleChange} required style={inputStyle} />
             </div>
 
-            <div className="form-group">
-              <label className="modern-label">Location *</label>
-              <input
-                name="location"
-                type="text"
-                placeholder="e.g., Iași, Victoriei Street"
-                value={formData.location}
-                onChange={handleChange}
-                required
-                className="modern-input"
-              />
-              <button
-                type="button"
-                onClick={handleUseMyLocation}
-                style={{
-                  marginTop: 8,
-                  padding: "8px 12px",
-                  borderRadius: 10,
-                  border: "1px solid #cbd5e1",
-                  background: "#fff",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                  fontSize: 13,
-                }}
-              >
-                Use my current location
-              </button>
+            <div>
+              <label style={labelStyle}>Location *</label>
+              <input name="location" type="text" placeholder="e.g. Copou, Iași" value={formData.location} onChange={handleChange} required style={inputStyle} />
+              <button type="button" onClick={handleUseMyLocation} style={secondaryButtonStyle}> Use my current location</button>
             </div>
 
-            <div className="form-group">
-              <label className="modern-label">Category *</label>
-              <select
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-                className="modern-select"
-              >
+            <div>
+              <label style={labelStyle}>Category *</label>
+              <select name="category" value={formData.category} onChange={handleChange} style={inputStyle}>
                 <option value="clothes">Clothes</option>
                 <option value="food">Food</option>
                 <option value="education">Education</option>
                 <option value="hygiene">Hygiene</option>
-                <option value="home">Home</option>
                 <option value="other">Other</option>
               </select>
             </div>
 
-            <div className="form-group">
-              <label className="modern-label">Description</label>
-              <textarea
-                name="description"
-                placeholder="Tell us more about the item..."
-                value={formData.description}
-                onChange={handleChange}
-                className="modern-textarea"
-              />
+            <div>
+              <label style={labelStyle}>Description</label>
+              <textarea name="description" placeholder="Condition, size, etc." value={formData.description} onChange={handleChange} style={{ ...inputStyle, height: 100, resize: "none" }} />
             </div>
 
-            <div className="form-group">
-              <label className="modern-label">Photo</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="modern-file-input"
-                style={{ fontSize: "13px" }}
-              />
+            <div>
+              <label style={labelStyle}>Photo</label>
+              <input type="file" accept="image/*" onChange={handleFileChange} style={{ fontSize: 13, color: colors.muted }} />
             </div>
 
-            <button type="submit" style={buttonStyle}>
-              Post Donation
+            <button type="submit" disabled={loading} style={primaryButtonStyle}>
+              {loading ? "Posting..." : "Post donation"}
             </button>
           </form>
         </div>
@@ -232,14 +113,12 @@ export default function PostDonation() {
   );
 }
 
-const buttonStyle = {
-  padding: "12px 16px",
-  borderRadius: 12,
-  border: "none",
-  background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
-  color: "#fff",
-  fontWeight: 700,
-  fontSize: 16,
-  cursor: "pointer",
-  marginTop: "10px",
-};
+// Stiluri refolosibile bazate pe temă
+const labelStyle = { display: "block", marginBottom: 8, fontSize: 14, fontWeight: 600, color: "#2f3b52" };
+const inputStyle = { width: "100%", padding: "12px 16px", borderRadius: "12px", border: `2px solid #dbeafe`, backgroundColor: "#f8fbff", outline: "none", boxSizing: "border-box" };
+const primaryButtonStyle = { padding: "16px", backgroundColor: "#5f8fe8", color: "#fff", border: "none", borderRadius: "12px", fontWeight: "800", fontSize: "16px", cursor: "pointer", marginTop: 10 };
+const secondaryButtonStyle = {
+                  marginTop: "12px", padding: "12px", borderRadius: radius.md, border: "none",
+                  backgroundColor: colors.yellowLight, color: "#856404",
+                  fontWeight: "700", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8
+                 };

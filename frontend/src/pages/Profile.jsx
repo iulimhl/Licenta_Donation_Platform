@@ -19,6 +19,65 @@ const tabBarStyle = {
   borderBottom: `1px solid ${colors.border}`,
 };
 
+const badgeBaseStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "10px 14px",
+  borderRadius: 999,
+  fontWeight: 700,
+  fontSize: 14,
+  marginBottom: 18,
+};
+
+function getVerificationBadge(status) {
+  if (status === "verified") {
+    return {
+      text: "Verified organization",
+      style: {
+        ...badgeBaseStyle,
+        background: "#dcfce7",
+        color: "#166534",
+        border: "1px solid #86efac",
+      },
+    };
+  }
+
+  if (status === "pending") {
+    return {
+      text: "Verification pending",
+      style: {
+        ...badgeBaseStyle,
+        background: "#fef9c3",
+        color: "#854d0e",
+        border: "1px solid #fde68a",
+      },
+    };
+  }
+
+  if (status === "rejected") {
+    return {
+      text: "Verification rejected",
+      style: {
+        ...badgeBaseStyle,
+        background: "#fee2e2",
+        color: "#991b1b",
+        border: "1px solid #fca5a5",
+      },
+    };
+  }
+
+  return {
+    text: "Not verified yet",
+    style: {
+      ...badgeBaseStyle,
+      background: "#e2e8f0",
+      color: "#334155",
+      border: "1px solid #cbd5e1",
+    },
+  };
+}
+
 export default function Profile() {
   const navigate = useNavigate();
   const userEmail = localStorage.getItem("userEmail");
@@ -26,6 +85,8 @@ export default function Profile() {
   const [myDonations, setMyDonations] = useState([]);
   const [myNeeds, setMyNeeds] = useState([]);
   const [userType, setUserType] = useState("");
+  const [verificationStatus, setVerificationStatus] = useState("");
+  const [verificationScore, setVerificationScore] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("donations");
 
@@ -34,6 +95,8 @@ export default function Profile() {
       try {
         const { data: userData } = await apiFetch(`/auth/user/${userEmail}`);
         setUserType(userData.user_type);
+        setVerificationStatus(userData.verification_status || "unverified");
+        setVerificationScore(userData.verification_score ?? null);
 
         const { data: donationsData } = await apiFetch("/donations/");
         setMyDonations(donationsData.filter((item) => item.owner_email === userEmail));
@@ -117,6 +180,7 @@ export default function Profile() {
     }
   }
 
+
   function renderTabButton(key, label, activeColor, activeTextColor = colors.text) {
     const isActive = tab === key;
 
@@ -142,9 +206,40 @@ export default function Profile() {
     return <div style={{ textAlign: "center", marginTop: 60 }}>Loading...</div>;
   }
 
+  const verificationBadge = getVerificationBadge(verificationStatus);
+
   return (
     <div className="pattern-bg" style={pageStyle}>
       <ProfileHeader userEmail={userEmail} userType={userType} />
+
+      {userType === "organization" && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 12,
+            marginBottom: 8,
+          }}
+        >
+          <div style={verificationBadge.style}>
+            <span>
+              {verificationStatus === "verified"
+                ? "✓"
+                : verificationStatus === "pending"
+                ? ""
+                : verificationStatus === "rejected"
+                ? "✕"
+                : "•"}
+            </span>
+            <span>{verificationBadge.text}</span>
+            {verificationScore !== null && <span>({verificationScore}%)</span>}
+          </div>
+
+
+        </div>
+      )}
 
       <ProfileStats
         donationsCount={myDonations.length}

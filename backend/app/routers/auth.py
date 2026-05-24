@@ -29,7 +29,8 @@ def login_user(payload: UserLogin, db: Session = Depends(get_db)):
         "message": "Succes!",
         "email": user.email,
         "user_type": user.user_type,
-        "organization_name": user.organization_name
+        "organization_name": user.organization_name,
+        "verification_status": user.verification_status
     }
 
 @router.get("/user/{email}", response_model=UserResponse)
@@ -42,5 +43,11 @@ def get_user_info(email: str, db: Session = Depends(get_db)):
     return {
         "email": user.email,
         "user_type": user.user_type,
-        "organization_name": user.organization_name
+        "organization_name": user.organization_name,
+        "location": user.location,
+        "lat": user.lat,
+        "lng": user.lng,
+        "cif": user.cif,
+        "verification_status": user.verification_status,
+        "verification_score": user.verification_score
     }

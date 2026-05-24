@@ -1,11 +1,13 @@
 from sqlalchemy.orm import Session
 from models.message import Message
 
-def create_message(db: Session, sender_email: str, recipient_email: str, content: str, donation_id: int | None = None):
+def create_message(db: Session, sender_email: str, recipient_email: str, content: str, donation_id: int | None = None, need_id: int | None = None):
+    # REPARAT: Salvăm și need_id în rândul nou din tabela bazei de date
     db_message = Message(
         sender_email=sender_email,
         recipient_email=recipient_email,
         donation_id=donation_id,
+        need_id=need_id,  # <-- ADĂUGAT
         content=content
     )
     db.add(db_message)
@@ -13,14 +15,21 @@ def create_message(db: Session, sender_email: str, recipient_email: str, content
     db.refresh(db_message)
     return db_message
 
-def get_conversation(db: Session, user_email: str, other_email: str, donation_id: int | None = None):
+def get_conversation(db: Session, user_email: str, other_email: str, donation_id: int | None = None, need_id: int | None = None):
+    # Interogăm istoricul dintre cei doi utilizatori
     query = db.query(Message).filter(
         ((Message.sender_email == user_email) & (Message.recipient_email == other_email)) |
         ((Message.sender_email == other_email) & (Message.recipient_email == user_email))
     )
 
+    # REPARAT CONTEXT: Filtrăm mesajele strict în funcție de contextul paginii pe care te afli
     if donation_id:
         query = query.filter(Message.donation_id == donation_id)
+    elif need_id:
+        query = query.filter(Message.need_id == need_id)
+    else:
+        # Dacă e un chat direct (fără postare), aducem doar mesajele fără context
+        query = query.filter(Message.donation_id == None, Message.need_id == None)
 
     messages = query.order_by(Message.created_at).all()
 
