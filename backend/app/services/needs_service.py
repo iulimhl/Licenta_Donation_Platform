@@ -4,31 +4,37 @@ from models.need import NeedModel
 from models.user import User
 from schemas.need import NeedCreate
 
+def _attach_organization_data(db: Session, need):
+    if not need:
+        return None
+
+    org = db.query(User).filter(User.email == need.organization_email).first()
+
+    need_dict = {
+        "id": need.id,
+        "title": need.title,
+        "description": need.description,
+        "location": need.location,
+        "organization_email": need.organization_email,
+        "organization_name": org.name if org else need.organization_email,
+        "organization_logo_url": org.logo_url if org else None,
+        "organization_cover_image_url": org.cover_image_url if org else None,
+        "organization_verification_status": org.verification_status if org else None,
+        "image": need.image,
+        "lat": need.lat,
+        "lng": need.lng,
+        "items": need.items,
+        "created_at": need.created_at,
+
+    }
+
+    return need_dict
+
+
 def get_all(db: Session):
     needs = db.query(NeedModel).all()
-    result = []
+    return [_attach_organization_data(db, need) for need in needs]
 
-    for need in needs:
-        need_dict = {
-            "id": need.id,
-            "title": need.title,
-            "description": need.description,
-            "location": need.location,
-            "organization_email": need.organization_email,
-            "image": need.image,
-            "items": need.items,
-            "created_at": need.created_at
-        }
-
-        user = db.query(User).filter(User.email == need.organization_email).first()
-        if user and user.organization_name:
-            need_dict["organization_name"] = user.organization_name
-        else:
-            need_dict["organization_name"] = need.organization_email
-
-        result.append(need_dict)
-
-    return result
 
 def create_new(db: Session, payload: NeedCreate):
     need_data = payload.model_dump(exclude_unset=True)
@@ -38,10 +44,18 @@ def create_new(db: Session, payload: NeedCreate):
     db.add(db_need)
     db.commit()
     db.refresh(db_need)
-    return db_need
+    return _attach_organization_data(db, db_need)
+
 
 def get_by_id(db: Session, need_id: int):
-    return db.query(NeedModel).filter(NeedModel.id == need_id).first()
+    db_need = db.query(NeedModel).filter(NeedModel.id == need_id).first()
+    return _attach_organization_data(db, db_need)
+
+
+def get_need_by_id(db: Session, need_id: int):
+    db_need = db.query(NeedModel).filter(NeedModel.id == need_id).first()
+    return _attach_organization_data(db, db_need)
+
 
 def update_item_brought(db: Session, need_id: int, item_index: int, brought: int):
     db_need = db.query(NeedModel).filter(NeedModel.id == need_id).first()
@@ -51,12 +65,15 @@ def update_item_brought(db: Session, need_id: int, item_index: int, brought: int
     if item_index < 0 or item_index >= len(db_need.items):
         return None, "invalid_index"
 
-    db_need.items[item_index]["brought"] = min(brought, db_need.items[item_index]["quantity"])
+    db_need.items[item_index]["brought"] = min(
+        brought, db_need.items[item_index]["quantity"]
+    )
     flag_modified(db_need, "items")
 
     db.commit()
     db.refresh(db_need)
-    return db_need, None
+    return _attach_organization_data(db, db_need), None
+
 
 def update_by_id(db: Session, need_id: int, update_data: dict):
     db_need = db.query(NeedModel).filter(NeedModel.id == need_id).first()
@@ -70,7 +87,8 @@ def update_by_id(db: Session, need_id: int, update_data: dict):
     flag_modified(db_need, "items")
     db.commit()
     db.refresh(db_need)
-    return db_need
+    return _attach_organization_data(db, db_need)
+
 
 def delete_by_id(db: Session, need_id: int):
     db_need = db.query(NeedModel).filter(NeedModel.id == need_id).first()

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { apiFetch } from "../api/api";
-import { colors, radius, shadow } from "../styles/theme";
+import "../styles/formPages.css";
+import "../styles/pages/Register.css";
 
 export default function Register() {
   const [email, setEmail] = useState("");
@@ -17,6 +18,8 @@ export default function Register() {
   const [notification, setNotification] = useState({ message: "", type: "" });
   const [verificationFile, setVerificationFile] = useState(null);
   const [extracting, setExtracting] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [phoneVisible] = useState(false);
 
   const navigate = useNavigate();
 
@@ -64,9 +67,9 @@ export default function Register() {
 
     if (userType === "organization" && (!finalLat || !finalLng) && location.trim()) {
       try {
-        const query = encodeURIComponent(`${location}, Iasi, Romania`);
+        const query = encodeURIComponent(`${location}, Romania`);
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`
+          `https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=ro&q=${query}&limit=1`
         );
         const data = await res.json();
 
@@ -83,65 +86,72 @@ export default function Register() {
   };
 
   const handleExtractFromDocument = async () => {
-      if (!verificationFile) {
-        showNotification("Please upload a document first.", "error");
+    if (!verificationFile) {
+      showNotification("Please upload a document first.", "error");
+      return;
+    }
+
+    try {
+      setExtracting(true);
+
+      const formData = new FormData();
+      formData.append("file", verificationFile);
+
+      const response = await fetch("http://127.0.0.1:8000/verification/extract-document", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        showNotification(data.detail || "Could not extract data.", "error");
         return;
       }
 
-      try {
-        setExtracting(true);
-
-        const formData = new FormData();
-        formData.append("file", verificationFile);
-
-        const response = await fetch("http://127.0.0.1:8000/verification/extract-document", {
-          method: "POST",
-          body: formData,
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          showNotification(data.detail || "Could not extract data.", "error");
-          return;
-        }
-
-        if (data.document_type_guess === "fiscal_attestation_certificate") {
-          showNotification(
-            "This looks like a fiscal attestation certificate, not a fiscal registration certificate.",
-            "error"
-          );
-          return;
-        }
-
-        if (data.document_type_guess === "trade_registry_certificate") {
-          showNotification(
-            "This looks like a trade registry document. Please upload the fiscal registration certificate.",
-            "error"
-          );
-          return;
-        }
-
-        if (data.organization_name) {
-          setOrgName(data.organization_name);
-        }
-
-        if (data.cif) {
-          setCif(data.cif);
-        }
-
-        if (data.location) {
-          setLocation(data.location);
-        }
-
-        showNotification("Document processed successfully!");
-      } catch (error) {
-        console.error("OCR error:", error);
-        showNotification("OCR extraction failed.", "error");
-      } finally {
-        setExtracting(false);
+      if (data.document_type_guess === "fiscal_attestation_certificate") {
+        showNotification(
+          "This looks like a fiscal attestation certificate, not a fiscal registration certificate.",
+          "error"
+        );
+        return;
       }
-    };
+
+      if (data.document_type_guess === "trade_registry_certificate") {
+        showNotification(
+          "This looks like a trade registry document. Please upload the fiscal registration certificate.",
+          "error"
+        );
+        return;
+      }
+
+      if (data.name) setOrgName(data.name);
+      if (data.cif) setCif(data.cif);
+      if (data.location) setLocation(data.location);
+
+      showNotification("Document processed successfully!");
+    } catch (error) {
+      console.error("OCR error:", error);
+      showNotification("OCR extraction failed.", "error");
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  const passwordChecks = {
+    minLength: password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    lowercase: /[a-z]/.test(password),
+    number: /\d/.test(password),
+  };
+
+  const isPasswordValid =
+    passwordChecks.minLength &&
+    passwordChecks.uppercase &&
+    passwordChecks.lowercase &&
+    passwordChecks.number;
+
+  const showPasswordBubble = password.length > 0 && !isPasswordValid;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -151,8 +161,18 @@ export default function Register() {
       return;
     }
 
+    if (!isPasswordValid) {
+      showNotification("Please choose a stronger password.", "error");
+      return;
+    }
+
     if (userType === "user" && !fullName.trim()) {
       showNotification("Please enter your full name.", "error");
+      return;
+    }
+
+    if (!phone.trim()) {
+      showNotification("Please enter your phone number.", "error");
       return;
     }
 
@@ -171,6 +191,18 @@ export default function Register() {
         showNotification("Please enter the organization CIF.", "error");
         return;
       }
+
+      if (!verificationFile) {
+        showNotification("Please upload the fiscal registration certificate.", "error");
+        return;
+      }
+
+      const allowedTypes = ["image/png", "image/jpeg", "application/pdf", "image/webp"];
+
+      if (!allowedTypes.includes(verificationFile.type)) {
+        showNotification("Unsupported document type.", "error");
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -181,13 +213,14 @@ export default function Register() {
       const registerPayload = {
         email,
         password,
-        full_name: userType === "user" ? fullName : null,
+        name: userType === "user" ? fullName : orgName,
         user_type: userType,
-        organization_name: userType === "organization" ? orgName : null,
         location: userType === "organization" ? location : null,
         lat: userType === "organization" ? finalLat : null,
         lng: userType === "organization" ? finalLng : null,
         cif: userType === "organization" ? cif : null,
+        phone,
+        phone_visible: phoneVisible,
       };
 
       const { response, data } = await apiFetch("/auth/register", {
@@ -196,33 +229,52 @@ export default function Register() {
       });
 
       if (!response.ok) {
-        showNotification(data.detail || "Registration error", "error");
+        const message = Array.isArray(data.detail)
+          ? data.detail.map((e) => e.msg).join(" | ")
+          : data.detail || "Registration error";
+        showNotification(message, "error");
         setSubmitting(false);
         return;
       }
 
       if (userType === "organization") {
         try {
-          const { response: verifyResponse, data: verifyData } = await apiFetch(
-            "/verification/organization",
+          const formData = new FormData();
+          formData.append("email", email);
+          formData.append("file", verificationFile);
+
+          const uploadResponse = await fetch(
+            "http://127.0.0.1:8000/verification/upload-document",
             {
               method: "POST",
-              body: JSON.stringify({
-                email,
-                organization_name: orgName,
-                cif,
-              }),
+              body: formData,
             }
           );
 
+          const uploadData = await uploadResponse.json();
+
+          if (!uploadResponse.ok) {
+            showNotification(uploadData.detail || "Document upload failed.", "error");
+            setSubmitting(false);
+            return;
+          }
+        } catch (uploadError) {
+          console.error("Document upload error:", uploadError);
+          showNotification("Account created, but document upload failed.", "error");
+          setSubmitting(false);
+          return;
+        }
+      }
+
+      if (userType === "organization") {
+        try {
+          const { response: verifyResponse } = await apiFetch("/verification/organization", {
+            method: "POST",
+            body: JSON.stringify({ email, name: orgName, cif }),
+          });
+
           if (verifyResponse.ok) {
-            if (verifyData.status === "verified") {
-              showNotification("Organization account created and verified!");
-            } else if (verifyData.status === "pending") {
-              showNotification("Account created. Verification is pending.");
-            } else {
-              showNotification("Account created. Verification status updated.");
-            }
+            showNotification("Account created. Verification is pending.");
           } else {
             showNotification("Account created, but verification failed.", "error");
           }
@@ -236,6 +288,7 @@ export default function Register() {
 
       setTimeout(() => navigate("/login"), 2200);
     } catch (error) {
+      console.error("Register error:", error);
       showNotification("Server connection error.", "error");
     } finally {
       setSubmitting(false);
@@ -243,297 +296,195 @@ export default function Register() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        padding: "40px 20px",
-        backgroundColor: colors.bg,
-        position: "relative",
-      }}
-    >
+    <div className="form-page centered register-page">
       {notification.message && (
-        <div
-          style={{
-            position: "fixed",
-            top: "20px",
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 9999,
-            padding: "14px 28px",
-            borderRadius: radius.lg,
-            background: notification.type === "error" ? colors.danger : colors.blueDark,
-            color: colors.white,
-            fontWeight: "600",
-            boxShadow: shadow.card,
-            border: `1px solid ${colors.border}`,
-            backdropFilter: "blur(4px)",
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            transition: "all 0.3s",
-          }}
-        >
-          {notification.type === "error" ? "✕" : "✓"} {notification.message}
+        <div className={`register-notification ${notification.type === "error" ? "error" : "success"}`}>
+          <span>{notification.type === "error" ? "x" : "✓"}</span>
+          <span>{notification.message}</span>
         </div>
       )}
 
-      <div
-        style={{
-          maxWidth: 420,
-          margin: "0 auto",
-          padding: "40px",
-          backgroundColor: colors.card,
-          borderRadius: radius.xl,
-          boxShadow: shadow.card,
-          border: `1px solid ${colors.border}`,
-        }}
-      >
-        <div style={{ textAlign: "center", marginBottom: "32px" }}>
-          <h2
-            style={{
-              margin: 0,
-              fontSize: 24,
-              color: colors.text,
-              fontWeight: 700,
-              letterSpacing: "-0.5px",
-            }}
-          >
-            Welcome!
-          </h2>
-          <p style={{ color: colors.muted, marginTop: "6px", fontSize: 15 }}>
-            Create your account
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} style={{ display: "grid", gap: 20 }}>
-          <div
-            style={{
-              display: "flex",
-              background: colors.blueLight,
-              padding: "6px",
-              borderRadius: radius.md,
-              marginBottom: "10px",
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setUserType("user")}
-              style={{
-                flex: 1,
-                padding: "10px",
-                border: "none",
-                borderRadius: radius.sm,
-                backgroundColor: userType === "user" ? colors.white : "transparent",
-                color: userType === "user" ? colors.blueDark : colors.muted,
-                fontWeight: "700",
-                cursor: "pointer",
-                transition: "0.2s",
-              }}
-            >
-              User
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setUserType("organization")}
-              style={{
-                flex: 1,
-                padding: "10px",
-                border: "none",
-                borderRadius: radius.sm,
-                backgroundColor: userType === "organization" ? colors.white : "transparent",
-                color: userType === "organization" ? colors.blueDark : colors.muted,
-                fontWeight: "700",
-                cursor: "pointer",
-                transition: "0.2s",
-              }}
-            >
-              Organization
-            </button>
+      <div className="register-card">
+        <div className="register-card-inner">
+          <div className="register-heading">
+            <h2>Create your account</h2>
+            <p>Create an account to donate, connect, and support local communities.</p>
           </div>
 
-          <div>
-            <label style={labelStyle}>Email</label>
-            <input
-              type="email"
-              placeholder="ana@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              style={inputStyle}
-            />
-          </div>
-
-          <div>
-            <label style={labelStyle}>Password</label>
-            <input
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              style={inputStyle}
-            />
-          </div>
-
-          {userType === "user" && (
-            <div>
-              <label style={labelStyle}>Full Name</label>
-              <input
-                type="text"
-                placeholder="Ana Popescu"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                required
-                style={inputStyle}
-              />
-            </div>
-          )}
-
-          {userType === "organization" && (
-            <>
-              <div>
-                <label style={labelStyle}>Organization Name</label>
-                <input
-                  type="text"
-                  placeholder="NGO Name"
-                  value={orgName}
-                  onChange={(e) => setOrgName(e.target.value)}
-                  required
-                  style={inputStyle}
-                />
-              </div>
-
-              <div>
-                <label style={labelStyle}>CIF</label>
-                <input
-                  type="text"
-                  placeholder="e.g. 12345678"
-                  value={cif}
-                  onChange={(e) => setCif(e.target.value)}
-                  required
-                  style={inputStyle}
-                />
-              </div>
-
-              <div>
-                <label style={labelStyle}>Address</label>
-                <input
-                  type="text"
-                  placeholder="Enter address or use GPS"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  required
-                  style={inputStyle}
-                />
-
-
-
-                <button
-                  type="button"
-                  onClick={handleGetLocation}
-                  disabled={loadingLocation}
-                  style={secondaryButtonStyle}
-                >
-                  {loadingLocation ? "Detecting..." : "Use current location"}
-                </button>
-              </div>
-
-              <div>
-              <label style={labelStyle}>Fiscal registration certificate</label>
-              <input
-                type="file"
-                accept=".png,.jpg,.jpeg,.pdf"
-                onChange={(e) => setVerificationFile(e.target.files[0])}
-                style={inputStyle}
-              />
+          <form onSubmit={handleSubmit} className="register-form">
+            <div className="register-type-switch">
+              <button
+                type="button"
+                onClick={() => setUserType("user")}
+                className={`register-type-button ${userType === "user" ? "active" : ""}`}
+              >
+                User
+              </button>
 
               <button
                 type="button"
-                onClick={handleExtractFromDocument}
-                disabled={extracting}
-                style={secondaryButtonStyle}
+                onClick={() => setUserType("organization")}
+                className={`register-type-button ${userType === "organization" ? "active" : ""}`}
               >
-                {extracting ? "Extracting..." : "Auto-fill from document"}
+                Organization
               </button>
             </div>
-            </>
-          )}
 
-          <button type="submit" style={primaryButtonStyle} disabled={submitting}>
-            {submitting ? "Creating account..." : "Create account"}
-          </button>
-        </form>
+            <div>
+              <label className="form-label">Email</label>
+              <input
+                type="email"
+                placeholder="ana@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="form-input register-input"
+              />
+            </div>
 
-        <p
-          style={{
-            marginTop: 24,
-            textAlign: "center",
-            fontSize: 14,
-            color: colors.muted,
-          }}
-        >
-          Already have an account?{" "}
-          <Link
-            to="/login"
-            style={{
-              color: colors.blueDark,
-              fontWeight: 700,
-              textDecoration: "none",
-            }}
-          >
-            Log in
-          </Link>
-        </p>
+            <div>
+              <label className="form-label">Phone number</label>
+              <input
+                type="text"
+                placeholder="07xxxxxxxx"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+                className="form-input register-input"
+              />
+            </div>
+
+            <div className={showPasswordBubble ? "register-password-field with-bubble" : ""}>
+              <label className="form-label">Password</label>
+
+              <div className="register-password-wrap">
+                <input
+                  type="password"
+                  placeholder="********"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="form-input register-input"
+                />
+
+                {showPasswordBubble && (
+                  <div className="register-password-bubble">
+                    <PasswordRule ok={passwordChecks.minLength} text="At least 8 characters" />
+                    <PasswordRule ok={passwordChecks.uppercase} text="One uppercase letter" />
+                    <PasswordRule ok={passwordChecks.lowercase} text="One lowercase letter" />
+                    <PasswordRule ok={passwordChecks.number} text="One number" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {userType === "user" && (
+              <div>
+                <label className="form-label">Full name</label>
+                <input
+                  type="text"
+                  placeholder="Ana Popescu"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                  className="form-input register-input"
+                />
+              </div>
+            )}
+
+            {userType === "organization" && (
+              <>
+                <div>
+                  <label className="form-label">Organization name</label>
+                  <input
+                    type="text"
+                    placeholder="Organization name"
+                    value={orgName}
+                    onChange={(e) => setOrgName(e.target.value)}
+                    required
+                    className="form-input register-input"
+                  />
+                </div>
+
+                <div>
+                  <label className="form-label">CIF</label>
+                  <input
+                    type="text"
+                    placeholder="12345678"
+                    value={cif}
+                    onChange={(e) => setCif(e.target.value)}
+                    required
+                    className="form-input register-input"
+                  />
+                </div>
+
+                <div>
+                  <label className="form-label">Address</label>
+                  <input
+                    type="text"
+                    placeholder="Enter address or use GPS"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    required
+                    className="form-input register-input"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={handleGetLocation}
+                    disabled={loadingLocation}
+                    className="register-secondary-button"
+                  >
+                    {loadingLocation ? "Detecting..." : "Use current location"}
+                  </button>
+                </div>
+
+                <div>
+                  <label className="form-label">Fiscal registration certificate</label>
+                  <input
+                    type="file"
+                    accept=".png,.jpg,.jpeg,.pdf,.webp"
+                    onChange={(e) => setVerificationFile(e.target.files[0])}
+                    className="form-file register-file"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={handleExtractFromDocument}
+                    disabled={extracting}
+                    className="register-secondary-button"
+                  >
+                    {extracting ? "Extracting..." : "Auto-fill from document"}
+                  </button>
+                </div>
+              </>
+            )}
+
+            <button
+              type="submit"
+              disabled={!isPasswordValid || submitting}
+              className="form-button primary register-submit"
+            >
+              {submitting ? "Creating..." : "Create account"}
+            </button>
+          </form>
+
+          <div className="register-footer">
+            <p>
+              Already have an account? <Link to="/login">Log in</Link>
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-const labelStyle = {
-  display: "block",
-  marginBottom: 8,
-  fontSize: 14,
-  fontWeight: 600,
-  color: colors.text,
-};
-
-const inputStyle = {
-  width: "100%",
-  padding: "14px",
-  borderRadius: radius.md,
-  border: `2px solid ${colors.border}`,
-  backgroundColor: colors.bg,
-  color: colors.text,
-  outline: "none",
-  boxSizing: "border-box",
-};
-
-const primaryButtonStyle = {
-  marginTop: "10px",
-  padding: "16px",
-  backgroundColor: colors.blueDark,
-  color: colors.white,
-  border: "none",
-  borderRadius: radius.md,
-  fontWeight: "800",
-  fontSize: "16px",
-  cursor: "pointer",
-  boxShadow: shadow.soft,
-};
-
-const secondaryButtonStyle = {
-  marginTop: "10px",
-  padding: "10px",
-  borderRadius: radius.md,
-  border: "none",
-  backgroundColor: colors.yellowLight,
-  color: "#856404",
-  fontWeight: "700",
-  cursor: "pointer",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 8,
-  width: "100%",
-};
+function PasswordRule({ ok, text }) {
+  return (
+    <div className={`register-password-rule ${ok ? "ok" : "error"}`}>
+      <span>{ok ? "✓" : "x"}</span>
+      <span>{text}</span>
+    </div>
+  );
+}

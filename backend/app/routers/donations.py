@@ -29,10 +29,21 @@ def update_donation(donation_id: int, payload: DonationCreate, db: Session = Dep
     return updated
 
 @router.patch("/{donation_id}/status", response_model=DonationResponse)
-def update_status(donation_id: int, new_status: str, db: Session = Depends(get_db)):
-    updated = donations_service.update_status(db, donation_id, new_status)
+def update_status(
+    donation_id: int,
+    new_status: str,
+    user_email: str | None = None,
+    db: Session = Depends(get_db)
+):
+    updated, error = donations_service.update_status_for_user(db, donation_id, new_status, user_email)
     if not updated:
-        raise HTTPException(status_code=404, detail="Donația nu a fost găsită")
+        if error == "already_reserved":
+            raise HTTPException(status_code=409, detail="This donation is already reserved by another user")
+        if error == "not_reserver":
+            raise HTTPException(status_code=403, detail="Only the user who reserved this donation can cancel the reservation")
+        if error == "not_owner":
+            raise HTTPException(status_code=403, detail="Only the owner can mark this donation as inactive")
+        raise HTTPException(status_code=400, detail="Invalid status or donation not found")
     return updated
 
 @router.delete("/{donation_id}")

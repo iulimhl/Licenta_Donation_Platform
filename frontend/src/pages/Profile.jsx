@@ -1,81 +1,67 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiFetch } from "../api/api";
-import { colors } from "../styles/theme";
-import ProfileHeader from "../components/profile/ProfileHeader";
-import ProfileStats from "../components/profile/ProfileStats";
+import { apiFetch, buildFileUrl } from "../api/api";
 import ProfileDonations from "../components/profile/ProfileDonations";
 import ProfileNeeds from "../components/profile/ProfileNeeds";
-
-const pageStyle = {
-  minHeight: "100vh",
-  background: colors.bg,
-};
-
-const tabBarStyle = {
-  display: "flex",
-  gap: 12,
-  marginBottom: 24,
-  borderBottom: `1px solid ${colors.border}`,
-};
-
-const badgeBaseStyle = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 8,
-  padding: "10px 14px",
-  borderRadius: 999,
-  fontWeight: 700,
-  fontSize: 14,
-  marginBottom: 18,
-};
+import {
+  HiOutlineUser,
+  HiOutlineEnvelope,
+  HiOutlineCheckBadge,
+  HiOutlineClock,
+  HiOutlineXCircle,
+  HiOutlineGift,
+  HiOutlinePhone,
+  HiOutlineMapPin,
+  HiOutlinePencilSquare,
+  HiOutlineGlobeAlt,
+} from "react-icons/hi2";
+import { GoChecklist } from "react-icons/go";
+import "../styles/pages/Profile.css";
 
 function getVerificationBadge(status) {
   if (status === "verified") {
     return {
       text: "Verified organization",
-      style: {
-        ...badgeBaseStyle,
-        background: "#dcfce7",
-        color: "#166534",
-        border: "1px solid #86efac",
-      },
+      icon: <HiOutlineCheckBadge size={18} />,
+      className: "verified",
     };
   }
 
   if (status === "pending") {
     return {
       text: "Verification pending",
-      style: {
-        ...badgeBaseStyle,
-        background: "#fef9c3",
-        color: "#854d0e",
-        border: "1px solid #fde68a",
-      },
+      icon: <HiOutlineClock size={18} />,
+      className: "pending",
     };
   }
 
   if (status === "rejected") {
     return {
       text: "Verification rejected",
-      style: {
-        ...badgeBaseStyle,
-        background: "#fee2e2",
-        color: "#991b1b",
-        border: "1px solid #fca5a5",
-      },
+      icon: <HiOutlineXCircle size={18} />,
+      className: "rejected",
     };
   }
 
   return {
     text: "Not verified yet",
-    style: {
-      ...badgeBaseStyle,
-      background: "#e2e8f0",
-      color: "#334155",
-      border: "1px solid #cbd5e1",
-    },
+    icon: <HiOutlineClock size={18} />,
+    className: "unverified",
   };
+}
+
+function DetailItem({ icon, label, value }) {
+  if (!value) return null;
+
+  return (
+    <div className="profile-detail-item">
+      <span className="profile-detail-icon" aria-hidden="true">{icon}</span>
+      <div className="profile-detail-text">
+        <strong>{label}</strong>
+        <span>{value}</span>
+      </div>
+    </div>
+  );
 }
 
 export default function Profile() {
@@ -85,24 +71,34 @@ export default function Profile() {
   const [myDonations, setMyDonations] = useState([]);
   const [myNeeds, setMyNeeds] = useState([]);
   const [userType, setUserType] = useState("");
+  const [userName, setUserName] = useState("");
   const [verificationStatus, setVerificationStatus] = useState("");
   const [verificationScore, setVerificationScore] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("donations");
+  const [userData, setUserData] = useState(null);
 
   useEffect(() => {
     async function loadProfileData() {
       try {
-        const { data: userData } = await apiFetch(`/auth/user/${userEmail}`);
-        setUserType(userData.user_type);
-        setVerificationStatus(userData.verification_status || "unverified");
-        setVerificationScore(userData.verification_score ?? null);
+        const { data: fetchedUserData } = await apiFetch(`/auth/user/${userEmail}`);
+
+        if (!fetchedUserData) {
+          setLoading(false);
+          return;
+        }
+
+        setUserData(fetchedUserData);
+        setUserType(fetchedUserData.user_type);
+        setUserName(fetchedUserData.name || userEmail);
+        setVerificationStatus(fetchedUserData.verification_status || "unverified");
+        setVerificationScore(fetchedUserData.verification_score ?? null);
 
         const { data: donationsData } = await apiFetch("/donations/");
-        setMyDonations(donationsData.filter((item) => item.owner_email === userEmail));
+        setMyDonations((donationsData || []).filter((item) => item.owner_email === userEmail));
 
         const { data: needsData } = await apiFetch("/needs/");
-        setMyNeeds(needsData.filter((item) => item.organization_email === userEmail));
+        setMyNeeds((needsData || []).filter((item) => item.organization_email === userEmail));
       } catch (err) {
         console.error("Error loading profile data:", err);
       } finally {
@@ -113,29 +109,24 @@ export default function Profile() {
     loadProfileData();
   }, [userEmail]);
 
-  const availableDonations = useMemo(
-    () => myDonations.filter((item) => item.status === "available").length,
-    [myDonations]
-  );
-
-  const reservedDonations = useMemo(
-    () => myDonations.filter((item) => item.status === "reserved").length,
+  const activeDonations = useMemo(
+    () => myDonations.filter((item) => item.status === "available" || item.status === "reserved").length,
     [myDonations]
   );
 
   async function handleDeleteDonation(id) {
-    if (!window.confirm("Sigur vrei să ștergi definitiv această donație?")) return;
+    if (!window.confirm("Sigur vrei sa stergi definitiv aceasta donatie?")) return;
 
     try {
       const { response } = await apiFetch(`/donations/${id}`, { method: "DELETE" });
 
       if (!response.ok) {
-        alert("Eroare la ștergerea de pe server.");
+        alert("Eroare la stergerea de pe server.");
         return;
       }
 
       setMyDonations((prev) => prev.filter((item) => item.id !== id));
-      alert("Donația a fost ștearsă!");
+      alert("Donatia a fost stearsa!");
     } catch (err) {
       console.error("Error:", err);
       alert("Nu s-a putut contacta serverul.");
@@ -144,17 +135,20 @@ export default function Profile() {
 
   async function handleStatusChange(id, newStatus) {
     try {
-      const { response } = await apiFetch(`/donations/${id}/status?new_status=${newStatus}`, {
+      const params = new URLSearchParams({ new_status: newStatus });
+      if (userEmail) params.set("user_email", userEmail);
+
+      const { response, data } = await apiFetch(`/donations/${id}/status?${params.toString()}`, {
         method: "PATCH",
       });
 
       if (!response.ok) {
-        alert("Error updating status");
+        alert(data?.detail || "Error updating status");
         return;
       }
 
       setMyDonations((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, status: newStatus } : item))
+        prev.map((item) => (item.id === id ? data : item))
       );
     } catch (err) {
       alert("Error updating status");
@@ -162,113 +156,170 @@ export default function Profile() {
   }
 
   async function handleDeleteNeed(id) {
-    if (!window.confirm("Sigur vrei să ștergi definitiv această listă de necesități?")) return;
+    if (!window.confirm("Sigur vrei sa stergi definitiv aceasta lista de necesitati?")) return;
 
     try {
       const { response } = await apiFetch(`/needs/${id}`, { method: "DELETE" });
 
       if (!response.ok) {
-        alert("Eroare la ștergere.");
+        alert("Eroare la stergere.");
         return;
       }
 
       setMyNeeds((prev) => prev.filter((item) => item.id !== id));
-      alert("Lista de necesități a fost ștearsă!");
+      alert("Lista de necesitati a fost stearsa!");
     } catch (err) {
       console.error("Error:", err);
       alert("Nu s-a putut contacta serverul.");
     }
   }
 
-
-  function renderTabButton(key, label, activeColor, activeTextColor = colors.text) {
+  function renderTabButton(key, label, icon) {
     const isActive = tab === key;
 
     return (
       <button
         onClick={() => setTab(key)}
-        style={{
-          padding: "12px 20px",
-          background: isActive ? activeColor : "transparent",
-          color: isActive ? activeTextColor : colors.muted,
-          border: "none",
-          borderRadius: 10,
-          fontWeight: 600,
-          cursor: "pointer",
-        }}
+        className={`profile-tab-button ${isActive ? "active" : ""}`}
       >
-        {label}
+        {icon}
+        <span>{label}</span>
       </button>
     );
   }
 
   if (loading) {
-    return <div style={{ textAlign: "center", marginTop: 60 }}>Loading...</div>;
+    return <div className="profile-loading">Loading...</div>;
   }
 
+  const isOrganization = userType === "organization";
   const verificationBadge = getVerificationBadge(verificationStatus);
+  const coverImage = isOrganization ? buildFileUrl(userData?.cover_image_url) : "";
+  const avatarImage = buildFileUrl(userData?.logo_url);
+  const galleryImages = isOrganization ? (userData?.gallery_images || []).map(buildFileUrl).filter(Boolean) : [];
 
   return (
-    <div className="pattern-bg" style={pageStyle}>
-      <ProfileHeader userEmail={userEmail} userType={userType} />
+    <div className="pattern-bg profile-page">
+      <div className="profile-container">
+        <section className="profile-hero">
+          {isOrganization && coverImage ? (
+            <div className="profile-cover">
+              <img src={coverImage} alt="Profile cover" />
+            </div>
+          ) : (
+            <div className="profile-cover empty" />
+          )}
 
-      {userType === "organization" && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: 12,
-            marginBottom: 8,
-          }}
-        >
-          <div style={verificationBadge.style}>
-            <span>
-              {verificationStatus === "verified"
-                ? "✓"
-                : verificationStatus === "pending"
-                ? ""
-                : verificationStatus === "rejected"
-                ? "✕"
-                : "•"}
-            </span>
-            <span>{verificationBadge.text}</span>
-            {verificationScore !== null && <span>({verificationScore}%)</span>}
+          <div className="profile-summary">
+            <div className={`profile-avatar ${!avatarImage ? "empty" : ""}`}>
+              {avatarImage ? (
+                <img src={avatarImage} alt={userName} />
+              ) : (
+                <span>{userName?.charAt(0)?.toUpperCase() || "U"}</span>
+              )}
+            </div>
+
+            <div className="profile-identity">
+              <div className="profile-title-row">
+                <div>
+                  <h1>{userName}</h1>
+                  <p>{isOrganization ? "Organization account" : "Personal account"}</p>
+                </div>
+
+                <button onClick={() => navigate("/edit-profile")} className="profile-edit-button">
+                  <HiOutlinePencilSquare size={18} />
+                  <span>Edit profile</span>
+                </button>
+              </div>
+
+            </div>
+
+            {isOrganization && (
+              <div className="profile-status-row">
+                <div className={`profile-verification-badge ${verificationBadge.className}`}>
+                  {verificationBadge.icon}
+                  <span>{verificationBadge.text}</span>
+                  {verificationScore !== null && <span>({verificationScore}%)</span>}
+                </div>
+              </div>
+            )}
+
+            <div className="profile-details">
+              <DetailItem
+                icon={<HiOutlineUser size={18} />}
+                label="Type"
+                value={isOrganization ? "Organization" : "User"}
+              />
+              <DetailItem icon={<HiOutlineEnvelope size={18} />} label="Email" value={userEmail} />
+              <DetailItem icon={<HiOutlinePhone size={18} />} label="Phone" value={userData?.phone} />
+              <DetailItem
+                icon={<HiOutlineMapPin size={18} />}
+                label="Location"
+                value={userData?.city || userData?.location}
+              />
+              {isOrganization && (
+                <DetailItem icon={<HiOutlineGlobeAlt size={18} />} label="Website" value={userData?.website} />
+              )}
+            </div>
           </div>
 
+          {isOrganization && galleryImages.length > 0 && (
+            <div className="profile-gallery-strip">
+              {galleryImages.slice(0, 4).map((image, index) => (
+                <img key={index} src={image} alt={`Gallery ${index + 1}`} />
+              ))}
+            </div>
+          )}
 
-        </div>
-      )}
+          {isOrganization && verificationStatus !== "verified" && (
+            <div className={`profile-verification-alert ${verificationStatus === "rejected" ? "rejected" : "pending"}`}>
+              <h3>
+                {verificationStatus === "rejected"
+                  ? "Organization access is restricted"
+                  : "Organization verification is still pending"}
+              </h3>
 
-      <ProfileStats
-        donationsCount={myDonations.length}
-        needsCount={myNeeds.length}
-        availableCount={availableDonations}
-        reservedCount={reservedDonations}
-      />
+              <p>
+                {verificationStatus === "rejected"
+                  ? "You cannot post need lists until your account is reviewed again by admin."
+                  : "You can complete your profile and browse the platform, but posting need lists is disabled until an admin approves your organization account."}
+              </p>
+            </div>
+          )}
+        </section>
 
-      <div style={tabBarStyle}>
-        {renderTabButton("donations", `My Donations (${myDonations.length})`, colors.blue, colors.white)}
-        {userType === "organization" &&
-          renderTabButton("needs", `My Needs (${myNeeds.length})`, colors.yellow)}
+        <section className="profile-posts-section">
+          <div className="profile-posts-header">
+            <div>
+              <h2>My posts</h2>
+              <p>
+                {isOrganization
+                  ? `${myDonations.length} donations, ${myNeeds.length} need lists`
+                  : `${myDonations.length} donations, ${activeDonations} active`}
+              </p>
+            </div>
+
+            <div className="profile-tabs">
+              {renderTabButton("donations", `Donations (${myDonations.length})`, <HiOutlineGift size={18} />)}
+
+              {isOrganization &&
+                renderTabButton("needs", `Need lists (${myNeeds.length})`, <GoChecklist size={18} />)}
+            </div>
+          </div>
+
+          {tab === "donations" && (
+            <ProfileDonations
+              myDonations={myDonations}
+              handleStatusChange={handleStatusChange}
+              handleDeleteDonation={handleDeleteDonation}
+            />
+          )}
+
+          {tab === "needs" && (
+            <ProfileNeeds myNeeds={myNeeds} navigate={navigate} handleDeleteNeed={handleDeleteNeed} />
+          )}
+        </section>
       </div>
-
-      {tab === "donations" && (
-        <ProfileDonations
-          myDonations={myDonations}
-          handleStatusChange={handleStatusChange}
-          handleDeleteDonation={handleDeleteDonation}
-        />
-      )}
-
-      {tab === "needs" && (
-        <ProfileNeeds
-          myNeeds={myNeeds}
-          navigate={navigate}
-          handleDeleteNeed={handleDeleteNeed}
-        />
-      )}
     </div>
   );
 }

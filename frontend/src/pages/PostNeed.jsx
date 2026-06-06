@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/api";
-import { colors, radius, shadow } from "../styles/theme";
+import { reverseGeocode, getShortAddress } from "../api/geo";
+import NeedItemsEditor from "../components/NeedItemsEditor";
+import "../styles/formPages.css";
 
 export default function PostNeed() {
   const navigate = useNavigate();
@@ -13,13 +15,12 @@ export default function PostNeed() {
     title: "",
     description: "",
     location: "",
-    image: "",
     lat: null,
-    lng: null
+    lng: null,
   });
-
   const [items, setItems] = useState([]);
   const [currentItem, setCurrentItem] = useState({ name: "", quantity: 1 });
+  const [verificationStatus, setVerificationStatus] = useState(null);
 
   useEffect(() => {
     if (!userEmail) {
@@ -30,16 +31,27 @@ export default function PostNeed() {
     apiFetch(`/auth/user/${userEmail}`)
       .then(({ data }) => {
         setChecking(false);
+
         if (data.user_type !== "organization") {
           navigate("/needs");
+          return;
         }
+
+        setVerificationStatus(data.verification_status || "unverified");
       })
-      .catch((err) => {
-        console.error("Error:", err);
+      .catch(() => {
         setChecking(false);
         navigate("/login");
       });
   }, [userEmail, navigate]);
+
+  const handleItemChange = (e) => {
+    const { name, value } = e.target;
+    setCurrentItem((prev) => ({
+      ...prev,
+      [name]: name === "quantity" ? parseInt(value) || 1 : value,
+    }));
+  };
 
   const addItem = () => {
     if (currentItem.name.trim()) {
@@ -48,28 +60,31 @@ export default function PostNeed() {
     }
   };
 
+  const removeItem = (index) => {
+    setItems(items.filter((_, i) => i !== index));
+  };
+
   const handleUseMyLocation = () => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(async (position) => {
       const { latitude, longitude } = position.coords;
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`);
-        const data = await res.json();
-        setFormData(prev => ({
+      const data = await reverseGeocode(latitude, longitude);
+      if (data) {
+        setFormData((prev) => ({
           ...prev,
-          location: data.display_name || "Detected location",
+          location: getShortAddress(data),
           lat: latitude,
-          lng: longitude
+          lng: longitude,
         }));
-      } catch (err) { console.error(err); }
+      }
     });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (items.length === 0) return alert("Please add at least one item to the list.");
-    setLoading(true);
+    if (items.length === 0) return alert("Please add at least one item.");
 
+    setLoading(true);
     try {
       const { response } = await apiFetch("/needs/", {
         method: "POST",
@@ -80,9 +95,7 @@ export default function PostNeed() {
         }),
       });
 
-      if (response.ok) {
-        navigate("/needs");
-      }
+      if (response.ok) navigate("/needs");
     } catch (err) {
       console.error(err);
     } finally {
@@ -90,88 +103,86 @@ export default function PostNeed() {
     }
   };
 
-  if (checking) return <div style={{ padding: 100, textAlign: "center", color: colors.blueDark }}>Checking permissions...</div>;
+  if (checking) {
+    return <div className="form-loading">Checking permissions...</div>;
+  }
+
+  if (verificationStatus !== "verified") {
+    const isRejected = verificationStatus === "rejected";
+
+    return (
+      <div className="form-page">
+        <FormBanner />
+
+        <div className="form-container">
+          <div className="form-card center">
+            <h2 className="post-need-status-title">
+              {isRejected ? "Posting is disabled" : "Approval pending"}
+            </h2>
+
+            <p className="post-need-status-text">
+              {isRejected
+                ? "Your organization account was not approved by admin, so you cannot post requirement lists at the moment."
+                : "Your organization account is waiting for admin approval. You will be able to post requirement lists after verification is completed."}
+            </p>
+
+            <button onClick={() => navigate("/profile")} className="form-button">
+              Back to profile
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: colors.bg, padding: "40px 20px" }}>
-      <div style={{ maxWidth: 600, margin: "0 auto" }}>
+    <div className="form-page">
+      <FormBanner />
 
-        {/* Banner Galben - Tema Needs */}
-        <div style={{
-          background: colors.yellowLight, padding: "30px 40px", borderRadius: radius.xl,
-          marginBottom: "30px", boxShadow: shadow.soft
-        }}>
-          <h2 style={{ margin: 0, fontSize: "28px", color: "#856404", fontWeight: 800 }}>Post a requirement list</h2>
-          <p style={{ margin: "8px 0 0 0", color: "#856404", opacity: 0.8, fontWeight: 500 }}>
-            Tell the community what your organization needs
-          </p>
-        </div>
-
-        <div style={{ backgroundColor: colors.card, padding: "40px", borderRadius: radius.xl, boxShadow: shadow.card, border: `1px solid ${colors.border}` }}>
-          <form onSubmit={handleSubmit} style={{ display: "grid", gap: 20 }}>
+      <div className="form-container">
+        <div className="form-card">
+          <form onSubmit={handleSubmit} className="form-grid">
             <div>
-              <label style={labelStyle}>Title *</label>
+              <label className="form-label">Title *</label>
               <input
-                name="title" type="text" placeholder="e.g., School supplies"
+                name="title"
+                type="text"
+                placeholder="e.g., School supplies"
                 value={formData.title}
-                onChange={(e) => setFormData({...formData, title: e.target.value})}
-                required style={inputStyle}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                required
+                className="form-input"
               />
             </div>
 
             <div>
-              <label style={labelStyle}>Location *</label>
+              <label className="form-label">Location *</label>
               <input
-                name="location" type="text" placeholder="e.g. Copou, Iași"
+                name="location"
+                type="text"
+                placeholder="e.g. Copou, Iasi"
                 value={formData.location}
-                onChange={(e) => setFormData({...formData, location: e.target.value})}
-                required style={inputStyle}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                required
+                className="form-input"
               />
-              <button type="button" onClick={handleUseMyLocation} style={secondaryButtonStyle}> Use my current location</button>
+              <button type="button" onClick={handleUseMyLocation} className="post-need-location-button">
+                Use my current location
+              </button>
             </div>
 
             <div>
-              <label style={labelStyle}>Add items to list *</label>
-              <div style={{ display: "flex", gap: 10, marginBottom: 15 }}>
-                <input
-                  type="text" placeholder="Item name"
-                  value={currentItem.name}
-                  onChange={(e) => setCurrentItem({...currentItem, name: e.target.value})}
-                  style={{...inputStyle, flex: 2}}
-                />
-                <input
-                  type="number" value={currentItem.quantity}
-                  onChange={(e) => setCurrentItem({...currentItem, quantity: parseInt(e.target.value) || 1})}
-                  style={{...inputStyle, flex: 1}}
-                />
-                <button
-                  type="button" onClick={addItem}
-                  style={{ padding: "0 20px", backgroundColor: colors.blueDark, color: "#fff", border: "none", borderRadius: radius.md, cursor: "pointer", fontWeight: 700 }}
-                >
-                  Add
-                </button>
-              </div>
-
-              {/* Lista de iteme adăugate */}
-              <div style={{ display: "grid", gap: 8 }}>
-                {items.map((item, idx) => (
-                  <div key={idx} style={{ display: "flex", justifyContent: "space-between", padding: "10px 15px", background: colors.bg, borderRadius: radius.md, border: `1px solid ${colors.border}` }}>
-                    <span style={{ fontWeight: 600, color: colors.text }}>
-                      {item.name} <small style={{ color: colors.muted }}>x{item.quantity}</small>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setItems(items.filter((_, i) => i !== idx))}
-                      style={{ color: colors.danger, border: "none", background: "none", cursor: "pointer", fontWeight: 700 }}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
-              </div>
+              <label className="form-label">Add items to list *</label>
+              <NeedItemsEditor
+                items={items}
+                currentItem={currentItem}
+                onCurrentItemChange={handleItemChange}
+                onAddItem={addItem}
+                onRemoveItem={removeItem}
+              />
             </div>
 
-            <button type="submit" disabled={loading} style={primaryButtonStyle}>
+            <button type="submit" disabled={loading} className="form-button primary post-need-submit">
               {loading ? "Posting..." : "Post Requirements"}
             </button>
           </form>
@@ -181,39 +192,11 @@ export default function PostNeed() {
   );
 }
 
-const labelStyle = {
-  display: "block",
-  marginBottom: 8,
-  fontSize: 14,
-  fontWeight: 600,
-  color: "#2f3b52"
-};
-
-const inputStyle = {
-  width: "100%",
-  padding: "12px 16px",
-  borderRadius: "12px",
-  border: `2px solid #dbeafe`,
-  backgroundColor: "#f8fbff",
-  outline: "none",
-  boxSizing: "border-box"
-};
-
-const primaryButtonStyle = {
-  padding: "16px",
-  backgroundColor: "#a16207", // Maro auriu pentru tema galbenă
-  color: "#fff",
-  border: "none",
-  borderRadius: "12px",
-  fontWeight: "800",
-  fontSize: "16px",
-  cursor: "pointer",
-  marginTop: 10,
-  boxShadow: "0 4px 12px rgba(161, 98, 7, 0.2)"
-};
-
-const secondaryButtonStyle = {
-                  marginTop: "12px", padding: "12px", borderRadius: radius.md, border: "none",
-                  backgroundColor: colors.yellowLight, color: "#856404",
-                  fontWeight: "700", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8
-                 };
+function FormBanner() {
+  return (
+    <section className="form-banner">
+      <h1>Post a requirement list</h1>
+      <p>Tell the community what your organization needs.</p>
+    </section>
+  );
+}

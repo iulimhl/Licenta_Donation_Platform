@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import PageToolbar from "../components/common/PageToolbar";
 import DonationCard from "../components/DonationCard";
 import { apiFetch } from "../api/api";
-import { colors, radius, shadow } from "../styles/theme"; // <-- REPARAT: Am importat radius și shadow
+import SectionBanner from "../components/common/SectionBanner";
+import { donationCategories } from "../constants/donationCategories";
+import "../styles/listingPages.css";
 
 export default function Donations() {
   const navigate = useNavigate();
@@ -17,10 +18,13 @@ export default function Donations() {
   useEffect(() => {
     async function loadDonations() {
       try {
-        const { data } = await apiFetch("/donations/");
-        setItems(data);
+        const { response, data } = await apiFetch("/donations/");
+
+        if (response.ok) {
+          setItems(data || []);
+        }
       } catch (err) {
-        console.error("Eroare la încărcarea donațiilor:", err);
+        console.error("Donation loading error:", err);
       } finally {
         setLoading(false);
       }
@@ -31,27 +35,26 @@ export default function Donations() {
 
   async function reserveDonation(id, newStatus) {
     try {
-      const { response } = await apiFetch(`/donations/${id}/status?new_status=${newStatus}`, {
+      const params = new URLSearchParams({ new_status: newStatus });
+      if (userEmail) params.set("user_email", userEmail);
+
+      const { response, data } = await apiFetch(`/donations/${id}/status?${params.toString()}`, {
         method: "PATCH",
       });
 
       if (!response.ok) {
-        alert("Eroare la actualizarea statusului.");
+        alert(data?.detail || "Could not update donation status.");
         return;
       }
 
-      setItems((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, status: newStatus } : item))
-      );
+      setItems((prev) => prev.map((item) => (item.id === id ? data : item)));
     } catch (err) {
-      console.error("Eroare de rețea:", err);
-      alert("Nu s-a putut contacta serverul.");
+      console.error("Network error:", err);
+      alert("Could not contact the server.");
     }
   }
 
-  const categories = useMemo(() => {
-    return ["all", ...new Set(items.map((item) => item.category))];
-  }, [items]);
+  const categories = [{ value: "all", label: "All categories" }, ...donationCategories];
 
   const filteredItems = useMemo(() => {
     const query = q.trim().toLowerCase();
@@ -59,12 +62,14 @@ export default function Donations() {
     return items.filter((item) => {
       const matchesText =
         !query ||
-        item.title.toLowerCase().includes(query) ||
-        item.location.toLowerCase().includes(query);
-      const matchesCategory = category === "all" || item.category === category;
+        item.title?.toLowerCase().includes(query) ||
+        item.location?.toLowerCase().includes(query);
 
-      // Regulă de consistență: pe paginile publice arătăm doar ce este activ (available sau reserved)
-      const isStillActive = item.status === "available" || item.status === "reserved";
+      const itemCategory = (item.category || "").toLowerCase();
+      const matchesCategory = category === "all" || itemCategory === category;
+      const isStillActive =
+        item.status?.toLowerCase() === "available" ||
+        item.status?.toLowerCase() === "reserved";
 
       return matchesText && matchesCategory && isStillActive;
     });
@@ -72,81 +77,74 @@ export default function Donations() {
 
   if (loading) {
     return (
-      <div style={{ textAlign: "center", color: colors.muted, marginTop: 60 }}>
+      <div className="listing-loading">
         <h3>Loading donations...</h3>
       </div>
     );
   }
 
   return (
-    <div>
-      {/* BANNER FLUID REPARAT COMPATIBIL CU STILUL "WHAT'S NEW" */}
-      <div style={{
-        background: colors.blueLight,
-        padding: "35px 40px",
-        borderRadius: radius.xl,
-        marginTop: "20px",
-        marginBottom: "30px",
-        boxShadow: shadow.soft
-      }}>
-        <h2 style={{ margin: 0, fontSize: "28px", color: colors.text, fontWeight: 800 }}>
-          Donations
-        </h2>
-        <p style={{ margin: "8px 0 0 0", color: colors.text, opacity: 0.8, fontWeight: 500 }}>
-          Donate your old items or browse for things you need
-        </p>
-      </div>
-
-
-
-      <PageToolbar
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder="Search by title or location..."
-        showSelect={true}
-        selectValue={category}
-        onSelectChange={(e) => setCategory(e.target.value)}
-        options={categories}
-        buttonText="+ Add donation"
-        onButtonClick={() => navigate("/postdonation")}
+    <div className="listing-page">
+      <SectionBanner
+        title="Donations"
+        subtitle="Browse available donated items or post something you no longer need."
       />
 
-      {filteredItems.length > 0 ? (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-            gap: 20,
-            marginTop: 20
-          }}
-        >
-          {filteredItems.map((donation) => (
-            <DonationCard
-              key={donation.id}
-              donation={donation}
-              onReserve={reserveDonation}
-              currentUserEmail={userEmail}
-              isOwner={userEmail === donation.owner_email}
-            />
-          ))}
+      <div className="listing-shell">
+        <div className="listing-toolbar">
+          <div className="listing-toolbar-row with-action">
+            <div className="listing-search-wrap">
+              <input
+                type="text"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search by title or location..."
+                className="listing-search-input"
+              />
+            </div>
+
+            <button
+              onClick={() => navigate("/postdonation")}
+              className="listing-add-button"
+            >
+              + Add donation
+            </button>
+          </div>
+
+          <div className="donations-categories">
+            {categories.map((cat) => (
+              <button
+                key={cat.value}
+                onClick={() => setCategory(cat.value)}
+                className={`donations-category-button ${category === cat.value ? "active" : ""}`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
         </div>
-      ) : (
-        /* ADAUGAT: Căsuță de informare tip "Empty State" în caz că nu se găsesc donații */
-        <div style={{
-          textAlign: "center",
-          padding: "50px 20px",
-          backgroundColor: colors.card,
-          borderRadius: radius.xl,
-          border: `1px solid ${colors.border}`,
-          boxShadow: shadow.soft,
-          color: colors.muted,
-          marginTop: 20
-        }}>
-          <p style={{ margin: 0, fontSize: "15px", fontWeight: 600 }}>
-            No active donations found matching your criteria.
-          </p>
+
+        <div className="listing-results">
+          {filteredItems.length > 0 ? (
+            <div className="listing-grid">
+              {filteredItems.map((donation) => (
+                <DonationCard
+                  key={donation.id}
+                  donation={donation}
+                  onReserve={reserveDonation}
+                  currentUserEmail={userEmail}
+                  isOwner={userEmail === donation.owner_email}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="listing-empty-state">
+              <h3>No donations found</h3>
+              <p>Try another search, choose a different category, or post a new donation.</p>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

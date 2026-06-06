@@ -1,83 +1,70 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from db.database import get_db
+from schemas.home import HomeStatsResponse
+from services import home_service
 from models.donation import DonationModel
 from models.need import NeedModel
-from models.user import User  # Importăm modelul de User pentru a citi numele reale
+from models.user import User
+from services.donations_service import _attach_donor_data
 
 router = APIRouter(prefix="/home", tags=["home"])
 
 
 @router.get("/feed")
-def get_mixed_feed(db: Session = Depends(get_db)):
-    try:
-        donations = db.query(DonationModel).all()
-        needs = db.query(NeedModel).all()
+def get_home_feed(db: Session = Depends(get_db)):
+    donations = db.query(DonationModel).all()
+    needs = db.query(NeedModel).all()
 
-        combined_results = []
+    feed = []
 
-        for d in donations:
-            user_profile = db.query(User).filter(User.email == d.owner_email).first()
-            calculated_name = None
-            if user_profile:
-                if user_profile.user_type in ["organization", "post_organization"]:
-                    calculated_name = user_profile.organization_name
-                else:
-                    calculated_name = user_profile.full_name
+    for donation in donations:
+        if donation.status == "inactive":
+            continue
+        _attach_donor_data(db, donation)
 
-            if not calculated_name:
-                calculated_name = d.owner_email
+        feed.append({
+            "id": donation.id,
+            "item_type": "donation",
+            "title": donation.title,
+            "description": donation.description,
+            "location": donation.location,
+            "image": donation.image,
+            "category": donation.category,
+            "status": donation.status,
+            "owner_email": donation.owner_email,
+            "reserved_by_email": donation.reserved_by_email,
+            "donor_name": getattr(donation, "donor_name", None),
+            "created_at": donation.created_at.isoformat() if donation.created_at else None,
+        })
 
-            combined_results.append({
-                "id": d.id,
-                "title": d.title,
-                "description": d.description,
-                "location": d.location,
-                "category": d.category,
-                "owner_email": d.owner_email,
-                "donor_name": calculated_name,
-                "image": d.image,
-                "status": getattr(d, 'status', 'available'),
-                "item_type": "donation"
-            })
+    for need in needs:
+        org = db.query(User).filter(User.email == need.organization_email).first()
 
-        for n in needs:
-            org_profile = db.query(User).filter(User.email == n.organization_email).first()
+        feed.append({
+            "id": need.id,
+            "item_type": "need",
+            "title": need.title,
+            "description": need.description,
+            "location": need.location,
+            "image": getattr(need, "image", None),
+            "organization_email": need.organization_email,
+            "organization_name": org.name if org else need.organization_email,
+            "organization_logo_url": org.logo_url if org else None,
+            "organization_cover_image_url": org.cover_image_url if org else None,
+            "organization_verification_status": org.verification_status if org else None,
+            "items": need.items,
+            "created_at": need.created_at.isoformat() if need.created_at else None,
+        })
 
-            calculated_org_name = None
-            if org_profile:
-                calculated_org_name = org_profile.organization_name or org_profile.full_name
+    feed.sort(
+        key=lambda item: item["created_at"] if item["created_at"] else "",
+        reverse=True
+    )
 
-            if not calculated_org_name:
-                calculated_org_name = n.organization_email
+    return feed
 
-            items_list = []
-            raw_items = getattr(n, 'items', [])
-            if raw_items:
-                for item in raw_items:
-                    if isinstance(item, dict):
-                        items_list.append(item)
-                    else:
-                        items_list.append({
-                            "name": getattr(item, 'name', ''),
-                            "quantity": getattr(item, 'quantity', 0),
-                            "brought": getattr(item, 'brought', 0)
-                        })
 
-            combined_results.append({
-                "id": n.id,
-                "title": n.title,
-                "description": n.description,
-                "location": n.location,
-                "organization_email": n.organization_email,
-                "organization_name": calculated_org_name,
-                "image": n.image,
-                "items": items_list,
-                "item_type": "need"
-            })
-
-        combined_results.sort(key=lambda x: x.get('created_at') or '', reverse=True)
-        return combined_results
-    except Exception as e:
-        print(f"SERVER ERROR: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+@router.get("/stats", response_model=HomeStatsResponse)
+def get_home_stats(db: Session = Depends(get_db)):
+    return home_service.get_home_stats(db)

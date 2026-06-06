@@ -1,8 +1,9 @@
 from sqlalchemy.orm import Session
 from models.user import User
-from services.ong_registry_service import search_ong_registry, normalize_text
+from services.local_registry_service import search_all_local_registries
 
-def verify_organization(db: Session, email: str, organization_name: str, cif: str):
+
+def verify_organization(db: Session, email: str, name: str, cif: str):
     user = db.query(User).filter(User.email == email).first()
 
     if not user:
@@ -11,18 +12,19 @@ def verify_organization(db: Session, email: str, organization_name: str, cif: st
     if user.user_type != "organization":
         return None, "not_organization"
 
-    result = search_ong_registry(organization_name, cif)
+    normalized_name = (name or "").strip()
+    normalized_cif = (cif or "").strip()
 
-    user.cif = cif
+    result = search_all_local_registries(normalized_name, normalized_cif)
 
-    if result["found"]:
-        user.verification_status = "verified" if result["score"] >= 90 else "pending"
-        user.verification_score = result["score"]
-        user.verification_source = result["source"]
-    else:
-        user.verification_status = "pending"
-        user.verification_score = 0.0
-        user.verification_source = result["source"]
+    user.name = normalized_name
+    user.cif = normalized_cif
+    user.verification_score = result["score"]
+    user.verification_status = "pending"
+    user.verified = False
+    user.matched_name = result["matched_name"]
+    user.matched_cif = result["matched_cif"]
+    user.verification_source = result["source"]
 
     db.commit()
     db.refresh(user)
@@ -33,6 +35,10 @@ def verify_organization(db: Session, email: str, organization_name: str, cif: st
         "matched_cif": result["matched_cif"],
         "score": result["score"],
         "status": user.verification_status,
-        "source": user.verification_source,
-        "message": "Verification completed"
+        "source": result["source"],
+        "message": (
+            "Entity found in official registry. Waiting for admin approval."
+            if result["found"]
+            else "Entity not found in local registries. Waiting for admin review."
+        ),
     }, None

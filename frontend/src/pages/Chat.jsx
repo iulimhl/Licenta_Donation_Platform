@@ -1,7 +1,14 @@
-import { useEffect, useState, useRef } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { apiFetch } from "../api/api";
-import { colors, radius, shadow } from "../styles/theme";
+import {
+  HiOutlineChatBubbleLeftRight,
+  HiOutlineInbox,
+  HiOutlinePaperAirplane,
+  HiOutlineCheckCircle,
+  HiOutlineUserCircle,
+} from "react-icons/hi2";
+import "../styles/pages/Chat.css";
 
 export default function Chat() {
   const { otherEmail } = useParams();
@@ -10,14 +17,18 @@ export default function Chat() {
   const userEmail = localStorage.getItem("userEmail");
 
   const [messages, setMessages] = useState([]);
+  const [conversations, setConversations] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingInbox, setLoadingInbox] = useState(true);
   const [otherUserName, setOtherUserName] = useState(otherEmail);
   const [donationTitle, setDonationTitle] = useState("");
   const [needDetails, setNeedDetails] = useState(null);
   const [isFulfilling, setIsFulfilling] = useState(false);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [donationMap, setDonationMap] = useState({});
+  const [needMap, setNeedMap] = useState({});
 
   const scrollContainerRef = useRef(null);
 
@@ -30,10 +41,17 @@ export default function Chat() {
       navigate("/login");
       return;
     }
+
     loadConversation();
     loadUserInfo();
+    loadInbox();
+    loadContextMaps();
 
-    const interval = setInterval(loadConversation, 3000);
+    const interval = setInterval(() => {
+      loadConversation();
+      loadInbox();
+    }, 3000);
+
     return () => clearInterval(interval);
   }, [otherEmail, userEmail, donationId, needId]);
 
@@ -43,7 +61,7 @@ export default function Chat() {
       if (isFirstLoad || lastMessage.sender_email === userEmail) {
         scrollContainerRef.current.scrollTo({
           top: scrollContainerRef.current.scrollHeight,
-          behavior: isFirstLoad ? "auto" : "smooth"
+          behavior: isFirstLoad ? "auto" : "smooth",
         });
         if (isFirstLoad) setIsFirstLoad(false);
       }
@@ -57,28 +75,69 @@ export default function Chat() {
       userEmail !== needDetails.organization_email &&
       !newMessage
     ) {
-      setNewMessage(`Hi! I would like to help with your request: "${needDetails.title}". I can bring the needed items.`);
+      setNewMessage(
+        `Hi! I would like to help with your request: "${needDetails.title}". I can bring the needed items.`
+      );
     }
   }, [messages, needDetails, userEmail]);
 
   const loadConversation = async () => {
     try {
-      // REPARAT: Construim calea dinamic, incluzând need_id pentru izolare totală
-      let path = `/messages/conversation?other_email=${otherEmail}&user_email=${userEmail}`;
-      if (donationId) path += `&donation_id=${donationId}`;
-      if (needId) path += `&need_id=${needId}`;
+      let path = `/messages/conversation?other_email=${encodeURIComponent(
+        otherEmail
+      )}&user_email=${encodeURIComponent(userEmail)}`;
+
+      if (donationId) path += `&donation_id=${encodeURIComponent(donationId)}`;
+      if (needId) path += `&need_id=${encodeURIComponent(needId)}`;
 
       const { data } = await apiFetch(path);
-      setMessages(data);
+      setMessages(data || []);
     } catch (err) {
       console.error("Error loading conversation:", err);
     }
   };
 
+  const loadInbox = async () => {
+    try {
+      const { data } = await apiFetch(
+        `/messages/inbox?user_email=${encodeURIComponent(userEmail)}`
+      );
+      setConversations(data || []);
+    } catch (err) {
+      console.error("Error loading inbox:", err);
+    } finally {
+      setLoadingInbox(false);
+    }
+  };
+
+  const loadContextMaps = async () => {
+    try {
+      const [{ data: donationsData }, { data: needsData }] = await Promise.all([
+        apiFetch("/donations/"),
+        apiFetch("/needs/"),
+      ]);
+
+      const donationLookup = {};
+      (donationsData || []).forEach((item) => {
+        donationLookup[item.id] = item.title;
+      });
+
+      const needLookup = {};
+      (needsData || []).forEach((item) => {
+        needLookup[item.id] = item.title;
+      });
+
+      setDonationMap(donationLookup);
+      setNeedMap(needLookup);
+    } catch (err) {
+      console.error("Error loading context maps:", err);
+    }
+  };
+
   const loadUserInfo = async () => {
     try {
-      const { data } = await apiFetch(`/auth/user/${otherEmail}`);
-      setOtherUserName(data.organization_name || data.full_name || otherEmail);
+      const { data } = await apiFetch(`/auth/user/${encodeURIComponent(otherEmail)}`);
+      setOtherUserName(data?.name || otherEmail);
     } catch (err) {
       console.error("Error loading user info:", err);
     }
@@ -86,20 +145,24 @@ export default function Chat() {
     if (donationId) {
       try {
         const { data } = await apiFetch("/donations/");
-        const donation = data.find(d => d.id === parseInt(donationId));
+        const donation = (data || []).find((d) => d.id === parseInt(donationId));
         if (donation) setDonationTitle(donation.title);
       } catch (err) {
         console.error("Error loading donation:", err);
       }
+    } else {
+      setDonationTitle("");
     }
 
     if (needId) {
       try {
-        const { data } = await apiFetch(`/needs/${needId}`);
+        const { data } = await apiFetch(`/needs/${encodeURIComponent(needId)}`);
         if (data) setNeedDetails(data);
       } catch (err) {
         console.error("Error loading need details:", err);
       }
+    } else {
+      setNeedDetails(null);
     }
   };
 
@@ -107,19 +170,20 @@ export default function Chat() {
     if (!needDetails) return;
     setIsFulfilling(true);
     setShowModal(false);
+
     try {
       const items = needDetails.items || [];
       for (let idx = 0; idx < items.length; idx++) {
         await apiFetch(`/needs/${needDetails.id}/item/${idx}?brought=${items[idx].quantity}`, {
-          method: "PATCH"
+          method: "PATCH",
         });
       }
 
-      await apiFetch(`/messages/?sender_email=${userEmail}`, {
+      await apiFetch(`/messages/?sender_email=${encodeURIComponent(userEmail)}`, {
         method: "POST",
         body: JSON.stringify({
           recipient_email: otherEmail,
-          content: `✓ [SYSTEM] The request "${needDetails.title}" has been successfully marked as fulfilled! Thank you for your generous support!`,
+          content: `[SYSTEM] The request "${needDetails.title}" has been successfully marked as fulfilled.`,
           donation_id: null,
           need_id: needId ? parseInt(needId) : null,
         }),
@@ -135,25 +199,83 @@ export default function Chat() {
     }
   };
 
+  const parseOfferMessage = (content) => {
+    const match = content?.match(/^\[OFFER:item_index=(\d+)\]\s*(.*)$/);
+    if (!match) return null;
+
+    const itemIndex = Number(match[1]);
+    const item = needDetails?.items?.[itemIndex];
+
+    return {
+      itemIndex,
+      text: match[2] || "I can bring this item.",
+      item,
+      isConfirmed: item ? item.brought >= item.quantity && item.quantity > 0 : false,
+    };
+  };
+
+  const handleConfirmOffer = async (itemIndex) => {
+    if (!needDetails?.items?.[itemIndex]) return;
+
+    const item = needDetails.items[itemIndex];
+
+    try {
+      const { response } = await apiFetch(
+        `/needs/${needDetails.id}/item/${itemIndex}?brought=${item.quantity}`,
+        { method: "PATCH" }
+      );
+
+      if (!response.ok) {
+        alert("Could not confirm this item.");
+        return;
+      }
+
+      await apiFetch(`/messages/?sender_email=${encodeURIComponent(userEmail)}`, {
+        method: "POST",
+        body: JSON.stringify({
+          recipient_email: otherEmail,
+          content: `[SYSTEM] Confirmed received: ${item.name}.`,
+          donation_id: null,
+          need_id: needId ? parseInt(needId) : null,
+        }),
+      });
+
+      const { data } = await apiFetch(`/needs/${needId}`);
+      setNeedDetails(data);
+      loadConversation();
+    } catch (err) {
+      console.error("Confirm offer error:", err);
+      alert("Could not contact the server.");
+    }
+  };
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
 
     setLoading(true);
     try {
-      const { response, data } = await apiFetch(`/messages/?sender_email=${userEmail}`, {
+      const { response, data } = await apiFetch(
+        `/messages/?sender_email=${encodeURIComponent(userEmail)}`,
+        {
           method: "POST",
           body: JSON.stringify({
             recipient_email: otherEmail,
             content: newMessage,
             donation_id: donationId ? parseInt(donationId) : null,
-            need_id: needId ? parseInt(needId) : null, // <-- REPARAT: Trimitem și need_id la salvare
+            need_id: needId ? parseInt(needId) : null,
           }),
-      });
+        }
+      );
 
       if (response.ok) {
-          setMessages([...messages, data]);
-          setNewMessage("");
+        const msg = {
+          ...data,
+          created_at: data?.created_at ?? new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, msg]);
+        setNewMessage("");
+        loadInbox();
       }
     } catch (err) {
       console.error("Error sending message:", err);
@@ -163,197 +285,250 @@ export default function Chat() {
   };
 
   const isNeedComplete = needDetails
-    ? (needDetails.items || []).every(i => i.brought >= i.quantity)
+    ? (needDetails.items || []).every((i) => i.brought >= i.quantity)
     : false;
 
+  const getConversationLabel = (conv) => {
+    if (conv.donation_id) {
+      return donationMap[conv.donation_id]
+        ? `Donation: ${donationMap[conv.donation_id]}`
+        : "Donation conversation";
+    }
+
+    if (conv.need_id) {
+      return needMap[conv.need_id]
+        ? `Need list: ${needMap[conv.need_id]}`
+        : "Need list conversation";
+    }
+
+    return "Direct conversation";
+  };
+
+  const openConversation = (conv) => {
+    const params = new URLSearchParams();
+    if (conv.donation_id) params.set("donationId", conv.donation_id);
+    if (conv.need_id) params.set("needId", conv.need_id);
+
+    navigate(
+      `/chat/${encodeURIComponent(conv.other_email)}${
+        params.toString() ? `?${params.toString()}` : ""
+      }`
+    );
+  };
+
+  const activeKey = `${otherEmail}-${donationId ?? "none"}-${needId ?? "none"}`;
+
+  const sortedConversations = useMemo(() => {
+    return [...conversations].sort((a, b) => {
+      const da = a.last_message_date ? new Date(a.last_message_date).getTime() : 0;
+      const db = b.last_message_date ? new Date(b.last_message_date).getTime() : 0;
+      return db - da;
+    });
+  }, [conversations]);
+
   return (
-    <div className="pattern-bg" style={{ minHeight: "100vh", backgroundColor: colors.bg, padding: "40px 20px", boxSizing: "border-box" }}>
+    <div className="chat-page">
+      <section className="chat-banner">
+        <div className="chat-banner-inner">
+          <div className="chat-kicker">
+            <HiOutlineChatBubbleLeftRight size={16} />
+            <span>Community messages</span>
+          </div>
 
-      <div style={{ maxWidth: "760px", width: "100%", margin: "0 auto" }}>
-
-        {/* BARA DE TITLU - Stil elegant uniformizat ca pe Home */}
-        <div style={{
-          background: colors.blueLight,
-          padding: "35px 40px",
-          borderRadius: radius.xl,
-          marginTop: "20px",
-          marginBottom: "30px",
-          boxShadow: shadow.soft
-        }}>
-          <h2 style={{ margin: 0, fontSize: "28px", color: colors.blueDark, fontWeight: 800 }}>
-            {otherUserName}
-          </h2>
-          <p style={{ margin: "8px 0 0 0", color: colors.blueDark, opacity: 0.8, fontWeight: 500 }}>
-            {donationTitle ? `Regarding Donation: "${donationTitle}"` : needDetails ? `Regarding Need List: "${needDetails.title}"` : "Direct conversation"}
-          </p>
+          <h1>Messages</h1>
+          <p>Keep in touch with donors, recipients, and organizations in one place.</p>
         </div>
+      </section>
 
-        {/* WIDGET STATUS ONG */}
-        {needDetails && userEmail === needDetails.organization_email && (
-          <div style={{
-            backgroundColor: isNeedComplete ? colors.blueLight : colors.yellowLight,
-            border: `1px solid ${isNeedComplete ? colors.blue : colors.yellow}`,
-            padding: "12px 20px", borderRadius: radius.md, marginBottom: "20px",
-            display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: shadow.soft
-          }}>
-            <div style={{ flex: 1, paddingRight: "10px" }}>
-              <h4 style={{ margin: 0, color: colors.text, fontWeight: 700, fontSize: "14px" }}>
-                {isNeedComplete ? "✓ Request fulfilled!" : "Did they complete the request?"}
-              </h4>
-              <p style={{ margin: "4px 0 0 0", fontSize: "12px", color: colors.muted, lineHeight: 1.4 }}>
-                {isNeedComplete
-                  ? "Items delivered and system updated."
-                  : "Mark this request as resolved if the items were received."}
-              </p>
-            </div>
-            {!isNeedComplete && (
-              <button
-                type="button"
-                onClick={() => setShowModal(true)}
-                disabled={isFulfilling}
-                style={{
-                  backgroundColor: colors.blueDark, color: colors.white, border: "none",
-                  padding: "8px 16px", borderRadius: radius.sm, fontWeight: "700",
-                  cursor: "pointer", fontSize: "12px", whiteSpace: "nowrap"
-                }}
-              >
-                {isFulfilling ? "..." : "Confirm Delivery"}
-              </button>
-            )}
-          </div>
-        )}
+      <div className="chat-shell">
+        <div className="chat-layout">
+          <aside className="chat-inbox-card">
+            <div className="chat-inbox-header">
+              <div className="chat-inbox-title-row">
+                <div className="chat-icon-box">
+                  <HiOutlineInbox size={20} />
+                </div>
 
-        {/* CASETA DE CHAT */}
-        <div style={{
-          backgroundColor: colors.card,
-          padding: "32px",
-          borderRadius: radius.xl,
-          boxShadow: shadow.card,
-          border: `1px solid ${colors.border}`,
-          height: "560px",
-          display: "flex",
-          flexDirection: "column",
-          boxSizing: "border-box"
-        }}>
-
-          <div
-            ref={scrollContainerRef}
-            style={{
-              flex: 1,
-              overflowY: "auto",
-              display: "flex",
-              flexDirection: "column",
-              gap: "14px",
-              paddingRight: "6px",
-              marginBottom: "20px"
-            }}
-          >
-            {messages.length === 0 ? (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flex: 1 }}>
-                <p style={{ color: colors.muted, fontSize: "14px" }}>No messages yet. Start the conversation!</p>
+                <div>
+                  <h2>Inbox</h2>
+                  <p>Your active conversations</p>
+                </div>
               </div>
-            ) : (
-              messages.map((msg, idx) => {
-                const isMe = msg.sender_email === userEmail;
-                return (
-                  <div key={idx} style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start" }}>
+            </div>
 
-                    {/* REPARAT: Etichetă de nume mică deasupra bulei de text pentru claritate completă */}
-                    <span style={{ fontSize: "11px", color: colors.muted, marginBottom: "3px", padding: "0 4px", fontWeight: 600 }}>
-                      {isMe ? "You" : otherUserName}
-                    </span>
+            <div className="chat-inbox-list">
+              {loadingInbox ? (
+                <div className="chat-inbox-state">Loading inbox...</div>
+              ) : sortedConversations.length === 0 ? (
+                <div className="chat-inbox-state center">No conversations yet.</div>
+              ) : (
+                sortedConversations.map((conv, idx) => {
+                  const conversationKey = `${conv.other_email}-${conv.donation_id ?? "none"}-${conv.need_id ?? "none"}`;
+                  const isActive = conversationKey === activeKey;
 
-                    <div style={{
-                      maxWidth: "75%", padding: "12px 16px", borderRadius: radius.md,
-                      background: isMe ? colors.blueDark : colors.bg,
-                      color: isMe ? colors.white : colors.text,
-                      wordWrap: "break-word",
-                      border: isMe ? "none" : `1px solid ${colors.border}`,
-                      boxShadow: "0 1px 3px rgba(0,0,0,0.01)"
-                    }}>
-                      <p style={{ margin: "0 0 4px 0", fontSize: 14, lineHeight: 1.4 }}>{msg.content}</p>
-                      <p style={{ margin: 0, fontSize: "10px", opacity: 0.6, textAlign: "right" }}>
-                        {msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
-                      </p>
-                    </div>
+                  return (
+                    <button
+                      key={`${conversationKey}-${idx}`}
+                      onClick={() => openConversation(conv)}
+                      className={`chat-conversation-button ${isActive ? "active" : ""}`}
+                    >
+                      <div className="chat-conversation-top">
+                        <div className="chat-conversation-text">
+                          <div className="chat-conversation-email">{conv.other_email}</div>
+                          <div className="chat-conversation-context">{getConversationLabel(conv)}</div>
+                        </div>
+
+                        {conv.unread_count > 0 && (
+                          <div className="chat-unread-badge">{conv.unread_count}</div>
+                        )}
+                      </div>
+
+                      <div className="chat-conversation-preview">{conv.last_message}</div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </aside>
+
+          <main className="chat-main-card">
+            <div className="chat-thread-header">
+              <div className="chat-thread-title-row">
+                <div className="chat-icon-box large">
+                  <HiOutlineUserCircle size={24} />
+                </div>
+
+                <div>
+                  <h2>{otherUserName}</h2>
+                  <p>
+                    {donationTitle
+                      ? `Regarding donation: "${donationTitle}"`
+                      : needDetails
+                      ? `Regarding need list: "${needDetails.title}"`
+                      : "Direct conversation"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {needDetails && userEmail === needDetails.organization_email && (
+              <div className={`chat-fulfillment ${isNeedComplete ? "complete" : "pending"}`}>
+                <div>
+                  <div className="chat-fulfillment-title">
+                    {isNeedComplete ? "Request fulfilled" : "Did they complete the request?"}
                   </div>
-                );
-              })
+                  <div className="chat-fulfillment-text">
+                    {isNeedComplete
+                      ? "Items delivered and system updated."
+                      : "Mark this request as resolved if the items were received."}
+                  </div>
+                </div>
+
+                {!isNeedComplete && (
+                  <button type="button" onClick={() => setShowModal(true)} disabled={isFulfilling}>
+                    <HiOutlineCheckCircle size={18} />
+                    <span>{isFulfilling ? "..." : "Confirm Delivery"}</span>
+                  </button>
+                )}
+              </div>
             )}
-          </div>
 
-          <form onSubmit={handleSendMessage} style={{ display: "flex", gap: "10px" }}>
-            <input
-              type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Type a message..." disabled={loading}
-              style={{
-                flex: 1, padding: "14px 16px", border: `2px solid ${colors.border}`,
-                borderRadius: radius.md, fontSize: "14px", backgroundColor: colors.bg,
-                outline: "none", color: colors.text
-              }}
-            />
-            <button
-              type="submit" disabled={loading || !newMessage.trim()}
-              style={{
-                padding: "0 24px", background: colors.blueDark, color: colors.white,
-                border: "none", borderRadius: radius.md, fontWeight: 700, cursor: "pointer",
-                opacity: loading || !newMessage.trim() ? 0.5 : 1
-              }}
-            >
-              Send
-            </button>
-          </form>
+            <div ref={scrollContainerRef} className="chat-messages">
+              {messages.length === 0 ? (
+                <div className="chat-empty-thread">No messages yet. Start the conversation!</div>
+              ) : (
+                messages.map((msg, idx) => {
+                  const isMe = msg.sender_email === userEmail;
+                  const offer = parseOfferMessage(msg.content);
+                  const isSystemMessage = msg.content?.startsWith("[SYSTEM]");
+                  const visibleContent = isSystemMessage
+                    ? msg.content.replace("[SYSTEM]", "").trim()
+                    : offer
+                    ? offer.text
+                    : msg.content;
 
+                  return (
+                    <div
+                      key={idx}
+                      className={`chat-message-row ${isMe ? "me" : "other"} ${isSystemMessage ? "system" : ""}`}
+                    >
+                      <span className="chat-message-author">{isMe ? "You" : otherUserName}</span>
+
+                      <div className="chat-message-bubble">
+                        {offer && <div className="chat-offer-label">Item offer</div>}
+                        <p>{visibleContent}</p>
+                        {offer?.item && (
+                          <div className="chat-offer-card">
+                            <div>
+                              <strong>{offer.item.name}</strong>
+                              <span>{offer.item.brought || 0}/{offer.item.quantity} received</span>
+                            </div>
+
+                            {userEmail === needDetails?.organization_email && !offer.isConfirmed && (
+                              <button type="button" onClick={() => handleConfirmOffer(offer.itemIndex)}>
+                                Confirm received
+                              </button>
+                            )}
+
+                            {offer.isConfirmed && (
+                              <span className="chat-offer-confirmed">Confirmed</span>
+                            )}
+                          </div>
+                        )}
+                        <time>
+                          {msg.created_at
+                            ? new Date(msg.created_at).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : ""}
+                        </time>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <form onSubmit={handleSendMessage} className="chat-compose">
+              <input
+                type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="Type a message..."
+                disabled={loading}
+              />
+              <button type="submit" disabled={loading || !newMessage.trim()}>
+                <HiOutlinePaperAirplane size={18} />
+                <span>Send</span>
+              </button>
+            </form>
+          </main>
         </div>
       </div>
 
-      {/* POPUP MODAL */}
       {showModal && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh",
-          backgroundColor: "rgba(47, 59, 82, 0.6)",
-          backdropFilter: "blur(4px)", display: "flex", justifyContent: "center",
-          alignItems: "center", zIndex: 9999
-        }}>
-          <div style={{
-            backgroundColor: colors.card, padding: "30px", borderRadius: radius.xl,
-            maxWidth: "420px", width: "90%", boxShadow: shadow.card,
-            border: `1px solid ${colors.border}`, textAlign: "center"
-          }}>
-            <h3 style={{ margin: "0 0 10px 0", color: colors.text, fontWeight: 800, fontSize: "20px" }}>
-              Confirm Fulfillment?
-            </h3>
-            <p style={{ margin: "0 0 24px 0", color: colors.muted, fontSize: "14px", lineHeight: 1.5 }}>
+        <div className="chat-modal-backdrop">
+          <div className="chat-modal">
+            <h3>Confirm fulfillment?</h3>
+
+            <p>
               Are you sure you want to mark all items in this request as fully delivered?
-              This will automatically update the listing progress and log a confirmation in the chat.
+              This will update the listing progress and add a confirmation in chat.
             </p>
 
-            <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
-              <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                style={{
-                  padding: "10px 20px", borderRadius: radius.md, border: `2px solid ${colors.border}`,
-                  backgroundColor: colors.bg, color: colors.muted, fontWeight: 700, cursor: "pointer"
-                }}
-              >
+            <div className="chat-modal-actions">
+              <button type="button" onClick={() => setShowModal(false)} className="secondary">
                 Cancel
               </button>
-              <button
-                type="button"
-                onClick={handleConfirmFulfillment}
-                style={{
-                  padding: "10px 20px", borderRadius: radius.md, border: "none",
-                  backgroundColor: colors.blueDark, color: colors.white, fontWeight: 700, cursor: "pointer"
-                }}
-              >
-                Yes, Confirm
+
+              <button type="button" onClick={handleConfirmFulfillment} className="primary">
+                Yes, confirm
               </button>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 }

@@ -13,6 +13,7 @@ class DonationModel(Base):
     description = Column(Text, nullable=True)
     image = Column(String, nullable=False)
     owner_email = Column(String, nullable=False)
+    reserved_by_email = Column(String, nullable=True)
     lat = Column(Float, nullable=True)
     lng = Column(Float, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

@@ -1,26 +1,42 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { apiFetch } from "../../api/api";
+import { apiFetch, buildFileUrl } from "../../api/api";
 import { colors, radius } from "../../styles/theme";
-import logoImg from "../../assets/donation.png";
+import {
+  HiOutlineHome,
+  HiOutlineGift,
+  HiOutlineMap,
+  HiOutlineChatBubbleLeftRight,
+  HiOutlineUser,
+  HiOutlineArrowRightOnRectangle,
+  HiOutlineUserPlus,
+  HiOutlineShieldCheck,
+} from "react-icons/hi2";
+import { GoChecklist } from "react-icons/go";
 
 export default function Navbar() {
   const navigate = useNavigate();
   const userEmail = localStorage.getItem("userEmail");
+  const ADMIN_EMAIL = "mihalescu_iulia@yahoo.com";
+  const isAdmin = userEmail === ADMIN_EMAIL;
 
   const [userName, setUserName] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
+  const [userLogo, setUserLogo] = useState("");
 
   useEffect(() => {
     if (!userEmail) return;
 
     async function loadData() {
       try {
-        const { data: userData } = await apiFetch(`/auth/user/${userEmail}`);
-        setUserName(userData.organization_name || userEmail);
+        const { data: userData } = await apiFetch(
+          `/auth/user/${encodeURIComponent(userEmail)}`
+        );
+        setUserName(userData.name || userEmail);
+        setUserLogo(userData.logo_url || "");
 
         const { data: unreadData } = await apiFetch(
-          `/messages/unread-count?user_email=${userEmail}`
+          `/messages/unread-count?user_email=${encodeURIComponent(userEmail)}`
         );
         setUnreadCount(unreadData.unread_count || 0);
       } catch (err) {
@@ -42,82 +58,127 @@ export default function Navbar() {
   return (
     <header style={styles.header}>
       <div style={styles.inner}>
+        <div style={styles.logoWrap} onClick={() => navigate("/")}>
+          <h1 style={styles.logo}>
+            <span style={{ color: colors.primary || "#115e59" }}>Ia</span>
+            <span style={{ color: "#94a3b8" }}>și</span>
+            <span style={{ color: colors.text }}>donează</span>
+          </h1>
+        </div>
 
         <nav style={styles.nav}>
-
           <NavLink to="/" end style={navLinkStyle}>
-            Home
+            <HiOutlineHome size={20} />
+            <span>Home</span>
           </NavLink>
 
           <NavLink to="/donations" style={navLinkStyle}>
-            Donations
+            <HiOutlineGift size={20} />
+            <span>Donations</span>
           </NavLink>
 
           <NavLink to="/needs" style={navLinkStyle}>
-            Need Lists
+            <GoChecklist size={22} />
+            <span>Need Lists</span>
           </NavLink>
 
           <NavLink to="/map" style={navLinkStyle}>
-                Harta ONG-uri
+            <HiOutlineMap size={20} />
+            <span>Organizations Map</span>
           </NavLink>
 
           {userEmail ? (
             <>
               <NavLink to="/messages" style={navLinkStyle}>
                 <span style={styles.messagesWrap}>
-                  Messages
-                  {unreadCount > 0 && <span style={styles.badge}>{unreadCount}</span>}
+                  <span style={styles.linkWithIcon}>
+                    <HiOutlineChatBubbleLeftRight size={20} />
+                    <span>Messages</span>
+                  </span>
+                  {unreadCount > 0 && (
+                    <span style={styles.badge}>{unreadCount}</span>
+                  )}
                 </span>
               </NavLink>
 
+              {isAdmin && (
+                <NavLink to="/admin/verifications" style={navLinkStyle}>
+                  <HiOutlineShieldCheck size={20} />
+                  <span>Admin</span>
+                </NavLink>
+              )}
+
               <NavLink to="/profile" style={navLinkStyle}>
-                My Profile
+                <HiOutlineUser size={20} />
+                <span>My Profile</span>
               </NavLink>
             </>
           ) : (
             <>
-
               <NavLink to="/login" style={navLinkStyle}>
-                Login
+                <HiOutlineArrowRightOnRectangle size={20} />
+                <span>Login</span>
               </NavLink>
 
               <NavLink to="/register" style={navLinkStyle}>
-                Register
+                <HiOutlineUserPlus size={20} />
+                <span>Register</span>
               </NavLink>
             </>
           )}
         </nav>
 
-        {userEmail && (
-          <div style={styles.userArea}>
-            <div style={styles.userChip}>
+        <div style={styles.userArea}>
+          {userEmail ? (
+            <>
+              <button
+              onClick={() => navigate("/profile")}
+              style={styles.userChipButton}
+            >
               <div style={styles.userAvatar}>
-                {(userName || userEmail).charAt(0).toUpperCase()}
-              </div>
-              <span style={styles.userName}>{userName || userEmail}</span>
+              {userLogo ? (
+                <img
+                  src={buildFileUrl(userLogo)}
+                  alt={userName || userEmail}
+                  style={styles.userAvatarImage}
+                />
+              ) : (
+                (userName || userEmail).charAt(0).toUpperCase()
+              )}
             </div>
-
-            <button onClick={handleLogout} style={styles.logoutBtn}>
-              Logout
+              <span style={styles.userName}>{userName || userEmail}</span>
             </button>
-          </div>
-        )}
+
+              <button onClick={handleLogout} style={styles.logoutBtn}>
+                Logout
+              </button>
+            </>
+          ) : (
+            <div style={{ width: "220px" }} />
+          )}
+        </div>
       </div>
     </header>
   );
 }
 
 const navLinkStyle = ({ isActive }) => ({
-  padding: "10px 14px",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "20px",
+  padding: "12px 18px",
   borderRadius: radius.md,
   textDecoration: "none",
-  fontSize: "14px",
+  fontSize: "15px",
   fontWeight: 600,
-  color: isActive ? colors.blueDark : colors.text,
-  background: isActive ? colors.card : "transparent",
-  border: isActive ? `1px solid ${colors.border}` : "1px solid transparent",
+  color: isActive ? (colors.primary || "#344D2B") : colors.text,
+  background: isActive ? (colors.primaryLight || "#edf2eb") : "transparent",
+  border: isActive
+    ? `1px solid ${colors.primary || "#344D2B"}`
+    : "1px solid transparent",
   transition: "all 0.2s ease",
   whiteSpace: "nowrap",
+  cursor: "pointer",
 });
 
 const styles = {
@@ -125,94 +186,50 @@ const styles = {
     position: "sticky",
     top: 0,
     zIndex: 100,
-    background: "rgba(255,255,255,0.9)",
-    backdropFilter: "blur(14px)",
-    WebkitBackdropFilter: "blur(14px)",
+    width: "100%",
+    background: "#f7f5ef",
     borderBottom: `1px solid ${colors.border}`,
-    borderRadius: "15px",
-    overflow: "hidden",
-    boxShadow: "0 6px 20px rgba(143, 185, 255, 0.08)",
-    marginBottom: 32,
+    boxShadow: "none",
   },
 
   inner: {
-    maxWidth: "1280px",
-    margin: "0 auto",
-    padding: "0 24px",
-    padding: "10px 24px",
-    minHeight: "unset",
-    display: "flex",
+    width: "100%",
+    display: "grid",
+    gridTemplateColumns: "260px 1fr 260px",
     alignItems: "center",
     gap: "24px",
+    padding: "18px 36px",
+    boxSizing: "border-box",
+    minHeight: "92px",
   },
 
-  logoLink: {
-    textDecoration: "none",
-    flexShrink: 0,
+  logoWrap: {
+    display: "flex",
+    alignItems: "center",
+    cursor: "pointer",
   },
 
   logo: {
-      display: "flex",
-      alignItems: "center",
-      gap: "12px",
-   },
-
-   logoImg: {
-      width: "70px",
-      height: "70px",
-      objectFit: "contain",
-      display: "block",
-      flexShrink: 0,
-   },
-  brandChip: {
-      display: "flex",
-      alignItems: "center",
-      gap: "8px",
-      background: colors.card,
-      border: `1px solid ${colors.border}`,
-      borderRadius: "999px",
-      padding: "6px 12px 6px 8px",
-      boxShadow: "0 2px 8px rgba(143, 185, 255, 0.08)",
-      background: "linear-gradient(90deg, #fff9e8 0%, #f5f9ff 100%)",
-   },
-
-  logoMark: {
-    width: "40px",
-    height: "40px",
-    borderRadius: radius.md,
-    background: `linear-gradient(135deg, ${colors.blue}, ${colors.yellow})`,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: colors.text,
-    fontWeight: 800,
-    fontSize: "14px",
-    boxShadow: "0 6px 16px rgba(143, 185, 255, 0.18)",
-  },
-
-  logoTextWrap: {
-    display: "flex",
-    alignItems: "baseline",
-    gap: "2px",
-    fontSize: "20px",
-    fontWeight: 800,
-    letterSpacing: "-0.02em",
-  },
-
-  logoMain: {
-    color: colors.blue,
-  },
-
-  logoAccent: {
-    color: colors.yellow,
+    margin: 0,
+    fontSize: "42px",
+    fontWeight: 900,
+    letterSpacing: "-1.5px",
+    lineHeight: 1,
   },
 
   nav: {
     display: "flex",
     alignItems: "center",
-    gap: "6px",
-    flex: 1,
+    justifyContent: "center",
+    gap: "24px",
     flexWrap: "wrap",
+    width: "100%",
+  },
+
+  linkWithIcon: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "10px",
   },
 
   messagesWrap: {
@@ -223,70 +240,92 @@ const styles = {
 
   badge: {
     position: "absolute",
-    top: "-10px",
-    right: "-14px",
+    top: "-6px",
+    right: "-10px",
     background: colors.danger,
     color: colors.white,
-    fontSize: "10px",
-    fontWeight: 700,
-    minWidth: "18px",
-    height: "18px",
+    fontSize: "12px",
+    fontWeight: 800,
+    minWidth: "20px",
+    height: "20px",
     borderRadius: "999px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    padding: "0 4px",
+    padding: "0 6px",
+    border: "2px solid white",
   },
 
   userArea: {
     display: "flex",
+    justifyContent: "flex-end",
     alignItems: "center",
-    gap: "10px",
-    flexShrink: 0,
+    gap: "12px",
+    width: "240px",
   },
 
   userChip: {
     display: "flex",
     alignItems: "center",
-    gap: "8px",
+    gap: "10px",
     background: colors.card,
     border: `1px solid ${colors.border}`,
     borderRadius: "999px",
-    padding: "4px 12px 4px 4px",
+    padding: "6px 16px 6px 6px",
   },
 
-  userAvatar: {
-    width: "30px",
-    height: "30px",
-    borderRadius: "50%",
-    background: colors.blue,
-    color: colors.white,
-    fontSize: "13px",
-    fontWeight: 700,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
+userChipButton: {
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+  background: colors.card,
+  border: `1px solid ${colors.border}`,
+  borderRadius: "999px",
+  padding: "6px 16px 6px 6px",
+  cursor: "pointer",
+},
+
+userAvatar: {
+  width: "34px",
+  height: "34px",
+  borderRadius: "50%",
+  overflow: "hidden",
+  background: colors.primary || "#344D2B",
+  color: colors.white,
+  fontSize: "15px",
+  fontWeight: 700,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexShrink: 0,
+},
+
+userAvatarImage: {
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+  borderRadius: "50%",
+  display: "block",
+},
 
   userName: {
-    fontSize: "13px",
+    fontSize: "15px",
     fontWeight: 600,
     color: colors.text,
-    maxWidth: "150px",
+    maxWidth: "180px",
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   },
 
   logoutBtn: {
-    padding: "8px 14px",
+    padding: "10px 16px",
     borderRadius: radius.md,
     background: "#fff7ed",
     color: colors.danger,
     border: `1px solid ${colors.border}`,
     fontWeight: 600,
-    fontSize: "13px",
+    fontSize: "14px",
     cursor: "pointer",
   },
 };

@@ -1,240 +1,201 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/api";
-import DonationCard from "../components/DonationCard.jsx";
-import NeedCard from "../components/NeedCard.jsx";
-import PageToolbar from "../components/common/PageToolbar";
-import { colors, radius, shadow } from "../styles/theme";
+import DonationCard from "../components/DonationCard";
+import NeedCard from "../components/NeedCard";
+import howPostImg from "../assets/how-post.png";
+import howChatImg from "../assets/how-chat.png";
+import howImpactImg from "../assets/how-impact.png";
+import { HiOutlineArrowRight } from "react-icons/hi2";
+import SectionBanner from "../components/common/SectionBanner";
+import "../styles/pages/Home.css";
 
 export default function Home() {
-  const [feedItems, setFeedItems] = useState([]);
+  const [recentItems, setRecentItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [showAddMenu, setShowAddMenu] = useState(false);
+  const [stats, setStats] = useState({
+    availableItems: 0,
+    needLists: 0,
+    completedDonations: 0,
+  });
 
   const navigate = useNavigate();
-  const menuRef = useRef(null);
-
-  const userType = localStorage.getItem("userType");
   const userEmail = localStorage.getItem("userEmail");
-
-  const categories = ["All", "Clothing", "Food", "Electronics", "Furniture", "Medical", "Other"];
+  const userType = localStorage.getItem("userType");
 
   useEffect(() => {
     async function loadFeed() {
       try {
         const { response, data } = await apiFetch("/home/feed");
-        if (response.ok) setFeedItems(data);
+
+        if (response.ok && Array.isArray(data)) {
+          setRecentItems(data.slice(0, 5));
+        } else {
+          setRecentItems([]);
+        }
       } catch (err) {
         console.error("Feed error:", err);
+        setRecentItems([]);
       } finally {
         setLoading(false);
       }
     }
-    loadFeed();
 
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setShowAddMenu(false);
+    async function loadStats() {
+      try {
+        const { response, data } = await apiFetch("/home/stats");
+
+        if (response.ok && data) {
+          setStats({
+            availableItems: data.available_items ?? 0,
+            needLists: data.need_lists ?? 0,
+            completedDonations: data.completed_donations ?? 0,
+          });
+        }
+      } catch (err) {
+        console.error("Stats error:", err);
       }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+
+    loadFeed();
+    loadStats();
   }, []);
 
-  async function handleItemCheck(needId, itemIndex, newBrought) {
-    try {
-      const { response, data } = await apiFetch(
-        `/needs/${needId}/item/${itemIndex}?brought=${newBrought}`,
-        { method: "PATCH" }
-      );
-
-      if (response.ok) {
-        setFeedItems((prev) =>
-          prev.map((item) =>
-            item.item_type === "need" && item.id === needId
-              ? { ...data, item_type: "need" }
-              : item
-          )
-        );
-      }
-    } catch (err) {
-      console.error("Error updating item on Home:", err);
-    }
-  }
+  function handleItemCheck() {}
 
   async function handleReserveDonation(id, newStatus) {
     try {
-      const { response } = await apiFetch(`/donations/${id}/status?new_status=${newStatus}`, {
+      const params = new URLSearchParams({ new_status: newStatus });
+      if (userEmail) params.set("user_email", userEmail);
+
+      const { response, data } = await apiFetch(`/donations/${id}/status?${params.toString()}`, {
         method: "PATCH",
       });
 
-      if (response.ok) {
-        setFeedItems((prev) =>
-          prev.map((item) =>
-            item.item_type === "donation" && item.id === id
-              ? { ...item, status: newStatus }
-              : item
-          )
-        );
-      } else {
-        alert("Error updating donation status.");
+      if (!response.ok) {
+        alert(data?.detail || "Could not update donation status.");
+        return;
       }
+
+      setRecentItems((prevItems) =>
+        prevItems.map((item) =>
+          item.id === id && item.item_type === "donation"
+            ? { ...data, item_type: "donation" }
+            : item
+        )
+      );
     } catch (err) {
-      console.error("Error updating donation status on Home:", err);
+      console.error("Network error:", err);
+      alert("Could not contact the server.");
     }
   }
 
-  const filteredItems = feedItems.filter((item) => {
-    const matchesSearch = item.title?.toLowerCase().includes(searchTerm.toLowerCase());
-
-    // REPARAT: Normalizăm stringurile pentru a evita problemele de tip "clothes" vs "Clothing"
-    const itemCat = item.category?.toLowerCase() || "";
-    const selCat = selectedCategory.toLowerCase();
-
-    const matchesCategory = selectedCategory === "All" ||
-                            itemCat === selCat ||
-                            (selCat === "clothing" && itemCat === "clothes");
-
-    const isStillActive = item.item_type === "donation"
-      ? (item.status === "available" || item.status === "reserved")
-      : true;
-
-    return matchesSearch && matchesCategory && isStillActive;
-  });
-
-  const handleAddClick = () => {
-    if (userType === "organization") {
-      setShowAddMenu(!showAddMenu);
-    } else {
-      navigate("/postdonation");
-    }
-  };
-
-  if (loading) return <div style={{ padding: 100, textAlign: "center", color: colors.blueDark }}>Loading...</div>;
-
   return (
-    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 20px" }}>
-
-      {/* BANNER ALBASTRU */}
-      <div style={{
-        background: colors.blueLight, padding: "35px 40px", borderRadius: radius.xl,
-        marginTop: "20px", marginBottom: "30px", boxShadow: shadow.soft
-      }}>
-        <h2 style={{ margin: 0, fontSize: "28px", color: colors.blueDark, fontWeight: 800 }}>
-          What's new
-        </h2>
-        <p style={{ margin: "8px 0 0 0", color: colors.blueDark, opacity: 0.8, fontWeight: 500 }}>
-          Discover items for donation and needs lists
-        </p>
-      </div>
-
-      <div style={{ position: "relative" }}>
-        <PageToolbar
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Search items..."
-          buttonText="+ Add"
-          onButtonClick={handleAddClick}
-        />
-
-        {showAddMenu && (
-          <div ref={menuRef} style={{
-            position: "absolute", right: 0, top: "65px", zIndex: 1000,
-            backgroundColor: colors.card, borderRadius: radius.md,
-            boxShadow: shadow.card, border: `1px solid ${colors.border}`,
-            padding: "8px", width: "200px", display: "grid", gap: "4px"
-          }}>
-            <button
-              onClick={() => { navigate("/postdonation"); setShowAddMenu(false); }}
-              style={menuItemStyle}
-              onMouseOver={(e) => e.target.style.background = colors.blueLight}
-              onMouseOut={(e) => e.target.style.background = "transparent"}
-            >
-              Post donation
-            </button>
-            <button
-              onClick={() => { navigate("/postneed"); setShowAddMenu(false); }}
-              style={{ ...menuItemStyle, color: "#a16207" }}
-              onMouseOver={(e) => e.target.style.background = colors.yellowLight}
-              onMouseOut={(e) => e.target.style.background = "transparent"}
-            >
-              Post need list
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* CATEGORY PILLS */}
-      <div style={{ display: "flex", gap: "10px", marginBottom: "30px", marginTop: "10px", flexWrap: "wrap" }}>
-        {categories.map(cat => (
+    <div className="home-page">
+      <SectionBanner
+        title="Give your items a second life"
+        subtitle="Donate things you no longer need, support local organizations, and make a real impact in your community."
+        actions={
           <button
-            key={cat}
-            onClick={() => setSelectedCategory(cat)}
-            style={{
-              padding: "8px 16px", borderRadius: radius.xl, border: "none",
-              cursor: "pointer", fontWeight: "600", fontSize: "13px",
-              backgroundColor: selectedCategory === cat ? colors.blueDark : colors.blueLight,
-              color: selectedCategory === cat ? colors.white : colors.blueDark,
-              transition: "0.2s"
-            }}
+            onClick={() => navigate(userType === "organization" ? "/postneed" : "/postdonation")}
+            className="home-banner-action"
           >
-            {cat}
+            {userType === "organization" ? "Post a requirements list" : "Donate an item"}
           </button>
-        ))}
-      </div>
+        }
+        stats={[
+          { value: stats.availableItems, label: "Available items" },
+          { value: stats.needLists, label: "Need lists" },
+          { value: stats.completedDonations, label: "Completed donations" },
+        ]}
+      />
 
-      {/* GRID MIXT FEED */}
-      {filteredItems.length > 0 ? (
-        <div style={gridStyle}>
-          {filteredItems.map((item) => (
-            item.item_type === "donation"
-              ? <DonationCard
-                  key={`don-${item.id}`}
-                  donation={item}
-                  onReserve={handleReserveDonation}
-                  currentUserEmail={userEmail}
-                  isOwner={userEmail === item.owner_email}
-                />
-              : <NeedCard
-                  key={`need-${item.id}`}
-                  need={item}
-                  onItemCheck={handleItemCheck}
-                  currentUserEmail={userEmail}
-                  isOwner={userEmail === item.organization_email}
-                />
-          ))}
-        </div>
-      ) : (
-        <div style={{
-          textAlign: "center",
-          padding: "50px 20px",
-          backgroundColor: colors.card,
-          borderRadius: radius.xl,
-          border: `1px solid ${colors.border}`,
-          boxShadow: shadow.soft,
-          color: colors.muted,
-          marginTop: "10px"
-        }}>
-          <p style={{ margin: 0, fontSize: "15px", fontWeight: 600 }}>
-            No active donations or need lists found in "{selectedCategory}".
-          </p>
-        </div>
-      )}
+      <div className="home-content">
+        <section className="home-steps-section">
+          <div className="home-section-header">
+            <h2>Donate in 3 simple steps</h2>
+            <p>A simple process for donors, recipients, and organizations.</p>
+          </div>
+
+          <div className="home-steps-grid">
+            <StepCard
+              image={howPostImg}
+              title="Post your item or check need lists"
+              text="Upload an item you no longer need and make it visible to people and organizations."
+            />
+
+            <StepCard
+              image={howChatImg}
+              title="Connect in chat"
+              text="Use direct messages to discuss details, availability, and pickup."
+            />
+
+            <StepCard
+              image={howImpactImg}
+              title="Make an impact"
+              text="Complete the handoff and help reduce waste in your local community."
+            />
+          </div>
+        </section>
+
+        <section className="home-recent-section">
+          <div className="home-recent-header">
+            <div>
+              <h2>Recently added</h2>
+              <p>A quick preview of the latest activity on the platform.</p>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="home-loading-box">Loading recent activity...</div>
+          ) : recentItems.length === 0 ? (
+            <div className="home-loading-box">No recent activity yet.</div>
+          ) : (
+            <div className="home-recent-grid">
+              {recentItems.map((item) =>
+                item.item_type === "donation" ? (
+                  <DonationCard
+                    key={`don-${item.id}`}
+                    donation={item}
+                    onReserve={handleReserveDonation}
+                    currentUserEmail={userEmail}
+                    isOwner={userEmail === item.owner_email}
+                  />
+                ) : (
+                  <NeedCard
+                    key={`need-${item.id}`}
+                    need={item}
+                    onItemCheck={handleItemCheck}
+                    currentUserEmail={userEmail}
+                    isOwner={userEmail === item.organization_email}
+                  />
+                )
+              )}
+
+              <div className="home-view-all-card" onClick={() => navigate("/donations")}>
+                <div className="home-view-all-icon">
+                  <HiOutlineArrowRight size={28} />
+                </div>
+                <h3>View All</h3>
+              <p>Explore all donations</p>
+              </div>
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
 
-const gridStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-  gap: "24px",
-  paddingBottom: "80px",
-};
+function StepCard({ image, title, text }) {
+  return (
+    <div className="home-step-card">
+      <div className="home-step-image-wrap">
+        <img src={image} alt={title} />
+      </div>
 
-const menuItemStyle = {
-  padding: "12px", border: "none", borderRadius: radius.sm,
-  backgroundColor: "transparent", textAlign: "left", cursor: "pointer",
-  fontWeight: "600", fontSize: "14px", color: colors.blueDark, transition: "0.2s",
-};
+      <h3>{title}</h3>
+      <p>{text}</p>
+    </div>
+  );
+}

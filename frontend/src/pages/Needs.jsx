@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import SectionBanner from "../components/common/SectionBanner";
-import PageToolbar from "../components/common/PageToolbar";
 import NeedCard from "../components/NeedCard";
 import { apiFetch } from "../api/api";
-import { colors, radius, shadow } from "../styles/theme";
+import SectionBanner from "../components/common/SectionBanner";
+import "../styles/listingPages.css";
 
 export default function Needs() {
   const navigate = useNavigate();
@@ -14,6 +13,7 @@ export default function Needs() {
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
   const [userType, setUserType] = useState(null);
+  const [verificationStatus, setVerificationStatus] = useState(null);
 
   useEffect(() => {
     async function loadPageData() {
@@ -24,6 +24,7 @@ export default function Needs() {
         if (userEmail) {
           const { data: userData } = await apiFetch(`/auth/user/${userEmail}`);
           setUserType(userData.user_type);
+          setVerificationStatus(userData.verification_status || "unverified");
         }
       } catch (err) {
         console.error("Eroare la încărcare:", err);
@@ -70,78 +71,87 @@ export default function Needs() {
 
   if (loading) {
     return (
-      <div style={{ textAlign: "center", color: colors.blueDark, marginTop: 100 }}>
+      <div className="listing-loading">
         <h3>Loading needs...</h3>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 20px" }}>
+    <div className="listing-page">
+      <SectionBanner
+        title="Requirements lists"
+        subtitle="Browse organization needs and check off the items you can bring to help out."
+      />
 
-    <div style={{
-      background: colors.yellowLight, // Fundalul galben pastelat pentru nevoi
-      padding: "35px 40px",
-      borderRadius: radius.xl,
-      marginTop: "20px",
-      marginBottom: "30px",
-      boxShadow: shadow.soft
-    }}>
-      <h2 style={{ margin: 0, fontSize: "28px", color: "#856404", fontWeight: 800 }}>
-        Requirements lists
-      </h2>
-      <p style={{ margin: "8px 0 0 0", color: "#856404", opacity: 0.8, fontWeight: 500 }}>
-        Browse organization needs and check items you can bring
-      </p>
-    </div>
+      <div className="listing-shell">
 
-
-      {/* Toolbar cu butonul galben (Yellow theme) */}
-      <div style={{ marginBottom: "30px" }}>
-        <PageToolbar
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search by title, location, or item..."
-          showButton={userType === "organization"}
-          buttonText="+ Post Need"
-          onButtonClick={() => navigate("/postneed")}
-          // Pasăm un stil extra pentru buton dacă PageToolbar permite customizarea stilului
-          // Dacă PageToolbar are stilul hardcoded albastru, va trebui să modifici în interiorul componentei PageToolbar.jsx
-          buttonStyle={{
-            backgroundColor: colors.yellow,
-            color: "#856404",
-            border: "none",
-            borderRadius: radius.md,
-            fontWeight: "700"
-          }}
-        />
-      </div>
-
-      {/* Grid-ul cu Carduri */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
-          gap: 24,
-          paddingBottom: "80px",
-        }}
-      >
-        {filteredItems.map((need) => (
-          <NeedCard
-            key={need.id}
-            need={need}
-            onItemCheck={handleItemCheck}
-            currentUserEmail={userEmail}
-            isOwner={userEmail === need.organization_email}
-          />
-        ))}
-      </div>
-
-      {filteredItems.length === 0 && (
-        <div style={{ marginTop: 50, color: colors.muted, textAlign: "center" }}>
-          <p style={{ fontSize: "18px", fontWeight: 500 }}>No needs found. Try a different search.</p>
+      {userType === "organization" && verificationStatus !== "verified" && (
+        <div className={`needs-verification-alert ${verificationStatus === "rejected" ? "rejected" : "pending"}`}>
+          {verificationStatus === "rejected"
+            ? "Your organization account was not approved by admin. You cannot post need lists right now."
+            : "Your organization account is waiting for admin approval. You can browse lists, but posting is disabled until verification is complete."}
         </div>
       )}
+        <div className="listing-toolbar">
+          <div className={`listing-toolbar-row ${userType === "organization" ? "with-action" : ""}`}>
+            <div className="listing-search-wrap">
+              <input
+                type="text"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search by title, location, or item..."
+                className="listing-search-input"
+              />
+            </div>
+
+            {userType === "organization" && (
+              <button
+                onClick={() => {
+                  if (verificationStatus === "verified") {
+                    navigate("/postneed");
+                  }
+                }}
+                disabled={verificationStatus !== "verified"}
+                className="listing-add-button"
+                title={
+                  verificationStatus === "verified"
+                    ? "Create a new need list"
+                    : "Available only after admin approval"
+                }
+              >
+                + Add list
+              </button>
+            )}
+          </div>
+        </div>
+
+        
+        <div className="listing-results">
+          {filteredItems.length > 0 ? (
+            <div className="listing-grid">
+              {filteredItems.map((need) => (
+                <NeedCard
+                  key={need.id}
+                  need={need}
+                  onItemCheck={handleItemCheck}
+                  currentUserEmail={userEmail}
+                  isOwner={userEmail === need.organization_email}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="listing-empty-state">
+              <h3>
+                No needs found
+              </h3>
+              <p>
+                Try a different search or check back later for new requests.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

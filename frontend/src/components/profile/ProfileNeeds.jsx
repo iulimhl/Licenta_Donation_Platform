@@ -1,86 +1,151 @@
-import { colors, radius } from "../../styles/theme";
-
-const cardStyle = {
-  padding: 16,
-  border: `1px solid ${colors.border}`,
-  borderRadius: radius.md,
-  background: colors.card,
-};
-
-const smallButtonStyle = {
-  padding: "8px 16px",
-  border: "none",
-  borderRadius: radius.sm,
-  fontWeight: 600,
-  cursor: "pointer",
-};
+import { colors, radius, shadow } from "../../styles/theme";
+import { HiOutlineMapPin } from "react-icons/hi2";
 
 export default function ProfileNeeds({ myNeeds, navigate, handleDeleteNeed }) {
   if (myNeeds.length === 0) {
     return (
-      <p style={{ color: "#94a3b8", textAlign: "center", padding: "40px 20px" }}>
-        No needs posted yet.{" "}
-        <a
-          href="/postneed"
-          style={{ color: colors.blueDark, textDecoration: "none", fontWeight: 600 }}
-        >
-          Post one now
-        </a>
-      </p>
+      <div
+        style={{
+          background: colors.white,
+          border: `1px solid ${colors.border}`,
+          borderRadius: radius.xl,
+          boxShadow: shadow.soft,
+          padding: "56px 24px",
+          textAlign: "center",
+        }}
+      >
+        <p style={{ margin: 0, color: colors.textSoft, fontSize: 15 }}>
+          No needs posted yet.{" "}
+          <span
+            onClick={() => navigate("/postneed")}
+            style={{
+              color: colors.primary,
+              fontWeight: 800,
+              cursor: "pointer",
+            }}
+          >
+            Post one now
+          </span>
+        </p>
+      </div>
     );
   }
 
   return (
-    <div style={{ display: "grid", gap: 12 }}>
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+        gap: 24,
+      }}
+    >
       {myNeeds.map((need) => (
-        <div key={need.id} style={cardStyle}>
-          <h4 style={{ margin: "0 0 6px 0", fontSize: 15, color: colors.text }}>
-            {need.title}
-          </h4>
-
-          <p style={{ margin: "0 0 10px 0", fontSize: 12, color: colors.muted }}>
-            <strong>Location:</strong> {need.location}
-          </p>
-
-          <div style={{ marginBottom: 12, display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {need.items.map((item, idx) => (
-              <span
-                key={idx}
-                style={{
-                  fontSize: 11,
-                  color: colors.muted,
-                  background: "#f1f5f9",
-                  padding: "4px 8px",
-                  borderRadius: 5,
-                }}
-              >
-                {item.name}: {item.brought}/{item.quantity}
-              </span>
-            ))}
+        <div
+          key={need.id}
+          style={{
+            background: colors.white,
+            border: `1px solid ${colors.border}`,
+            borderRadius: radius.xl,
+            boxShadow: shadow.soft,
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              minHeight: 220,
+              background: "#eef4ec",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: colors.textSoft,
+              fontWeight: 700,
+            }}
+          >
+            Need list
           </div>
 
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              onClick={() => navigate(`/editneed/${need.id}`)}
+          <div style={{ padding: 20 }}>
+            <h3
               style={{
-                ...smallButtonStyle,
-                background: colors.blueDark,
-                color: colors.white,
+                margin: "0 0 10px 0",
+                fontSize: 22,
+                fontWeight: 900,
+                color: colors.text,
               }}
             >
-              Edit
-            </button>
+              {need.title}
+            </h3>
 
-            <button
-              onClick={() => handleDeleteNeed(need.id)}
+            <p
               style={{
-                ...smallButtonStyle,
-                background: colors.danger,
-                color: colors.white,
+                margin: "0 0 14px 0",
+                fontSize: 14,
+                color: colors.textSoft,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
               }}
             >
-              Delete
-            </button>
+              <HiOutlineMapPin size={16} />
+              {need.location}
+            </p>
+
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8,
+                marginBottom: 16,
+              }}
+            >
+              {need.items.map((item, idx) => (
+                <span
+                  key={idx}
+                  style={{
+                    fontSize: 12,
+                    color: colors.textSoft,
+                    background: "#f8fafc",
+                    padding: "6px 10px",
+                    borderRadius: 999,
+                    border: `1px solid ${colors.border}`,
+                  }}
+                >
+                  {item.name}: {item.brought}/{item.quantity}
+                </span>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button
+                onClick={() => navigate(`/editneed/${need.id}`)}
+                style={{
+                  padding: "10px 16px",
+                  borderRadius: radius.md,
+                  border: "none",
+                  background: "linear-gradient(135deg, #2f5d34 0%, #3d7443 100%)",
+                  color: colors.white,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Edit
+              </button>
+
+              <button
+                onClick={() => handleDeleteNeed(need.id)}
+                style={{
+                  padding: "10px 16px",
+                  borderRadius: radius.md,
+                  border: "1px solid #fecaca",
+                  background: "#fff1f2",
+                  color: "#b91c1c",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       ))}

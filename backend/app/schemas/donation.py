@@ -7,8 +7,10 @@ class DonationCreate(BaseModel):
     description: str | None = None
     image: str | None = None
     owner_email: str | None = None
+    reserved_by_email: str | None = None
     lat: float | None = None
     lng: float | None = None
+
 
 class DonationResponse(BaseModel):
     id: int
@@ -18,9 +20,11 @@ class DonationResponse(BaseModel):
     description: str | None = None
     image: str | None = None
     owner_email: str | None = None
+    reserved_by_email: str | None = None
     status: str
-    lat: float | None = None
-    lng: float | None = None
+    donor_name: str | None = None
+    phone: str | None = None
+    phone_visible: bool | None = None
 
     class Config:
         from_attributes = True

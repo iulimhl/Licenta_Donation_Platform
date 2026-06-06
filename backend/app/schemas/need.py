@@ -24,10 +24,13 @@ class NeedResponse(BaseModel):
     location: str
     organization_email: str | None = None
     organization_name: str | None = None
+    organization_logo_url: str | None = None
+    organization_cover_image_url: str | None = None
+    organization_verification_status: str | None = None
     image: str | None = None
     lat: float | None = None
     lng: float | None = None
-    items: list
+    items: List[NeedItem]
     created_at: datetime | None = None
 
     class Config:

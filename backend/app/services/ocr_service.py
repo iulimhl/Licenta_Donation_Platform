@@ -86,19 +86,53 @@ def extract_cif(text: str) -> str | None:
 def extract_organization_name(text: str) -> str | None:
     lines = [normalize_spaces(line) for line in text.splitlines() if line.strip()]
 
-    explicit_patterns = [
-        r"denumire[:\s]+(.+)",
-        r"denumire/nume si prenume[:\s]+(.+)",
-        r"denumire/nume și prenume[:\s]+(.+)",
+    blacklist = {
+        "romania",
+        "anaf",
+        "ministerul finantelor publice",
+        "ministerul finanțelor publice",
+        "agentia nationala de administrare fiscala",
+        "agenția națională de administrare fiscală",
+        "certificat de inregistrare fiscala",
+        "certificat de înregistrare fiscală",
+    }
+
+    def valid_name(value: str) -> bool:
+        value_norm = normalize_spaces(value).lower()
+        if not value_norm:
+            return False
+        if value_norm in blacklist:
+            return False
+        if len(value_norm) < 3:
+            return False
+        return True
+
+    label_patterns = [
+        "denumire/nume si prenume",
+        "denumire/nume și prenume",
+        "denumire / nume si prenume",
+        "denumire / nume și prenume",
+        "denumire",
     ]
 
-    for line in lines[:25]:
-        for pattern in explicit_patterns:
-            match = re.search(pattern, line, flags=re.IGNORECASE)
+    for i, line in enumerate(lines[:30]):
+        lower_line = line.lower()
+
+        if any(label in lower_line for label in label_patterns):
+            match = re.search(
+                r"(denumire(?:/nume si prenume|/nume și prenume)?)[\s:]+(.+)",
+                line,
+                flags=re.IGNORECASE,
+            )
             if match:
-                value = normalize_spaces(match.group(1))
-                if value:
-                    return value
+                candidate = normalize_spaces(match.group(2))
+                if valid_name(candidate):
+                    return candidate
+
+            for j in range(i + 1, min(i + 4, len(lines))):
+                candidate = normalize_spaces(lines[j])
+                if valid_name(candidate):
+                    return candidate
 
     keywords = [
         "asociatia",
@@ -113,32 +147,80 @@ def extract_organization_name(text: str) -> str | None:
         "camin",
         "cămin",
         "centru",
+        "s.r.l",
+        "srl",
+        "s.a",
+        "sa",
+        "s.c",
+        "sc",
     ]
 
-    for line in lines[:25]:
+    for line in lines[:30]:
         lower_line = line.lower()
         if any(keyword in lower_line for keyword in keywords):
+            if valid_name(line):
+                return line
+
+    for line in lines[:30]:
+        if valid_name(line):
             return line
 
-    return lines[0] if lines else None
+    return None
 
 
 def extract_address(text: str) -> str | None:
     lines = [normalize_spaces(line) for line in text.splitlines() if line.strip()]
 
-    explicit_patterns = [
-        r"domiciliul fiscal[:\s]+(.+)",
-        r"sediul social[:\s]+(.+)",
-        r"adresa[:\s]+(.+)",
+    blacklist = {
+        "romania",
+        "anaf",
+        "ministerul finantelor publice",
+        "ministerul finanțelor publice",
+        "certificat de inregistrare fiscala",
+        "certificat de înregistrare fiscală",
+    }
+
+    def valid_address(value: str) -> bool:
+        value_norm = normalize_spaces(value).lower()
+        if not value_norm:
+            return False
+        if value_norm in blacklist:
+            return False
+        if len(value_norm) < 6:
+            return False
+        return True
+
+    label_patterns = [
+        "domiciliul fiscal",
+        "sediul social",
+        "adresa",
     ]
 
-    for line in lines[:30]:
-        for pattern in explicit_patterns:
-            match = re.search(pattern, line, flags=re.IGNORECASE)
+    for i, line in enumerate(lines[:35]):
+        lower_line = line.lower()
+
+        if any(label in lower_line for label in label_patterns):
+            match = re.search(
+                r"(domiciliul fiscal|sediul social|adresa)[\s:]+(.+)",
+                line,
+                flags=re.IGNORECASE,
+            )
             if match:
-                value = normalize_spaces(match.group(1))
-                if value and "seria" not in value.lower():
-                    return value
+                candidate = normalize_spaces(match.group(2))
+                if valid_address(candidate) and "seria" not in candidate.lower():
+                    return candidate
+
+            collected = []
+            for j in range(i + 1, min(i + 4, len(lines))):
+                candidate = normalize_spaces(lines[j])
+                if not valid_address(candidate):
+                    continue
+                if "seria" in candidate.lower():
+                    continue
+                collected.append(candidate)
+
+            if collected:
+                return " ".join(collected)
 
     address_keywords = [
         "str.",
@@ -150,12 +232,15 @@ def extract_address(text: str) -> str | None:
         "judet",
         "județ",
         "sector",
-        "localitatea",
         "municipiul",
         "oras",
         "oraș",
         "comuna",
         "sat",
+        "nr.",
+        "bloc",
+        "sc.",
+        "ap.",
     ]
 
     for line in lines:
@@ -165,16 +250,16 @@ def extract_address(text: str) -> str | None:
             continue
 
         if any(keyword in lower_line for keyword in address_keywords):
-            return line
+            if valid_address(line):
+                return line
 
     return None
-
 
 def extract_data_from_file(file_path: str, filename: str):
     raw_text = extract_text_from_file(file_path, filename)
 
     return {
-        "organization_name": extract_organization_name(raw_text),
+        "name": extract_organization_name(raw_text),
         "cif": extract_cif(raw_text),
         "location": extract_address(raw_text),
         "document_type_guess": detect_document_type(raw_text),
