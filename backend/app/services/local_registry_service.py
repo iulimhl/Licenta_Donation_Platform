@@ -1,6 +1,7 @@
 import os
 import re
 import threading
+import unicodedata
 import pandas as pd
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -17,6 +18,9 @@ def normalize_text(value):
     if value is None:
         return ""
     value = str(value).strip().lower()
+    value = unicodedata.normalize("NFD", value)
+    value = "".join(ch for ch in value if unicodedata.category(ch) != "Mn")
+    value = re.sub(r"[^a-z0-9\s]", " ", value)
     value = re.sub(r"\s+", " ", value)
     return value
 
@@ -38,7 +42,7 @@ def find_header_row(path):
 
     header_keywords_sets = [
         ["denumire"],
-        ["denumire furnizor", "cui/cif"],
+        ["denumire furnizor", "cui cif"],
         ["denumire furnizor", "cui furnizor"],
     ]
 
@@ -120,7 +124,7 @@ def score_name_match(input_name, row_name):
     return 0
 
 
-def search_ong_registry(df, name):
+def search_ong_registry(df, name): #asociatii, federatii, uniuni, fundatii
     if df.empty:
         return None
 
@@ -172,7 +176,7 @@ def search_social_registry(df, name, cif):
         if col_norm == "denumire furnizor":
             name_col = col
 
-        if col_norm in ["cui/cif", "cui furnizor"]:
+        if col_norm in ["cui cif", "cui furnizor"]:
             cif_col = col
 
     if not name_col:

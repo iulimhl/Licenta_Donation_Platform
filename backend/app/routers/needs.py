@@ -44,17 +44,19 @@ def update_item_brought(need_id: int, item_index: int, brought: int, db: Session
     updated_need, error = needs_service.update_item_brought(db, need_id, item_index, brought)
 
     if error == "not_found":
-        raise HTTPException(status_code=404, detail="Lista nu a fost găsită")
+        raise HTTPException(status_code=404, detail="Need list not found")
 
     if error == "invalid_index":
-        raise HTTPException(status_code=400, detail="Item index invalid")
+        raise HTTPException(status_code=400, detail="Invalid item index")
 
     return updated_need
 
 
 @router.delete("/{need_id}")
-def delete_need(need_id: int, db: Session = Depends(get_db)):
-    deleted_need = needs_service.delete_by_id(db, need_id)
+def delete_need(need_id: int, actor_email: str | None = None, db: Session = Depends(get_db)):
+    deleted_need, error = needs_service.delete_by_id(db, need_id, actor_email)
     if not deleted_need:
-        raise HTTPException(status_code=404, detail="Lista nu a fost găsită")
+        if error == "forbidden":
+            raise HTTPException(status_code=403, detail="Only the organization or an admin can delete this need list")
+        raise HTTPException(status_code=404, detail="Need list not found")
     return {"message": "Need deleted"}

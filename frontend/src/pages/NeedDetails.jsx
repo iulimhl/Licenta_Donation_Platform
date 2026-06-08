@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { apiFetch, buildFileUrl } from "../api/api";
+import { apiFetch } from "../api/api";
 import { HiOutlineMapPin, HiOutlineArrowLeft } from "react-icons/hi2";
 import OrganizationPreviewCard from "../components/profile/OrganizationPreviewCard";
+import { isAdminUser } from "../utils/auth";
 import "../styles/pages/NeedDetails.css";
 
 export default function NeedDetails() {
@@ -13,9 +14,11 @@ export default function NeedDetails() {
   const [loading, setLoading] = useState(true);
   const [organization, setOrganization] = useState(null);
   const [offeringIndex, setOfferingIndex] = useState(null);
+  const [offerQuantities, setOfferQuantities] = useState({});
 
   const currentUserEmail = localStorage.getItem("userEmail");
   const isOwner = currentUserEmail === need?.organization_email;
+  const isAdmin = isAdminUser();
 
   useEffect(() => {
     async function loadNeedAndOrganization() {
@@ -53,16 +56,35 @@ export default function NeedDetails() {
     navigate(`/chat/${encodeURIComponent(need.organization_email)}?needId=${need.id}`);
   }
 
+  function getRemainingQuantity(item) {
+    return Math.max((item.quantity || 0) - (item.brought || 0), 0);
+  }
+
+  function getOfferQuantity(item, itemIndex) {
+    const remaining = getRemainingQuantity(item);
+    const value = Number(offerQuantities[itemIndex] || 1);
+    return Math.max(1, Math.min(value, remaining || 1));
+  }
+
+  function handleOfferQuantityChange(item, itemIndex, value) {
+    const remaining = getRemainingQuantity(item);
+    const nextValue = Math.max(1, Math.min(Number(value) || 1, remaining || 1));
+    setOfferQuantities((prev) => ({ ...prev, [itemIndex]: nextValue }));
+  }
+
   async function handleOfferItem(item, itemIndex) {
     if (!currentUserEmail) {
       navigate("/login");
       return;
     }
 
+    const amount = getOfferQuantity(item, itemIndex);
+    if (amount <= 0) return;
+
     setOfferingIndex(itemIndex);
 
     try {
-      const content = `[OFFER:item_index=${itemIndex}] I can bring: ${item.name}.`;
+      const content = `[OFFER:item_index=${itemIndex};amount=${amount}] I can bring ${amount} ${item.name}.`;
       const { response, data } = await apiFetch(
         `/messages/?sender_email=${encodeURIComponent(currentUserEmail)}`,
         {
@@ -171,44 +193,9 @@ export default function NeedDetails() {
             <span className="need-details-progress-badge">{progress}% done</span>
           </div>
 
-          <div className="need-details-meta-row">
-            <div className="need-details-meta-box">
-              <span className="need-details-meta-label">Posted by</span>
-
-              {organization ? (
-                <div className="need-details-organization">
-                  <div className="need-details-org-logo">
-                    {organization.logo_url ? (
-                      <img src={buildFileUrl(organization.logo_url)} alt={organization.name} />
-                    ) : (
-                      <span>{organization.name?.charAt(0)?.toUpperCase() || "O"}</span>
-                    )}
-                  </div>
-
-                  <div className="need-details-org-info">
-                    <div className="need-details-org-name-row">
-                      <span className="need-details-meta-value">{organization.name}</span>
-                      {organization.verification_status === "verified" && (
-                        <span className="need-details-verified-badge">Verified</span>
-                      )}
-                    </div>
-
-                    {organization.city && (
-                      <span className="need-details-org-city">{organization.city}</span>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <span className="need-details-meta-value">
-                  {need.organization_name || need.organization_email}
-                </span>
-              )}
-
-              <span className="need-details-meta-label">Progress</span>
-              <span className="need-details-meta-value">
-                {totalBrought} of {totalNeeded} brought
-              </span>
-            </div>
+          <div className="need-details-progress-summary">
+            <span>Progress</span>
+            <strong>{totalBrought} of {totalNeeded} brought</strong>
           </div>
 
           {need.description && (
@@ -231,6 +218,8 @@ export default function NeedDetails() {
               ) : (
                 items.map((item, idx) => {
                   const isCompleted = item.brought >= item.quantity && item.quantity > 0;
+                  const remaining = getRemainingQuantity(item);
+                  const offerQuantity = getOfferQuantity(item, idx);
 
                   return (
                     <div key={idx} className="need-details-item-row">
@@ -257,19 +246,46 @@ export default function NeedDetails() {
                       </div>
 
                       <div className="need-details-item-right">
-                        <span className="need-details-item-qty">
-                          {item.brought || 0}/{item.quantity}
-                        </span>
+                        {isOwner ? (
+                          <label className="need-details-owner-qty">
+                            <span>Received</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max={item.quantity}
+                              value={item.brought || 0}
+                              onChange={(e) => handleItemCheck(idx, Number(e.target.value) || 0)}
+                            />
+                            <strong>/ {item.quantity}</strong>
+                          </label>
+                        ) : (
+                          <span className="need-details-item-qty">
+                            {item.brought || 0}/{item.quantity}
+                          </span>
+                        )}
 
-                        {!isOwner && !isCompleted && (
-                          <button
-                            type="button"
-                            className="need-details-offer-button"
-                            onClick={() => handleOfferItem(item, idx)}
-                            disabled={offeringIndex === idx}
-                          >
-                            {offeringIndex === idx ? "Sending..." : "I can bring this"}
-                          </button>
+                        {!isOwner && !isAdmin && !isCompleted && (
+                          <div className="need-details-offer-controls">
+                            <label>
+                              <span>Qty</span>
+                              <input
+                                type="number"
+                                min="1"
+                                max={remaining}
+                                value={offerQuantity}
+                                onChange={(e) => handleOfferQuantityChange(item, idx, e.target.value)}
+                              />
+                            </label>
+
+                            <button
+                              type="button"
+                              className="need-details-offer-button"
+                              onClick={() => handleOfferItem(item, idx)}
+                              disabled={offeringIndex === idx}
+                            >
+                              {offeringIndex === idx ? "Sending..." : "I can bring"}
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -281,7 +297,14 @@ export default function NeedDetails() {
 
           <div className="need-details-actions">
             <div className="need-details-actions-row">
-              {isOwner ? (
+              {isAdmin ? (
+                <button
+                  onClick={() => navigate("/admin/verifications")}
+                  className="need-details-contact-button"
+                >
+                  Back to admin panel
+                </button>
+              ) : isOwner ? (
                 <button
                   onClick={() => navigate(`/editneed/${need.id}`)}
                   className="need-details-contact-button"

@@ -15,6 +15,7 @@ export default function DonationCard({
   onDelete,
   currentUserEmail,
   isOwner,
+  isAdmin = false,
   large = false,
   showDelete = false,
 }) {
@@ -97,7 +98,17 @@ export default function DonationCard({
           </div>
 
           <div className="donation-actions-compact">
-            {isOwner ? (
+            {isAdmin ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/donation/${donation.id}`);
+                }}
+                className="vinted-action-btn contact-btn"
+              >
+                Details
+              </button>
+            ) : isOwner ? (
               <>
                 <button
                   onClick={(e) => {

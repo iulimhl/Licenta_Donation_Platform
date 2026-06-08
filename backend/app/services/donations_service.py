@@ -53,13 +53,21 @@ def update_existing(db: Session, donation_id: int, payload: DonationCreate):
     return _attach_donor_data(db, db_item)
 
 
-def delete_by_id(db: Session, donation_id: int):
+def delete_by_id(db: Session, donation_id: int, actor_email: str | None):
     db_item = db.query(DonationModel).filter(DonationModel.id == donation_id).first()
     if not db_item:
-        return None
+        return None, "not_found"
+
+    actor = db.query(User).filter(User.email == actor_email).first() if actor_email else None
+    is_owner = actor_email == db_item.owner_email
+    is_admin = actor and actor.user_type == "admin"
+
+    if not is_owner and not is_admin:
+        return None, "forbidden"
+
     db.delete(db_item)
     db.commit()
-    return db_item
+    return db_item, None
 
 
 def update_status(db: Session, donation_id: int, new_status: str):

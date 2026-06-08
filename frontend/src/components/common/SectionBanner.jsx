@@ -41,7 +41,7 @@ export default function SectionBanner({
             fontSize: hasStats ? "46px" : "48px",
             lineHeight: 1.1,
             fontWeight: 900,
-            letterSpacing: "-0.02em",
+            letterSpacing: 0,
             color: "#ffffff",
           }}
         >

@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/api";
 import { reverseGeocode, getShortAddress } from "../api/geo";
 import DonationForm from "../components/DonationForm";
+import { isAdminUser } from "../utils/auth";
 import "../styles/formPages.css";
 
 export default function PostDonation() {
+  const userEmail = localStorage.getItem("userEmail");
+  const isAdmin = isAdminUser();
   const [formData, setFormData] = useState({
     title: "",
     location: "",
@@ -18,6 +21,12 @@ export default function PostDonation() {
   });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAdmin) {
+      navigate("/admin/verifications");
+    }
+  }, [isAdmin, navigate]);
 
   const handleUseMyLocation = () => {
     if (!navigator.geolocation) return;

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch, API_BASE } from "../api/api";
-import { colors } from "../styles/theme";
 import {
   HiOutlineShieldCheck,
   HiOutlineCheckCircle,
@@ -12,19 +11,27 @@ import {
   HiOutlineIdentification,
   HiOutlineXMark,
   HiOutlineDocumentText,
+  HiOutlineGift,
+  HiOutlineTrash,
+  HiOutlineEye,
 } from "react-icons/hi2";
+import { GoChecklist } from "react-icons/go";
+import { isAdminUser } from "../utils/auth";
 import "../styles/pages/AdminVerification.css";
-
-const ADMIN_EMAIL = "mihalescu_iulia@yahoo.com";
 
 export default function AdminVerification() {
   const navigate = useNavigate();
   const userEmail = localStorage.getItem("userEmail");
+  const isAdmin = isAdminUser();
 
   const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [moderationLoading, setModerationLoading] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [selectedOrg, setSelectedOrg] = useState(null);
+  const [activeTab, setActiveTab] = useState("verifications");
+  const [donations, setDonations] = useState([]);
+  const [needs, setNeeds] = useState([]);
 
   useEffect(() => {
     if (!userEmail) {
@@ -32,13 +39,25 @@ export default function AdminVerification() {
       return;
     }
 
-    if (userEmail !== ADMIN_EMAIL) {
+    if (!isAdmin) {
       navigate("/");
       return;
     }
 
     loadPendingOrganizations();
-  }, [userEmail, navigate]);
+  }, [userEmail, isAdmin, navigate]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    if (activeTab === "donations") {
+      loadDonationsForModeration();
+    }
+
+    if (activeTab === "needs") {
+      loadNeedsForModeration();
+    }
+  }, [activeTab, isAdmin]);
 
   async function loadPendingOrganizations() {
     try {
@@ -111,6 +130,78 @@ export default function AdminVerification() {
     }
   }
 
+  async function loadDonationsForModeration() {
+    try {
+      setModerationLoading(true);
+      const { response, data } = await apiFetch("/donations/");
+      setDonations(response.ok ? data || [] : []);
+    } catch (err) {
+      console.error("Error loading donations for moderation:", err);
+      setDonations([]);
+    } finally {
+      setModerationLoading(false);
+    }
+  }
+
+  async function loadNeedsForModeration() {
+    try {
+      setModerationLoading(true);
+      const { response, data } = await apiFetch("/needs/");
+      setNeeds(response.ok ? data || [] : []);
+    } catch (err) {
+      console.error("Error loading needs for moderation:", err);
+      setNeeds([]);
+    } finally {
+      setModerationLoading(false);
+    }
+  }
+
+  async function handleDeleteDonation(donation) {
+    const confirmed = window.confirm(`Delete donation "${donation.title}"?`);
+    if (!confirmed) return;
+
+    try {
+      setActionLoadingId(`donation-${donation.id}`);
+      const params = new URLSearchParams({ actor_email: userEmail });
+      const { response } = await apiFetch(`/donations/${donation.id}?${params.toString()}`, { method: "DELETE" });
+
+      if (!response.ok) {
+        alert("Could not delete donation.");
+        return;
+      }
+
+      setDonations((prev) => prev.filter((item) => item.id !== donation.id));
+    } catch (err) {
+      console.error("Delete donation error:", err);
+      alert("Server error while deleting donation.");
+    } finally {
+      setActionLoadingId(null);
+    }
+  }
+
+  async function handleDeleteNeed(need) {
+    const confirmed = window.confirm(`Delete need list "${need.title}"?`);
+    if (!confirmed) return;
+
+    try {
+      setActionLoadingId(`need-${need.id}`);
+      const params = new URLSearchParams({ actor_email: userEmail });
+      const { response } = await apiFetch(`/needs/${need.id}?${params.toString()}`, { method: "DELETE" });
+
+      if (!response.ok) {
+        alert("Could not delete need list.");
+        return;
+      }
+
+      setNeeds((prev) => prev.filter((item) => item.id !== need.id));
+    } catch (err) {
+      console.error("Delete need error:", err);
+      alert("Server error while deleting need list.");
+    } finally {
+      setActionLoadingId(null);
+    }
+  }
+
   function openDocumentModal(org) {
     setSelectedOrg(org);
   }
@@ -142,16 +233,45 @@ export default function AdminVerification() {
             <span>Admin panel</span>
           </div>
 
-          <h1 className="admin-verification-title">Organization Verification</h1>
+          <h1 className="admin-verification-title">Admin Panel</h1>
 
           <p className="admin-verification-subtitle">
-            Review pending organization accounts and approve only trusted entities.
+            Review organization accounts and moderate public platform content.
           </p>
         </div>
       </section>
 
       <div className="admin-verification-container">
-        {loading ? (
+        <div className="admin-tabs">
+          <button
+            type="button"
+            className={activeTab === "verifications" ? "active" : ""}
+            onClick={() => setActiveTab("verifications")}
+          >
+            <HiOutlineShieldCheck size={18} />
+            <span>Verifications</span>
+          </button>
+
+          <button
+            type="button"
+            className={activeTab === "donations" ? "active" : ""}
+            onClick={() => setActiveTab("donations")}
+          >
+            <HiOutlineGift size={18} />
+            <span>Donations</span>
+          </button>
+
+          <button
+            type="button"
+            className={activeTab === "needs" ? "active" : ""}
+            onClick={() => setActiveTab("needs")}
+          >
+            <GoChecklist size={18} />
+            <span>Need lists</span>
+          </button>
+        </div>
+
+        {activeTab === "verifications" && (loading ? (
           <div className="admin-verification-loading">
             Loading pending organizations...
           </div>
@@ -265,6 +385,76 @@ export default function AdminVerification() {
               </div>
             ))}
           </div>
+        ))}
+
+        {activeTab === "donations" && (
+          <ModerationList
+            loading={moderationLoading}
+            emptyTitle="No donations to moderate"
+            emptyText="There are no donation posts available right now."
+            items={donations}
+            renderItem={(donation) => (
+              <div key={donation.id} className="admin-moderation-card">
+                <div>
+                  <h3>{donation.title}</h3>
+                  <p>{donation.location || "No location"} - {donation.status || "available"}</p>
+                  <span>Posted by {donation.donor_name || donation.owner_email || "Unknown user"}</span>
+                </div>
+
+                <div className="admin-moderation-actions">
+                  <button type="button" onClick={() => navigate(`/donation/${donation.id}`)}>
+                    <HiOutlineEye size={17} />
+                    <span>View</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="danger"
+                    disabled={actionLoadingId === `donation-${donation.id}`}
+                    onClick={() => handleDeleteDonation(donation)}
+                  >
+                    <HiOutlineTrash size={17} />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          />
+        )}
+
+        {activeTab === "needs" && (
+          <ModerationList
+            loading={moderationLoading}
+            emptyTitle="No need lists to moderate"
+            emptyText="There are no organization need lists available right now."
+            items={needs}
+            renderItem={(need) => (
+              <div key={need.id} className="admin-moderation-card">
+                <div>
+                  <h3>{need.title}</h3>
+                  <p>{need.location || "No location"}</p>
+                  <span>Posted by {need.organization_name || need.organization_email || "Unknown organization"}</span>
+                </div>
+
+                <div className="admin-moderation-actions">
+                  <button type="button" onClick={() => navigate(`/need/${need.id}`)}>
+                    <HiOutlineEye size={17} />
+                    <span>View</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="danger"
+                    disabled={actionLoadingId === `need-${need.id}`}
+                    onClick={() => handleDeleteNeed(need)}
+                  >
+                    <HiOutlineTrash size={17} />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          />
         )}
       </div>
 
@@ -278,7 +468,7 @@ export default function AdminVerification() {
               <div>
                 <h3>Review document</h3>
                 <p>
-                  {selectedOrg.name || "Organization"} • {selectedOrg.email}
+                  {selectedOrg.name || "Organization"} - {selectedOrg.email}
                 </p>
               </div>
 
@@ -366,6 +556,31 @@ function InfoRow({ icon, label, value }) {
         <div className="admin-info-row-label">{label}</div>
         <div className="admin-info-row-value">{value}</div>
       </div>
+    </div>
+  );
+}
+
+function ModerationList({ loading, emptyTitle, emptyText, items, renderItem }) {
+  if (loading) {
+    return (
+      <div className="admin-verification-loading">
+        Loading moderation queue...
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="admin-verification-empty">
+        <h3>{emptyTitle}</h3>
+        <p>{emptyText}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="admin-moderation-list">
+      {items.map(renderItem)}
     </div>
   );
 }

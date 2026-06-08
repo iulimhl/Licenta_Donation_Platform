@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch, buildFileUrl } from "../api/api";
+import SectionBanner from "../components/common/SectionBanner";
 import ProfileDonations from "../components/profile/ProfileDonations";
 import ProfileNeeds from "../components/profile/ProfileNeeds";
 import {
@@ -118,7 +119,8 @@ export default function Profile() {
     if (!window.confirm("Sigur vrei sa stergi definitiv aceasta donatie?")) return;
 
     try {
-      const { response } = await apiFetch(`/donations/${id}`, { method: "DELETE" });
+      const params = new URLSearchParams({ actor_email: userEmail });
+      const { response } = await apiFetch(`/donations/${id}?${params.toString()}`, { method: "DELETE" });
 
       if (!response.ok) {
         alert("Eroare la stergerea de pe server.");
@@ -159,7 +161,8 @@ export default function Profile() {
     if (!window.confirm("Sigur vrei sa stergi definitiv aceasta lista de necesitati?")) return;
 
     try {
-      const { response } = await apiFetch(`/needs/${id}`, { method: "DELETE" });
+      const params = new URLSearchParams({ actor_email: userEmail });
+      const { response } = await apiFetch(`/needs/${id}?${params.toString()}`, { method: "DELETE" });
 
       if (!response.ok) {
         alert("Eroare la stergere.");
@@ -200,6 +203,11 @@ export default function Profile() {
 
   return (
     <div className="pattern-bg profile-page">
+      <SectionBanner
+        title="My Profile"
+        subtitle={isOrganization ? "Manage your organization profile and activity." : "Manage your profile and donations."}
+      />
+
       <div className="profile-container">
         <section className="profile-hero">
           {isOrganization && coverImage ? (

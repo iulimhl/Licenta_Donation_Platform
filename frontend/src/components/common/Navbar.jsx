@@ -1,7 +1,6 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { apiFetch, buildFileUrl } from "../../api/api";
-import { colors, radius } from "../../styles/theme";
 import {
   HiOutlineHome,
   HiOutlineGift,
@@ -11,18 +10,22 @@ import {
   HiOutlineArrowRightOnRectangle,
   HiOutlineUserPlus,
   HiOutlineShieldCheck,
+  HiOutlineBars3,
+  HiOutlineXMark,
 } from "react-icons/hi2";
 import { GoChecklist } from "react-icons/go";
+import { isAdminUser } from "../../utils/auth";
+import "../../styles/components/Navbar.css";
 
 export default function Navbar() {
   const navigate = useNavigate();
   const userEmail = localStorage.getItem("userEmail");
-  const ADMIN_EMAIL = "mihalescu_iulia@yahoo.com";
-  const isAdmin = userEmail === ADMIN_EMAIL;
+  const isAdmin = isAdminUser();
 
   const [userName, setUserName] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
   const [userLogo, setUserLogo] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!userEmail) return;
@@ -49,283 +52,136 @@ export default function Navbar() {
     return () => clearInterval(interval);
   }, [userEmail]);
 
+  function closeMenu() {
+    setMenuOpen(false);
+  }
+
   function handleLogout() {
     localStorage.removeItem("userEmail");
+    localStorage.removeItem("userType");
     localStorage.removeItem("demoUser");
+    closeMenu();
     navigate("/login");
   }
 
+  function goHome() {
+    closeMenu();
+    navigate("/");
+  }
+
+  const navClassName = ({ isActive }) => `navbar-link ${isActive ? "active" : ""}`;
+
   return (
-    <header style={styles.header}>
-      <div style={styles.inner}>
-        <div style={styles.logoWrap} onClick={() => navigate("/")}>
-          <h1 style={styles.logo}>
-            <span style={{ color: colors.primary || "#115e59" }}>Ia</span>
-            <span style={{ color: "#94a3b8" }}>și</span>
-            <span style={{ color: colors.text }}>donează</span>
-          </h1>
-        </div>
+    <header className="navbar">
+      <div className="navbar-inner">
+        <button type="button" className="navbar-logo" onClick={goHome}>
+          <span>Ia</span>
+          <span>și</span>
+          <span>donează</span>
+        </button>
 
-        <nav style={styles.nav}>
-          <NavLink to="/" end style={navLinkStyle}>
-            <HiOutlineHome size={20} />
-            <span>Home</span>
-          </NavLink>
+        <button
+          type="button"
+          className="navbar-menu-button"
+          onClick={() => setMenuOpen((open) => !open)}
+          aria-label={menuOpen ? "Close menu" : "Open menu"}
+          aria-expanded={menuOpen}
+        >
+          {menuOpen ? <HiOutlineXMark size={24} /> : <HiOutlineBars3 size={24} />}
+        </button>
 
-          <NavLink to="/donations" style={navLinkStyle}>
-            <HiOutlineGift size={20} />
-            <span>Donations</span>
-          </NavLink>
+        <div className={`navbar-panel ${menuOpen ? "open" : ""}`}>
+          <nav className="navbar-nav">
+            <NavLink to="/" end className={navClassName} onClick={closeMenu}>
+              <HiOutlineHome size={20} />
+              <span>Home</span>
+            </NavLink>
 
-          <NavLink to="/needs" style={navLinkStyle}>
-            <GoChecklist size={22} />
-            <span>Need Lists</span>
-          </NavLink>
+            <NavLink to="/donations" className={navClassName} onClick={closeMenu}>
+              <HiOutlineGift size={20} />
+              <span>Donations</span>
+            </NavLink>
 
-          <NavLink to="/map" style={navLinkStyle}>
-            <HiOutlineMap size={20} />
-            <span>Organizations Map</span>
-          </NavLink>
+            <NavLink to="/needs" className={navClassName} onClick={closeMenu}>
+              <GoChecklist size={22} />
+              <span>Need Lists</span>
+            </NavLink>
 
-          {userEmail ? (
-            <>
-              <NavLink to="/messages" style={navLinkStyle}>
-                <span style={styles.messagesWrap}>
-                  <span style={styles.linkWithIcon}>
-                    <HiOutlineChatBubbleLeftRight size={20} />
-                    <span>Messages</span>
-                  </span>
-                  {unreadCount > 0 && (
-                    <span style={styles.badge}>{unreadCount}</span>
-                  )}
-                </span>
-              </NavLink>
+            <NavLink to="/map" className={navClassName} onClick={closeMenu}>
+              <HiOutlineMap size={20} />
+              <span>Organizations Map</span>
+            </NavLink>
 
-              {isAdmin && (
-                <NavLink to="/admin/verifications" style={navLinkStyle}>
-                  <HiOutlineShieldCheck size={20} />
-                  <span>Admin</span>
+            {userEmail ? (
+              <>
+                {isAdmin && (
+                  <NavLink to="/admin/verifications" className={navClassName} onClick={closeMenu}>
+                    <HiOutlineShieldCheck size={20} />
+                    <span>Admin Panel</span>
+                  </NavLink>
+                )}
+
+                {!isAdmin && (
+                  <>
+                    <NavLink to="/messages" className={navClassName} onClick={closeMenu}>
+                      <span className="navbar-message-link">
+                        <HiOutlineChatBubbleLeftRight size={20} />
+                        <span>Messages</span>
+                        {unreadCount > 0 && <span className="navbar-badge">{unreadCount}</span>}
+                      </span>
+                    </NavLink>
+
+                    <NavLink to="/profile" className={navClassName} onClick={closeMenu}>
+                      <HiOutlineUser size={20} />
+                      <span>My Profile</span>
+                    </NavLink>
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                <NavLink to="/login" className={navClassName} onClick={closeMenu}>
+                  <HiOutlineArrowRightOnRectangle size={20} />
+                  <span>Login</span>
                 </NavLink>
-              )}
 
-              <NavLink to="/profile" style={navLinkStyle}>
-                <HiOutlineUser size={20} />
-                <span>My Profile</span>
-              </NavLink>
-            </>
-          ) : (
-            <>
-              <NavLink to="/login" style={navLinkStyle}>
-                <HiOutlineArrowRightOnRectangle size={20} />
-                <span>Login</span>
-              </NavLink>
+                <NavLink to="/register" className={navClassName} onClick={closeMenu}>
+                  <HiOutlineUserPlus size={20} />
+                  <span>Register</span>
+                </NavLink>
+              </>
+            )}
+          </nav>
 
-              <NavLink to="/register" style={navLinkStyle}>
-                <HiOutlineUserPlus size={20} />
-                <span>Register</span>
-              </NavLink>
-            </>
-          )}
-        </nav>
+          <div className="navbar-user-area">
+            {userEmail && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeMenu();
+                    navigate(isAdmin ? "/admin/verifications" : "/profile");
+                  }}
+                  className="navbar-user-chip"
+                >
+                  <span className="navbar-avatar">
+                    {userLogo ? (
+                      <img src={buildFileUrl(userLogo)} alt={userName || userEmail} />
+                    ) : (
+                      (userName || userEmail).charAt(0).toUpperCase()
+                    )}
+                  </span>
+                  <span className="navbar-user-name">{userName || userEmail}</span>
+                </button>
 
-        <div style={styles.userArea}>
-          {userEmail ? (
-            <>
-              <button
-              onClick={() => navigate("/profile")}
-              style={styles.userChipButton}
-            >
-              <div style={styles.userAvatar}>
-              {userLogo ? (
-                <img
-                  src={buildFileUrl(userLogo)}
-                  alt={userName || userEmail}
-                  style={styles.userAvatarImage}
-                />
-              ) : (
-                (userName || userEmail).charAt(0).toUpperCase()
-              )}
-            </div>
-              <span style={styles.userName}>{userName || userEmail}</span>
-            </button>
-
-              <button onClick={handleLogout} style={styles.logoutBtn}>
-                Logout
-              </button>
-            </>
-          ) : (
-            <div style={{ width: "220px" }} />
-          )}
+                <button type="button" onClick={handleLogout} className="navbar-logout">
+                  Logout
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </header>
   );
 }
-
-const navLinkStyle = ({ isActive }) => ({
-  display: "inline-flex",
-  alignItems: "center",
-  gap: "20px",
-  padding: "12px 18px",
-  borderRadius: radius.md,
-  textDecoration: "none",
-  fontSize: "15px",
-  fontWeight: 600,
-  color: isActive ? (colors.primary || "#344D2B") : colors.text,
-  background: isActive ? (colors.primaryLight || "#edf2eb") : "transparent",
-  border: isActive
-    ? `1px solid ${colors.primary || "#344D2B"}`
-    : "1px solid transparent",
-  transition: "all 0.2s ease",
-  whiteSpace: "nowrap",
-  cursor: "pointer",
-});
-
-const styles = {
-  header: {
-    position: "sticky",
-    top: 0,
-    zIndex: 100,
-    width: "100%",
-    background: "#f7f5ef",
-    borderBottom: `1px solid ${colors.border}`,
-    boxShadow: "none",
-  },
-
-  inner: {
-    width: "100%",
-    display: "grid",
-    gridTemplateColumns: "260px 1fr 260px",
-    alignItems: "center",
-    gap: "24px",
-    padding: "18px 36px",
-    boxSizing: "border-box",
-    minHeight: "92px",
-  },
-
-  logoWrap: {
-    display: "flex",
-    alignItems: "center",
-    cursor: "pointer",
-  },
-
-  logo: {
-    margin: 0,
-    fontSize: "42px",
-    fontWeight: 900,
-    letterSpacing: "-1.5px",
-    lineHeight: 1,
-  },
-
-  nav: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "24px",
-    flexWrap: "wrap",
-    width: "100%",
-  },
-
-  linkWithIcon: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "10px",
-  },
-
-  messagesWrap: {
-    position: "relative",
-    display: "inline-flex",
-    alignItems: "center",
-  },
-
-  badge: {
-    position: "absolute",
-    top: "-6px",
-    right: "-10px",
-    background: colors.danger,
-    color: colors.white,
-    fontSize: "12px",
-    fontWeight: 800,
-    minWidth: "20px",
-    height: "20px",
-    borderRadius: "999px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "0 6px",
-    border: "2px solid white",
-  },
-
-  userArea: {
-    display: "flex",
-    justifyContent: "flex-end",
-    alignItems: "center",
-    gap: "12px",
-    width: "240px",
-  },
-
-  userChip: {
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-    background: colors.card,
-    border: `1px solid ${colors.border}`,
-    borderRadius: "999px",
-    padding: "6px 16px 6px 6px",
-  },
-
-userChipButton: {
-  display: "flex",
-  alignItems: "center",
-  gap: "10px",
-  background: colors.card,
-  border: `1px solid ${colors.border}`,
-  borderRadius: "999px",
-  padding: "6px 16px 6px 6px",
-  cursor: "pointer",
-},
-
-userAvatar: {
-  width: "34px",
-  height: "34px",
-  borderRadius: "50%",
-  overflow: "hidden",
-  background: colors.primary || "#344D2B",
-  color: colors.white,
-  fontSize: "15px",
-  fontWeight: 700,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  flexShrink: 0,
-},
-
-userAvatarImage: {
-  width: "100%",
-  height: "100%",
-  objectFit: "cover",
-  borderRadius: "50%",
-  display: "block",
-},
-
-  userName: {
-    fontSize: "15px",
-    fontWeight: 600,
-    color: colors.text,
-    maxWidth: "180px",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-  },
-
-  logoutBtn: {
-    padding: "10px 16px",
-    borderRadius: radius.md,
-    background: "#fff7ed",
-    color: colors.danger,
-    border: `1px solid ${colors.border}`,
-    fontWeight: 600,
-    fontSize: "14px",
-    cursor: "pointer",
-  },
-};

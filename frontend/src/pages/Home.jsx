@@ -8,6 +8,7 @@ import howChatImg from "../assets/how-chat.png";
 import howImpactImg from "../assets/how-impact.png";
 import { HiOutlineArrowRight } from "react-icons/hi2";
 import SectionBanner from "../components/common/SectionBanner";
+import { isAdminUser } from "../utils/auth";
 import "../styles/pages/Home.css";
 
 export default function Home() {
@@ -22,6 +23,19 @@ export default function Home() {
   const navigate = useNavigate();
   const userEmail = localStorage.getItem("userEmail");
   const userType = localStorage.getItem("userType");
+  const isAdmin = isAdminUser();
+
+  const primaryActionPath = isAdmin
+    ? "/admin/verifications"
+    : userType === "organization"
+      ? "/postneed"
+      : "/postdonation";
+
+  const primaryActionLabel = isAdmin
+    ? "Open admin panel"
+    : userType === "organization"
+      ? "Post a requirements list"
+      : "Donate an item";
 
   useEffect(() => {
     async function loadFeed() {
@@ -97,10 +111,10 @@ export default function Home() {
         subtitle="Donate things you no longer need, support local organizations, and make a real impact in your community."
         actions={
           <button
-            onClick={() => navigate(userType === "organization" ? "/postneed" : "/postdonation")}
+            onClick={() => navigate(primaryActionPath)}
             className="home-banner-action"
           >
-            {userType === "organization" ? "Post a requirements list" : "Donate an item"}
+            {primaryActionLabel}
           </button>
         }
         stats={[

@@ -18,12 +18,15 @@ from models.user import User
 router = APIRouter(prefix="/verification", tags=["verification"])
 
 UPLOAD_DIR = "uploads/verification_documents"
-ADMIN_EMAIL = "mihalescu_iulia@yahoo.com"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
-def require_admin(admin_email: str | None):
-    if admin_email != ADMIN_EMAIL:
+def require_admin(admin_email: str | None, db: Session):
+    if not admin_email:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    admin = db.query(User).filter(User.email == admin_email).first()
+    if not admin or admin.user_type != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
 
 
@@ -117,7 +120,7 @@ async def upload_verification_document(
 
 @router.get("/pending")
 def get_pending_organizations(admin_email: str | None = None, db: Session = Depends(get_db)):
-    require_admin(admin_email)
+    require_admin(admin_email, db)
 
     orgs = db.query(User).filter(
         User.user_type == "organization",
@@ -144,7 +147,7 @@ def get_pending_organizations(admin_email: str | None = None, db: Session = Depe
 
 @router.patch("/approve/{user_id}")
 def approve_organization(user_id: int, admin_email: str | None = None, db: Session = Depends(get_db)):
-    require_admin(admin_email)
+    require_admin(admin_email, db)
 
     org = db.query(User).filter(User.id == user_id, User.user_type == "organization").first()
     if not org:
@@ -160,7 +163,7 @@ def approve_organization(user_id: int, admin_email: str | None = None, db: Sessi
 
 @router.patch("/reject/{user_id}")
 def reject_organization(user_id: int, admin_email: str | None = None, db: Session = Depends(get_db)):
-    require_admin(admin_email)
+    require_admin(admin_email, db)
 
     org = db.query(User).filter(User.id == user_id, User.user_type == "organization").first()
     if not org:

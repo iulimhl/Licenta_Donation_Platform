@@ -1,0 +1,255 @@
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  width: 100%;
+  background: #f7f5ef;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.navbar-inner {
+  width: 100%;
+  min-height: 92px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 24px;
+  padding: 18px 36px;
+}
+
+.navbar-logo {
+  display: inline-flex;
+  align-items: baseline;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 42px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.navbar-logo span:first-child {
+  color: #2f6b39;
+}
+
+.navbar-logo span:nth-child(2) {
+  color: #94a3b8;
+}
+
+.navbar-logo span:last-child {
+  color: #0f172a;
+}
+
+.navbar-panel {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 22px;
+  min-width: 0;
+}
+
+.navbar-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.navbar-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  color: #0f172a;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.navbar-link.active {
+  color: #2f6b39;
+  background: #edf2eb;
+  border-color: #2f6b39;
+}
+
+.navbar-message-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.navbar-badge {
+  position: absolute;
+  top: -10px;
+  right: -14px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #ffffff;
+  border: 2px solid #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.navbar-user-area {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  min-width: 0;
+}
+
+.navbar-user-chip,
+.navbar-logout {
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #ffffff;
+  font-weight: 700;
+}
+
+.navbar-user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 220px;
+  padding: 6px 14px 6px 6px;
+  color: #0f172a;
+}
+
+.navbar-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #2f6b39;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.navbar-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.navbar-user-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.navbar-logout {
+  padding: 10px 16px;
+  color: #dc2626;
+  background: #fff7ed;
+  border-radius: 10px;
+}
+
+.navbar-menu-button {
+  display: none;
+  justify-self: end;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #0f172a;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 1180px) {
+  .navbar-inner {
+    grid-template-columns: 1fr auto;
+    min-height: 76px;
+    padding: 14px 22px;
+  }
+
+  .navbar-logo {
+    font-size: 34px;
+  }
+
+  .navbar-menu-button {
+    display: inline-flex;
+  }
+
+  .navbar-panel {
+    display: none;
+    grid-column: 1 / -1;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 16px;
+    padding: 10px 0 8px;
+  }
+
+  .navbar-panel.open {
+    display: grid;
+  }
+
+  .navbar-nav {
+    align-items: stretch;
+    justify-content: stretch;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .navbar-link {
+    justify-content: flex-start;
+    padding: 13px 14px;
+    background: #ffffff;
+    border-color: #e2e8f0;
+  }
+
+  .navbar-user-area {
+    justify-content: stretch;
+  }
+
+  .navbar-user-chip {
+    max-width: none;
+    flex: 1;
+  }
+}
+
+@media (max-width: 560px) {
+  .navbar-inner {
+    padding: 12px 14px;
+  }
+
+  .navbar-logo {
+    font-size: 28px;
+  }
+
+  .navbar-nav {
+    grid-template-columns: 1fr;
+  }
+
+  .navbar-user-area {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .navbar-logout {
+    width: 100%;
+  }
+}

@@ -199,29 +199,48 @@ export default function Chat() {
     }
   };
 
-  const parseOfferMessage = (content) => {
-    const match = content?.match(/^\[OFFER:item_index=(\d+)\]\s*(.*)$/);
+  const confirmedOfferIds = useMemo(() => {
+    const ids = new Set();
+
+    messages.forEach((message) => {
+      const match = message.content?.match(/^\[CONFIRMED_OFFER:offer_id=(\d+)/);
+      if (match) ids.add(Number(match[1]));
+    });
+
+    return ids;
+  }, [messages]);
+
+  const parseOfferMessage = (message) => {
+    const content = message?.content || "";
+    const match = content.match(/^\[OFFER:item_index=(\d+)(?:;amount=(\d+))?\]\s*(.*)$/);
     if (!match) return null;
 
     const itemIndex = Number(match[1]);
+    const amount = Number(match[2] || 0);
     const item = needDetails?.items?.[itemIndex];
+    const remaining = item ? Math.max((item.quantity || 0) - (item.brought || 0), 0) : 0;
+    const offeredAmount = amount > 0 ? amount : remaining || item?.quantity || 1;
 
     return {
+      messageId: message.id,
       itemIndex,
-      text: match[2] || "I can bring this item.",
+      amount: offeredAmount,
+      text: match[3] || "I can bring this item.",
       item,
-      isConfirmed: item ? item.brought >= item.quantity && item.quantity > 0 : false,
+      isConfirmed: confirmedOfferIds.has(message.id) || (item ? item.brought >= item.quantity && item.quantity > 0 : false),
     };
   };
 
-  const handleConfirmOffer = async (itemIndex) => {
-    if (!needDetails?.items?.[itemIndex]) return;
+  const handleConfirmOffer = async (offer) => {
+    if (!needDetails?.items?.[offer.itemIndex]) return;
 
-    const item = needDetails.items[itemIndex];
+    const item = needDetails.items[offer.itemIndex];
+    const currentBrought = item.brought || 0;
+    const nextBrought = Math.min(currentBrought + offer.amount, item.quantity);
 
     try {
       const { response } = await apiFetch(
-        `/needs/${needDetails.id}/item/${itemIndex}?brought=${item.quantity}`,
+        `/needs/${needDetails.id}/item/${offer.itemIndex}?brought=${nextBrought}`,
         { method: "PATCH" }
       );
 
@@ -234,7 +253,7 @@ export default function Chat() {
         method: "POST",
         body: JSON.stringify({
           recipient_email: otherEmail,
-          content: `[SYSTEM] Confirmed received: ${item.name}.`,
+          content: `[CONFIRMED_OFFER:offer_id=${offer.messageId};item_index=${offer.itemIndex};amount=${offer.amount}] Confirmed received: ${offer.amount} ${item.name}.`,
           donation_id: null,
           need_id: needId ? parseInt(needId) : null,
         }),
@@ -439,10 +458,15 @@ export default function Chat() {
               ) : (
                 messages.map((msg, idx) => {
                   const isMe = msg.sender_email === userEmail;
-                  const offer = parseOfferMessage(msg.content);
-                  const isSystemMessage = msg.content?.startsWith("[SYSTEM]");
+                  const offer = parseOfferMessage(msg);
+                  const isSystemMessage =
+                    msg.content?.startsWith("[SYSTEM]") ||
+                    msg.content?.startsWith("[CONFIRMED_OFFER:");
                   const visibleContent = isSystemMessage
-                    ? msg.content.replace("[SYSTEM]", "").trim()
+                    ? msg.content
+                        .replace("[SYSTEM]", "")
+                        .replace(/^\[CONFIRMED_OFFER:[^\]]+\]/, "")
+                        .trim()
                     : offer
                     ? offer.text
                     : msg.content;
@@ -461,11 +485,12 @@ export default function Chat() {
                           <div className="chat-offer-card">
                             <div>
                               <strong>{offer.item.name}</strong>
+                              <span>Offered: {offer.amount}</span>
                               <span>{offer.item.brought || 0}/{offer.item.quantity} received</span>
                             </div>
 
                             {userEmail === needDetails?.organization_email && !offer.isConfirmed && (
-                              <button type="button" onClick={() => handleConfirmOffer(offer.itemIndex)}>
+                              <button type="button" onClick={() => handleConfirmOffer(offer)}>
                                 Confirm received
                               </button>
                             )}

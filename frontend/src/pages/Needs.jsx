@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import NeedCard from "../components/NeedCard";
 import { apiFetch } from "../api/api";
 import SectionBanner from "../components/common/SectionBanner";
+import { isAdminUser } from "../utils/auth";
 import "../styles/listingPages.css";
 
 export default function Needs() {
   const navigate = useNavigate();
   const userEmail = localStorage.getItem("userEmail");
+  const isAdmin = isAdminUser();
 
   const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
@@ -137,6 +139,7 @@ export default function Needs() {
                   onItemCheck={handleItemCheck}
                   currentUserEmail={userEmail}
                   isOwner={userEmail === need.organization_email}
+                  isAdmin={isAdmin}
                 />
               ))}
             </div>

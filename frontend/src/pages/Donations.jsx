@@ -4,11 +4,13 @@ import DonationCard from "../components/DonationCard";
 import { apiFetch } from "../api/api";
 import SectionBanner from "../components/common/SectionBanner";
 import { donationCategories } from "../constants/donationCategories";
+import { isAdminUser } from "../utils/auth";
 import "../styles/listingPages.css";
 
 export default function Donations() {
   const navigate = useNavigate();
   const userEmail = localStorage.getItem("userEmail");
+  const isAdmin = isAdminUser();
 
   const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
@@ -92,7 +94,7 @@ export default function Donations() {
 
       <div className="listing-shell">
         <div className="listing-toolbar">
-          <div className="listing-toolbar-row with-action">
+          <div className={`listing-toolbar-row ${isAdmin ? "" : "with-action"}`}>
             <div className="listing-search-wrap">
               <input
                 type="text"
@@ -103,12 +105,14 @@ export default function Donations() {
               />
             </div>
 
-            <button
-              onClick={() => navigate("/postdonation")}
-              className="listing-add-button"
-            >
-              + Add donation
-            </button>
+            {!isAdmin && (
+              <button
+                onClick={() => navigate("/postdonation")}
+                className="listing-add-button"
+              >
+                + Add donation
+              </button>
+            )}
           </div>
 
           <div className="donations-categories">
@@ -134,6 +138,7 @@ export default function Donations() {
                   onReserve={reserveDonation}
                   currentUserEmail={userEmail}
                   isOwner={userEmail === donation.owner_email}
+                  isAdmin={isAdmin}
                 />
               ))}
             </div>

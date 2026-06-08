@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/api";
 import { getDonationCategoryLabel } from "../constants/donationCategories";
+import { isAdminUser } from "../utils/auth";
 import "../styles/pages/DonationDetails.css";
 
 export default function DonationDetails() {
@@ -15,6 +16,7 @@ export default function DonationDetails() {
 
   const currentUserEmail = localStorage.getItem("userEmail");
   const isOwner = currentUserEmail === donation?.owner_email;
+  const isAdmin = isAdminUser();
 
   useEffect(() => {
     async function loadDonation() {
@@ -51,7 +53,8 @@ export default function DonationDetails() {
     if (!confirmDelete) return;
 
     try {
-      const { response } = await apiFetch(`/donations/${donation.id}`, {
+      const params = new URLSearchParams({ actor_email: currentUserEmail });
+      const { response } = await apiFetch(`/donations/${donation.id}?${params.toString()}`, {
         method: "DELETE",
       });
 
@@ -61,7 +64,7 @@ export default function DonationDetails() {
       }
 
       alert("Donation deleted successfully.");
-      navigate("/profile");
+      navigate(isAdmin ? "/admin/verifications" : "/profile");
     } catch (err) {
       console.error("Delete error:", err);
       alert("Server error while deleting.");
@@ -174,7 +177,13 @@ export default function DonationDetails() {
           </div>
 
           <div className="donation-details-actions">
-            {isOwner ? (
+            {isAdmin ? (
+              <>
+                <button onClick={handleDelete} className="donation-details-danger-action">
+                  Delete donation
+                </button>
+              </>
+            ) : isOwner ? (
               <>
                 <button
                   onClick={() => navigate(`/editdonation/${donation.id}`)}

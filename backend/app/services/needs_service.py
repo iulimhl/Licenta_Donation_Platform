@@ -65,9 +65,8 @@ def update_item_brought(db: Session, need_id: int, item_index: int, brought: int
     if item_index < 0 or item_index >= len(db_need.items):
         return None, "invalid_index"
 
-    db_need.items[item_index]["brought"] = min(
-        brought, db_need.items[item_index]["quantity"]
-    )
+    quantity = db_need.items[item_index].get("quantity", 0)
+    db_need.items[item_index]["brought"] = max(0, min(brought, quantity))
     flag_modified(db_need, "items")
 
     db.commit()
@@ -90,11 +89,18 @@ def update_by_id(db: Session, need_id: int, update_data: dict):
     return _attach_organization_data(db, db_need)
 
 
-def delete_by_id(db: Session, need_id: int):
+def delete_by_id(db: Session, need_id: int, actor_email: str | None):
     db_need = db.query(NeedModel).filter(NeedModel.id == need_id).first()
     if not db_need:
-        return None
+        return None, "not_found"
+
+    actor = db.query(User).filter(User.email == actor_email).first() if actor_email else None
+    is_owner = actor_email == db_need.organization_email
+    is_admin = actor and actor.user_type == "admin"
+
+    if not is_owner and not is_admin:
+        return None, "forbidden"
 
     db.delete(db_need)
     db.commit()
-    return db_need
+    return db_need, None
