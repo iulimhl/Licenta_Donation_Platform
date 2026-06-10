@@ -13,6 +13,13 @@ from schemas.verification import (
     OCRExtractResponse,
 )
 from services import verification_service, ocr_service
+from services.semantic_matching_service import (
+    MODEL_NAME,
+    is_semantic_matching_available,
+    is_semantic_name_matching_enabled,
+    semantic_name_score,
+    semantic_score_to_verification_score,
+)
 from models.user import User
 
 router = APIRouter(prefix="/verification", tags=["verification"])
@@ -49,6 +56,27 @@ def verify_organization(
         raise HTTPException(status_code=400, detail="User is not an organization")
 
     return result
+
+
+@router.get("/semantic-status")
+def get_semantic_status():
+    return {
+        "model_name": MODEL_NAME,
+        "available": is_semantic_matching_available(),
+        "enabled_for_registry_matching": is_semantic_name_matching_enabled(),
+    }
+
+
+@router.get("/semantic-name-score")
+def get_semantic_name_score(input_name: str, registry_name: str):
+    score = semantic_name_score(input_name, registry_name, force=True)
+
+    return {
+        "input_name": input_name,
+        "registry_name": registry_name,
+        "semantic_score": score,
+        "verification_score_equivalent": semantic_score_to_verification_score(score),
+    }
 
 
 @router.post("/extract-document", response_model=OCRExtractResponse)

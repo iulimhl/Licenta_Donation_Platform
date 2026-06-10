@@ -4,6 +4,17 @@ import threading
 import unicodedata
 import pandas as pd
 
+try:
+    from services.semantic_matching_service import (
+        semantic_name_score,
+        semantic_score_to_verification_score,
+    )
+except ModuleNotFoundError:
+    from app.services.semantic_matching_service import (
+        semantic_name_score,
+        semantic_score_to_verification_score,
+    )
+
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 REGISTRIES_DIR = os.path.join(BASE_DIR, "data", "registries")
 
@@ -112,16 +123,21 @@ def score_name_match(input_name, row_name):
     row_words = set(row_name.split())
     overlap = len(input_words & row_words)
 
-    if overlap >= 4:
-        return 60
-    if overlap >= 3:
-        return 50
-    if overlap >= 2:
-        return 35
-    if overlap >= 1:
-        return 15
+    lexical_score = 0
 
-    return 0
+    if overlap >= 4:
+        lexical_score = 60
+    elif overlap >= 3:
+        lexical_score = 50
+    elif overlap >= 2:
+        lexical_score = 35
+    elif overlap >= 1:
+        lexical_score = 15
+
+    semantic_score = semantic_name_score(input_name, row_name)
+    semantic_verification_score = semantic_score_to_verification_score(semantic_score)
+
+    return max(lexical_score, semantic_verification_score or 0)
 
 
 def search_ong_registry(df, name): #asociatii, federatii, uniuni, fundatii
