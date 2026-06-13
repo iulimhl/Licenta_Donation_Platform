@@ -35,6 +35,7 @@ export default function Chat() {
   const searchParams = new URLSearchParams(location.search);
   const donationId = searchParams.get("donationId");
   const needId = searchParams.get("needId");
+  const draftMessage = searchParams.get("draft");
 
   useEffect(() => {
     if (!userEmail) {
@@ -73,13 +74,20 @@ export default function Chat() {
       messages.length === 0 &&
       needDetails &&
       userEmail !== needDetails.organization_email &&
-      !newMessage
+      !newMessage &&
+      !draftMessage
     ) {
       setNewMessage(
         `Hi! I would like to help with your request: "${needDetails.title}". I can bring the needed items.`
       );
     }
-  }, [messages, needDetails, userEmail]);
+  }, [messages, needDetails, userEmail, newMessage, draftMessage]);
+
+  useEffect(() => {
+    if (draftMessage && !newMessage) {
+      setNewMessage(draftMessage);
+    }
+  }, [draftMessage, newMessage]);
 
   const loadConversation = async () => {
     try {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { apiFetch } from "../api/api";
+import { apiFetch, buildFileUrl } from "../api/api";
 import { HiOutlineMapPin, HiOutlineArrowLeft } from "react-icons/hi2";
 import OrganizationPreviewCard from "../components/profile/OrganizationPreviewCard";
 import { isAdminUser } from "../utils/auth";
@@ -15,6 +15,8 @@ export default function NeedDetails() {
   const [organization, setOrganization] = useState(null);
   const [offeringIndex, setOfferingIndex] = useState(null);
   const [offerQuantities, setOfferQuantities] = useState({});
+  const [recommendations, setRecommendations] = useState([]);
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false);
 
   const currentUserEmail = localStorage.getItem("userEmail");
   const isOwner = currentUserEmail === need?.organization_email;
@@ -27,6 +29,22 @@ export default function NeedDetails() {
 
         if (response.ok) {
           setNeed(data);
+
+          if (data.organization_email === currentUserEmail || isAdminUser()) {
+            setRecommendationsLoading(true);
+            apiFetch(`/recommendations/needs/${data.id}?limit=3&min_score=58`)
+              .then((recommendationsResult) => {
+                if (recommendationsResult.response.ok) {
+                  setRecommendations(recommendationsResult.data?.recommendations || []);
+                }
+              })
+              .catch((err) => {
+                console.error("Recommendations error:", err);
+              })
+              .finally(() => {
+                setRecommendationsLoading(false);
+              });
+          }
 
           if (data.organization_email) {
             const orgResult = await apiFetch(
@@ -45,7 +63,7 @@ export default function NeedDetails() {
     }
 
     loadNeedAndOrganization();
-  }, [id]);
+  }, [id, currentUserEmail]);
 
   function handleContact() {
     if (!currentUserEmail) {
@@ -112,6 +130,22 @@ export default function NeedDetails() {
     }
   }
 
+  function handleRecommendationContact(match, group) {
+    if (!currentUserEmail) {
+      navigate("/login");
+      return;
+    }
+
+    const content = `Hi! I saw your donation "${match.title}" and I think it could help us with "${group.item_name}" from our need list "${need.title}". Could we discuss the pickup details?`;
+    const params = new URLSearchParams({
+      donationId: String(match.donation_id),
+      needId: String(need.id),
+      draft: content,
+    });
+
+    navigate(`/chat/${encodeURIComponent(match.owner_email)}?${params.toString()}`);
+  }
+
   const handleItemCheck = async (itemIndex, newBroughtQuantity) => {
     const previousNeed = { ...need };
 
@@ -158,6 +192,7 @@ export default function NeedDetails() {
   const totalNeeded = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
   const totalBrought = items.reduce((sum, item) => sum + (item.brought || 0), 0);
   const progress = totalNeeded > 0 ? Math.round((totalBrought / totalNeeded) * 100) : 0;
+  const recommendationGroups = recommendations.filter((group) => (group.matches || []).length > 0);
 
   return (
     <div className="need-details-page">
@@ -295,35 +330,112 @@ export default function NeedDetails() {
             </div>
           </div>
 
-          <div className="need-details-actions">
-            <div className="need-details-actions-row">
-              {isAdmin ? (
-                <button
-                  onClick={() => navigate("/admin/verifications")}
-                  className="need-details-contact-button"
-                >
-                  Back to admin panel
-                </button>
-              ) : isOwner ? (
-                <button
-                  onClick={() => navigate(`/editneed/${need.id}`)}
-                  className="need-details-contact-button"
-                >
-                  Edit list
-                </button>
-              ) : (
-                <button onClick={handleContact} className="need-details-contact-button">
-                  Send message
-                </button>
-              )}
+          {isOwner && (
+            <div className="need-details-owner-actions">
+              <button
+                onClick={() => navigate(`/editneed/${need.id}`)}
+                className="need-details-contact-button"
+              >
+                Edit list
+              </button>
+            </div>
+          )}
 
-              {!isOwner && organization?.phone_visible && organization?.phone && (
-                <a href={`tel:${organization.phone}`} className="need-details-call-link">
-                  Call
-                </a>
+          {isOwner && (
+            <div className="need-details-section need-details-recommendations-section">
+              <div className="need-details-recommendations-header">
+                <h3>Suggested donations</h3>
+                <span>AI matches</span>
+              </div>
+
+              {recommendationsLoading ? (
+                <div className="need-details-recommendations-empty">Loading matches...</div>
+              ) : recommendationGroups.length === 0 ? (
+                <div className="need-details-recommendations-empty">No matching donations yet.</div>
+              ) : (
+                <div className="need-details-recommendations-list">
+                  {recommendationGroups.map((group) => (
+                    <div key={group.item_index} className="need-details-recommendation-group">
+                      <div className="need-details-recommendation-group-title">
+                        <strong>{group.item_name}</strong>
+                        <span>{group.remaining_quantity} still needed</span>
+                      </div>
+
+                      <div className="need-details-recommendation-cards">
+                        {group.matches.map((match) => (
+                          <div
+                            key={match.donation_id}
+                            className="need-details-recommendation-card"
+                          >
+                            <button
+                              type="button"
+                              className="need-details-recommendation-image"
+                              onClick={() => navigate(`/donation/${match.donation_id}`)}
+                            >
+                              {match.image ? (
+                                <img src={buildFileUrl(match.image)} alt={match.title} />
+                              ) : (
+                                <span>No image</span>
+                              )}
+                            </button>
+
+                            <div className="need-details-recommendation-content">
+                              <div>
+                                <h4>{match.title}</h4>
+                                <p>{match.location}</p>
+                              </div>
+
+                              <div className="need-details-recommendation-actions">
+                                <button
+                                  type="button"
+                                  onClick={() => navigate(`/donation/${match.donation_id}`)}
+                                >
+                                  Details
+                                </button>
+
+                                <button
+                                  type="button"
+                                  className="primary"
+                                  onClick={() => handleRecommendationContact(match, group)}
+                                >
+                                  Contact
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
-          </div>
+          )}
+
+          {(isAdmin || !isOwner) && (
+            <div className="need-details-actions">
+              <div className="need-details-actions-row">
+                {isAdmin ? (
+                  <button
+                    onClick={() => navigate("/admin/verifications")}
+                    className="need-details-contact-button"
+                  >
+                    Back to admin panel
+                  </button>
+                ) : (
+                  <button onClick={handleContact} className="need-details-contact-button">
+                    Send message
+                  </button>
+                )}
+
+                {!isOwner && organization?.phone_visible && organization?.phone && (
+                  <a href={`tel:${organization.phone}`} className="need-details-call-link">
+                    Call
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -5,7 +5,7 @@ from pathlib import Path
 from sqlalchemy import inspect, text
 
 from db.database import engine, Base
-from routers import ping, donations, auth, needs, messages, home, organizations, verification
+from routers import ping, donations, auth, needs, messages, home, organizations, verification, recommendations
 from services.local_registry_service import warm_registry_cache
 
 import models.donation as donation_model
@@ -47,6 +47,7 @@ app.include_router(auth.router)
 app.include_router(messages.router)
 app.include_router(organizations.router)
 app.include_router(verification.router)
+app.include_router(recommendations.router)
 
 (UPLOADS_DIR / "verification_documents").mkdir(parents=True, exist_ok=True)
 (UPLOADS_DIR / "profiles").mkdir(parents=True, exist_ok=True)
