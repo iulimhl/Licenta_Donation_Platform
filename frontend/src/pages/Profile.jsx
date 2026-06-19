@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch, buildFileUrl } from "../api/api";
 import SectionBanner from "../components/common/SectionBanner";
+import ProfileHeroCard from "../components/profile/ProfileHeroCard";
 import ProfileDonations from "../components/profile/ProfileDonations";
 import ProfileNeeds from "../components/profile/ProfileNeeds";
 import {
@@ -49,20 +50,6 @@ function getVerificationBadge(status) {
     icon: <HiOutlineClock size={18} />,
     className: "unverified",
   };
-}
-
-function DetailItem({ icon, label, value }) {
-  if (!value) return null;
-
-  return (
-    <div className="profile-detail-item">
-      <span className="profile-detail-icon" aria-hidden="true">{icon}</span>
-      <div className="profile-detail-text">
-        <strong>{label}</strong>
-        <span>{value}</span>
-      </div>
-    </div>
-  );
 }
 
 export default function Profile() {
@@ -200,6 +187,46 @@ export default function Profile() {
   const coverImage = isOrganization ? buildFileUrl(userData?.cover_image_url) : "";
   const avatarImage = buildFileUrl(userData?.logo_url);
   const galleryImages = isOrganization ? (userData?.gallery_images || []).map(buildFileUrl).filter(Boolean) : [];
+  const profileDetails = [
+    {
+      icon: <HiOutlineUser size={18} />,
+      label: "Type",
+      value: isOrganization ? "Organization" : "User",
+    },
+    {
+      icon: <HiOutlineEnvelope size={18} />,
+      label: "Email",
+      value: userEmail,
+    },
+    {
+      icon: <HiOutlinePhone size={18} />,
+      label: "Phone",
+      value: userData?.phone,
+    },
+    {
+      icon: <HiOutlineMapPin size={18} />,
+      label: "Location",
+      value: userData?.city || userData?.location,
+    },
+    isOrganization && {
+      icon: <HiOutlineGlobeAlt size={18} />,
+      label: "Website",
+      value: userData?.website,
+    },
+  ].filter(Boolean);
+  const profileAction = (
+    <button onClick={() => navigate("/edit-profile")} className="profile-edit-button">
+      <HiOutlinePencilSquare size={18} />
+      <span>Edit profile</span>
+    </button>
+  );
+  const profileStatus = isOrganization ? (
+    <div className={`profile-verification-badge ${verificationBadge.className}`}>
+      {verificationBadge.icon}
+      <span>{verificationBadge.text}</span>
+      {verificationScore !== null && <span>({verificationScore}%)</span>}
+    </div>
+  ) : null;
 
   return (
     <div className="pattern-bg profile-page">
@@ -209,76 +236,16 @@ export default function Profile() {
       />
 
       <div className="profile-container">
-        <section className="profile-hero">
-          {isOrganization && coverImage ? (
-            <div className="profile-cover">
-              <img src={coverImage} alt="Profile cover" />
-            </div>
-          ) : (
-            <div className="profile-cover empty" />
-          )}
-
-          <div className="profile-summary">
-            <div className={`profile-avatar ${!avatarImage ? "empty" : ""}`}>
-              {avatarImage ? (
-                <img src={avatarImage} alt={userName} />
-              ) : (
-                <span>{userName?.charAt(0)?.toUpperCase() || "U"}</span>
-              )}
-            </div>
-
-            <div className="profile-identity">
-              <div className="profile-title-row">
-                <div>
-                  <h1>{userName}</h1>
-                  <p>{isOrganization ? "Organization account" : "Personal account"}</p>
-                </div>
-
-                <button onClick={() => navigate("/edit-profile")} className="profile-edit-button">
-                  <HiOutlinePencilSquare size={18} />
-                  <span>Edit profile</span>
-                </button>
-              </div>
-
-            </div>
-
-            {isOrganization && (
-              <div className="profile-status-row">
-                <div className={`profile-verification-badge ${verificationBadge.className}`}>
-                  {verificationBadge.icon}
-                  <span>{verificationBadge.text}</span>
-                  {verificationScore !== null && <span>({verificationScore}%)</span>}
-                </div>
-              </div>
-            )}
-
-            <div className="profile-details">
-              <DetailItem
-                icon={<HiOutlineUser size={18} />}
-                label="Type"
-                value={isOrganization ? "Organization" : "User"}
-              />
-              <DetailItem icon={<HiOutlineEnvelope size={18} />} label="Email" value={userEmail} />
-              <DetailItem icon={<HiOutlinePhone size={18} />} label="Phone" value={userData?.phone} />
-              <DetailItem
-                icon={<HiOutlineMapPin size={18} />}
-                label="Location"
-                value={userData?.city || userData?.location}
-              />
-              {isOrganization && (
-                <DetailItem icon={<HiOutlineGlobeAlt size={18} />} label="Website" value={userData?.website} />
-              )}
-            </div>
-          </div>
-
-          {isOrganization && galleryImages.length > 0 && (
-            <div className="profile-gallery-strip">
-              {galleryImages.slice(0, 4).map((image, index) => (
-                <img key={index} src={image} alt={`Gallery ${index + 1}`} />
-              ))}
-            </div>
-          )}
-
+        <ProfileHeroCard
+          title={userName}
+          subtitle={isOrganization ? "Organization account" : "Personal account"}
+          coverImage={coverImage}
+          avatarImage={avatarImage}
+          details={profileDetails}
+          galleryImages={galleryImages}
+          action={profileAction}
+          status={profileStatus}
+        >
           {isOrganization && verificationStatus !== "verified" && (
             <div className={`profile-verification-alert ${verificationStatus === "rejected" ? "rejected" : "pending"}`}>
               <h3>
@@ -294,7 +261,7 @@ export default function Profile() {
               </p>
             </div>
           )}
-        </section>
+        </ProfileHeroCard>
 
         <section className="profile-posts-section">
           <div className="profile-posts-header">

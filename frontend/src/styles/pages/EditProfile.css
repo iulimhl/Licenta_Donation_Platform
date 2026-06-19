@@ -236,6 +236,14 @@
   object-fit: contain;
 }
 
+.edit-profile-logo-preview.user-avatar {
+  border-radius: 50%;
+}
+
+.edit-profile-logo-preview.user-avatar img {
+  object-fit: cover;
+}
+
 .edit-profile-logo-preview::after {
   content: "";
   position: absolute;

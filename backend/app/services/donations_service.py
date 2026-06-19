@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from models.donation import DonationModel
 from models.user import User
 from schemas.donation import DonationCreate
+from services.embedding_storage_service import refresh_donation_embedding
 
 
 def _attach_donor_data(db: Session, donation):
@@ -15,8 +16,12 @@ def _attach_donor_data(db: Session, donation):
     return donation
 
 
-def create_new(db: Session, payload: DonationCreate):
-    db_item = DonationModel(**payload.model_dump())
+def create_new(db: Session, payload: DonationCreate, owner_email: str):
+    donation_data = payload.model_dump()
+    donation_data["owner_email"] = owner_email
+    donation_data["reserved_by_email"] = None
+    db_item = DonationModel(**donation_data)
+    refresh_donation_embedding(db_item)
     db.add(db_item)
     db.commit()
     db.refresh(db_item)
@@ -35,10 +40,17 @@ def get_by_id(db: Session, donation_id: int):
     return _attach_donor_data(db, donation)
 
 
-def update_existing(db: Session, donation_id: int, payload: DonationCreate):
+def update_existing(db: Session, donation_id: int, payload: DonationCreate, actor_email: str):
     db_item = db.query(DonationModel).filter(DonationModel.id == donation_id).first()
     if not db_item:
-        return None
+        return None, "not_found"
+
+    actor = db.query(User).filter(User.email == actor_email).first()
+    is_owner = actor_email == db_item.owner_email
+    is_admin = actor and actor.user_type == "admin"
+
+    if not is_owner and not is_admin:
+        return None, "forbidden"
 
     db_item.title = payload.title
     db_item.description = payload.description
@@ -48,9 +60,10 @@ def update_existing(db: Session, donation_id: int, payload: DonationCreate):
     if payload.image is not None:
         db_item.image = payload.image
 
+    refresh_donation_embedding(db_item)
     db.commit()
     db.refresh(db_item)
-    return _attach_donor_data(db, db_item)
+    return _attach_donor_data(db, db_item), None
 
 
 def delete_by_id(db: Session, donation_id: int, actor_email: str | None):

@@ -21,6 +21,8 @@ class MessageResponse(BaseModel):
 
 class InboxConversationResponse(BaseModel):
     other_email: str
+    other_name: str | None = None
+    other_logo_url: str | None = None
     donation_id: int | None = None
     need_id: int | None = None
     last_message: str

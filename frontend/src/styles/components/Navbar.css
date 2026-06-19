@@ -113,6 +113,33 @@
   min-width: 0;
 }
 
+.navbar-language-toggle {
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+}
+
+.navbar-language-toggle button {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #64748b;
+  min-width: 36px;
+  height: 38px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.navbar-language-toggle button.active {
+  background: #2f6b39;
+  color: #ffffff;
+}
+
 .navbar-user-chip,
 .navbar-logout {
   border: 1px solid #e2e8f0;
@@ -247,6 +274,11 @@
   .navbar-user-area {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .navbar-language-toggle {
+    width: 100%;
+    justify-content: center;
   }
 
   .navbar-logout {

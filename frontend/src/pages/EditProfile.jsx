@@ -1,42 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiFetch, API_BASE, buildFileUrl } from "../api/api";
+import { apiFetch, API_BASE, buildFileUrl, getAuthHeaders } from "../api/api";
+import { geocodeAddress } from "../api/geo";
 import SectionBanner from "../components/common/SectionBanner";
 import "../styles/formPages.css";
 import "../styles/pages/EditProfile.css";
-
-function cleanAddressPart(value) {
-  return String(value || "")
-    .replace(/[()[\]{}]/g, " ")
-    .replace(/[;]/g, ",")
-    .replace(/\bjud\.?\b/gi, "judetul")
-    .replace(/\bmun\.?\b/gi, "municipiul")
-    .replace(/\bcom\.?\b/gi, "comuna")
-    .replace(/\bsat\.?\b/gi, "sat")
-    .replace(/\bstr\.?\b/gi, "strada")
-    .replace(/\bnr\.?\b/gi, "numarul")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function uniqueValues(values) {
-  return values.filter((value, index, array) => value && array.indexOf(value) === index);
-}
-
-function getGeocodingQueries(form) {
-  const pickupAddress = cleanAddressPart(form.pickup_address);
-  const location = cleanAddressPart(form.location);
-  const city = cleanAddressPart(form.city);
-
-  return uniqueValues([
-    [pickupAddress, city, "Romania"].filter(Boolean).join(", "),
-    [location, city, "Romania"].filter(Boolean).join(", "),
-    [pickupAddress, location, "Romania"].filter(Boolean).join(", "),
-    [pickupAddress, "Romania"].filter(Boolean).join(", "),
-    [location, "Romania"].filter(Boolean).join(", "),
-    [city, "Romania"].filter(Boolean).join(", "),
-  ]);
-}
 
 function hasProfileAddress(form) {
   return [form.pickup_address, form.location, form.city].some((value) => String(value || "").trim());
@@ -159,31 +127,11 @@ export default function EditProfile() {
       return { lat: form.lat, lng: form.lng };
     }
 
-    const queries = getGeocodingQueries(form);
-
-    if (!queries.length) {
+    if (!hasProfileAddress(form)) {
       return { lat: null, lng: null };
     }
 
-    for (const query of queries) {
-      try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=ro&limit=1&q=${encodeURIComponent(query)}`
-        );
-        const data = await response.json();
-
-        if (Array.isArray(data) && data.length > 0) {
-          return {
-            lat: parseFloat(data[0].lat),
-            lng: parseFloat(data[0].lon),
-          };
-        }
-      } catch (err) {
-        console.error("Profile geocoding failed:", err);
-      }
-    }
-
-    return { lat: null, lng: null };
+    return geocodeAddress(form);
   }
 
   function handleUseCurrentLocation() {
@@ -241,6 +189,7 @@ export default function EditProfile() {
 
     const response = await fetch(`${API_BASE}/auth/user/${userEmail}/upload-logo`, {
       method: "POST",
+      headers: getAuthHeaders(),
       body: formData,
     });
 
@@ -261,6 +210,7 @@ export default function EditProfile() {
 
     const response = await fetch(`${API_BASE}/auth/user/${userEmail}/upload-cover`, {
       method: "POST",
+      headers: getAuthHeaders(),
       body: formData,
     });
 
@@ -281,6 +231,7 @@ export default function EditProfile() {
 
     const response = await fetch(`${API_BASE}/auth/user/${userEmail}/upload-gallery`, {
       method: "POST",
+      headers: getAuthHeaders(),
       body: formData,
     });
 
@@ -359,22 +310,28 @@ export default function EditProfile() {
       <div className="form-container wide edit-profile-container">
         <form
           onSubmit={handleSubmit}
-          className={`form-card edit-profile-card ${userType === "organization" ? "has-media-sidebar" : ""}`}
+          className="form-card edit-profile-card has-media-sidebar"
         >
-          {userType === "organization" && (
-            <section className="edit-profile-section edit-profile-media-section">
-              <div className="edit-profile-section-head">
-                <h2>Profile photos</h2>
-                <p>Update the logo, cover and gallery shown on your organization profile.</p>
-              </div>
+          <section className="edit-profile-section edit-profile-media-section">
+            <div className="edit-profile-section-head">
+              <h2>Profile photo</h2>
+              <p>
+                {userType === "organization"
+                  ? "Update the logo, cover and gallery shown on your organization profile."
+                  : "Update the photo shown on your profile and in conversations."}
+              </p>
+            </div>
 
-              <input
-                ref={logoInputRef}
-                type="file"
-                accept=".png,.jpg,.jpeg,.webp"
-                onChange={(e) => handleLogoFile(e.target.files?.[0])}
-                className="edit-profile-hidden-file"
-              />
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept=".png,.jpg,.jpeg,.webp"
+              onChange={(e) => handleLogoFile(e.target.files?.[0])}
+              className="edit-profile-hidden-file"
+            />
+
+            {userType === "organization" && (
+              <>
               <input
                 ref={coverInputRef}
                 type="file"
@@ -390,21 +347,24 @@ export default function EditProfile() {
                 onChange={(e) => handleGalleryFiles(e.target.files)}
                 className="edit-profile-hidden-file"
               />
+              </>
+            )}
 
-              <div className="edit-profile-photo-stack">
-                <button
-                  type="button"
-                  className="edit-profile-logo-preview"
-                  onClick={() => logoInputRef.current?.click()}
-                >
-                  {logoPreview || form.logo_url ? (
-                    <img src={logoPreview || buildFileUrl(form.logo_url)} alt="Logo" />
-                  ) : (
-                    <span className="edit-profile-media-plus">+</span>
-                  )}
-                  <span>Change logo</span>
-                </button>
+            <div className="edit-profile-photo-stack">
+              <button
+                type="button"
+                className={`edit-profile-logo-preview ${userType !== "organization" ? "user-avatar" : ""}`}
+                onClick={() => logoInputRef.current?.click()}
+              >
+                {logoPreview || form.logo_url ? (
+                  <img src={logoPreview || buildFileUrl(form.logo_url)} alt="Profile" />
+                ) : (
+                  <span className="edit-profile-media-plus">+</span>
+                )}
+                <span>{userType === "organization" ? "Change logo" : "Change photo"}</span>
+              </button>
 
+              {userType === "organization" && (
                 <button
                   type="button"
                   className="edit-profile-cover-preview"
@@ -417,8 +377,10 @@ export default function EditProfile() {
                   )}
                   <span>Change cover</span>
                 </button>
-              </div>
+              )}
+            </div>
 
+            {userType === "organization" && (
               <div className="edit-profile-gallery-block">
                 <div className="edit-profile-gallery-head">
                   <h3>Gallery</h3>
@@ -442,8 +404,8 @@ export default function EditProfile() {
                   </button>
                 </div>
               </div>
-            </section>
-          )}
+            )}
+          </section>
 
           <section className="edit-profile-section">
             <div className="edit-profile-grid">

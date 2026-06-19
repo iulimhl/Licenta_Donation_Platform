@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { apiFetch, buildFileUrl } from "../api/api";
 import NeedCard from "../components/NeedCard";
+import ProfileHeroCard from "../components/profile/ProfileHeroCard";
 import {
   HiOutlineArrowLeft,
   HiOutlineChevronLeft,
@@ -10,9 +11,9 @@ import {
   HiOutlineMapPin,
   HiOutlineGlobeAlt,
   HiOutlinePhone,
-  HiOutlineCheckBadge,
-  HiOutlineCalendarDays,
+  HiOutlineEnvelope,
 } from "react-icons/hi2";
+import "../styles/pages/Profile.css";
 import "../styles/pages/PublicProfile.css";
 
 export default function OrganizationProfile() {
@@ -59,10 +60,42 @@ export default function OrganizationProfile() {
     );
   }
 
-  const isVerified = organization.verification_status === "verified";
   const galleryImages = (organization.gallery_images || []).map(buildFileUrl);
   const needLists = organization.need_lists || [];
   const currentUserEmail = localStorage.getItem("userEmail");
+  const displayLocation = organization.city || organization.location;
+  const coverImage = buildFileUrl(organization.cover_image_url);
+  const avatarImage = buildFileUrl(organization.logo_url);
+  const publicDetails = [
+    {
+      icon: <HiOutlineEnvelope size={18} />,
+      label: "Email",
+      value: organization.email,
+      href: `mailto:${organization.email}`,
+    },
+    organization.phone_visible && organization.phone && {
+      icon: <HiOutlinePhone size={18} />,
+      label: "Phone",
+      value: organization.phone,
+      href: `tel:${organization.phone}`,
+    },
+    displayLocation && {
+      icon: <HiOutlineMapPin size={18} />,
+      label: "Location",
+      value: displayLocation,
+    },
+    organization.website && {
+      icon: <HiOutlineGlobeAlt size={18} />,
+      label: "Website",
+      value: organization.website,
+      href: organization.website.startsWith("http") ? organization.website : `https://${organization.website}`,
+    },
+    organization.pickup_address && {
+      icon: <HiOutlineMapPin size={18} />,
+      label: "Pickup address",
+      value: organization.pickup_address,
+    },
+  ].filter(Boolean);
 
   function openLightbox(images, index = 0, label = "Profile image") {
     setLightbox({ images, index, label, showCounter: images.length > 1 });
@@ -87,130 +120,24 @@ export default function OrganizationProfile() {
         <span>Back</span>
       </button>
 
-      {organization.cover_image_url && (
-        <button
-          type="button"
-          className="public-profile-cover public-profile-image-button"
-          onClick={() =>
-            openLightbox([buildFileUrl(organization.cover_image_url)], 0, "Cover image")
-          }
-        >
-          <img
-            src={buildFileUrl(organization.cover_image_url)}
-            alt="Organization cover"
-          />
-        </button>
-      )}
+      <ProfileHeroCard
+        title={organization.name}
+        subtitle="Organization account"
+        coverImage={coverImage}
+        avatarImage={avatarImage}
+        details={publicDetails}
+        galleryImages={galleryImages}
+        about={organization.description || "No description added yet."}
+        onCoverClick={() => openLightbox([coverImage], 0, "Cover image")}
+        onAvatarClick={() => openLightbox([avatarImage], 0, "Profile image")}
+        onGalleryImageClick={(index) => openLightbox(galleryImages, index, "Gallery image")}
+      />
 
-      <div className="public-profile-card">
-        <div className="public-profile-header">
-          <div className="public-profile-avatar">
-            {organization.logo_url ? (
-              <button
-                type="button"
-                className="public-profile-avatar-button"
-                onClick={() =>
-                  openLightbox([buildFileUrl(organization.logo_url)], 0, "Profile image")
-                }
-              >
-                <img
-                  src={buildFileUrl(organization.logo_url)}
-                  alt={organization.name}
-                />
-              </button>
-            ) : (
-              <span>{organization.name?.charAt(0)?.toUpperCase() || "O"}</span>
-            )}
-          </div>
-
-          <div className="public-profile-main">
-            <div className="public-profile-title-row">
-              <h1 className="public-profile-title">{organization.name}</h1>
-              {isVerified && (
-                <HiOutlineCheckBadge size={24} color="#2f5d34" />
-              )}
-            </div>
-
-            <div className="public-profile-meta-list">
-              {organization.city && (
-                <p className="public-profile-meta">
-                  <HiOutlineMapPin size={16} />
-                  {organization.city}
-                </p>
-              )}
-
-              {organization.pickup_address && (
-                <p className="public-profile-meta">
-                  <HiOutlineMapPin size={16} />
-                  {organization.pickup_address}
-                </p>
-              )}
-
-              {organization.website && (
-                <p className="public-profile-meta">
-                  <HiOutlineGlobeAlt size={16} />
-                  {organization.website}
-                </p>
-              )}
-
-              {organization.phone_visible && organization.phone && (
-                <p className="public-profile-meta">
-                  <HiOutlinePhone size={16} />
-                  <a href={`tel:${organization.phone}`}>{organization.phone}</a>
-                </p>
-              )}
-
-              {organization.founded_year && (
-                <p className="public-profile-meta">
-                  <HiOutlineCalendarDays size={16} />
-                  Founded in {organization.founded_year}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="public-profile-stats">
-          <StatBox
-            label="Active need lists"
-            value={organization.active_need_lists}
-          />
-          <StatBox
-            label="Gallery photos"
-            value={organization.gallery_count || galleryImages.length}
-          />
-        </div>
-
-        <div className="public-profile-section">
-          <h3>About</h3>
-          <p>{organization.description || "No description added yet."}</p>
-        </div>
-
+      <div className="public-profile-card public-profile-content-card">
         {organization.mission && (
           <div className="public-profile-section">
             <h3>Mission</h3>
             <p>{organization.mission}</p>
-          </div>
-        )}
-
-        {galleryImages.length > 0 && (
-          <div className="public-profile-section">
-            <h3>Gallery</h3>
-            <div className="public-profile-gallery">
-              {galleryImages.map((img, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  className="public-profile-gallery-item"
-                  onClick={() => openLightbox(galleryImages, index, "Gallery image")}
-                >
-                  <img
-                    src={img}
-                    alt={`gallery-${index + 1}`}
-                  />
-                </button>
-              ))}
-            </div>
           </div>
         )}
 
@@ -243,15 +170,6 @@ export default function OrganizationProfile() {
           onNext={() => goToLightboxImage(1)}
         />
       )}
-    </div>
-  );
-}
-
-function StatBox({ label, value }) {
-  return (
-    <div className="public-profile-stat">
-      <div className="public-profile-stat-label">{label}</div>
-      <div className="public-profile-stat-value">{value}</div>
     </div>
   );
 }

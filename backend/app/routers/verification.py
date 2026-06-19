@@ -1,11 +1,11 @@
 import os
-import shutil
 import tempfile
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 
+from dependencies.auth import get_current_user, require_admin_user
 from db.database import get_db
 from schemas.verification import (
     OrganizationVerificationRequest,
@@ -21,6 +21,11 @@ from services.semantic_matching_service import (
     semantic_score_to_verification_score,
 )
 from models.user import User
+from services.upload_security import (
+    ALLOWED_DOCUMENT_EXTENSIONS,
+    ALLOWED_DOCUMENT_TYPES,
+    read_limited_upload,
+)
 
 router = APIRouter(prefix="/verification", tags=["verification"])
 
@@ -28,20 +33,15 @@ UPLOAD_DIR = "uploads/verification_documents"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
-def require_admin(admin_email: str | None, db: Session):
-    if not admin_email:
-        raise HTTPException(status_code=403, detail="Admin access required")
-
-    admin = db.query(User).filter(User.email == admin_email).first()
-    if not admin or admin.user_type != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
-
-
 @router.post("/organization", response_model=OrganizationVerificationResponse)
 def verify_organization(
     payload: OrganizationVerificationRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    if current_user.email != payload.email and current_user.user_type != "admin":
+        raise HTTPException(status_code=403, detail="You can only verify your own organization")
+
     result, error = verification_service.verify_organization(
         db=db,
         email=payload.email,
@@ -81,24 +81,18 @@ def get_semantic_name_score(input_name: str, registry_name: str):
 
 @router.post("/extract-document", response_model=OCRExtractResponse)
 async def extract_document_data(file: UploadFile = File(...)):
-    allowed_extensions = (".png", ".jpg", ".jpeg", ".pdf", ".webp")
-
-    if not file.filename.lower().endswith(allowed_extensions):
-        raise HTTPException(status_code=400, detail="Unsupported file type")
-
-    suffix = os.path.splitext(file.filename)[1]
+    content, suffix = await read_limited_upload(file, ALLOWED_DOCUMENT_EXTENSIONS, ALLOWED_DOCUMENT_TYPES)
 
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
-            content = await file.read()
             temp_file.write(content)
             temp_path = temp_file.name
 
         extracted_data = ocr_service.extract_data_from_file(temp_path, file.filename)
         return extracted_data
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"OCR extraction failed: {str(e)}")
+    except Exception:
+        raise HTTPException(status_code=500, detail="OCR extraction failed")
 
     finally:
         try:
@@ -112,8 +106,12 @@ async def extract_document_data(file: UploadFile = File(...)):
 async def upload_verification_document(
     email: str = Form(...),
     file: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    if current_user.email != email and current_user.user_type != "admin":
+        raise HTTPException(status_code=403, detail="You can only upload documents for your own account")
+
     user = db.query(User).filter(User.email == email).first()
 
     if not user:
@@ -122,17 +120,13 @@ async def upload_verification_document(
     if user.user_type != "organization":
         raise HTTPException(status_code=400, detail="Only organizations can upload verification documents")
 
-    allowed_extensions = (".png", ".jpg", ".jpeg", ".pdf", ".webp")
-    if not file.filename.lower().endswith(allowed_extensions):
-        raise HTTPException(status_code=400, detail="Unsupported file type")
-
-    ext = os.path.splitext(file.filename)[1]
+    content, ext = await read_limited_upload(file, ALLOWED_DOCUMENT_EXTENSIONS, ALLOWED_DOCUMENT_TYPES)
     safe_name = f"{uuid4().hex}{ext}"
     save_path = os.path.join(UPLOAD_DIR, safe_name)
 
     try:
         with open(save_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+            buffer.write(content)
 
         user.document_url = f"/uploads/verification_documents/{safe_name}"
         db.commit()
@@ -142,14 +136,15 @@ async def upload_verification_document(
             "message": "Document uploaded successfully",
             "document_url": user.document_url
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Document upload failed: {str(e)}")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Document upload failed")
 
 
 @router.get("/pending")
-def get_pending_organizations(admin_email: str | None = None, db: Session = Depends(get_db)):
-    require_admin(admin_email, db)
-
+def get_pending_organizations(
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin_user),
+):
     orgs = db.query(User).filter(
         User.user_type == "organization",
         User.verification_status == "pending"
@@ -174,9 +169,11 @@ def get_pending_organizations(admin_email: str | None = None, db: Session = Depe
 
 
 @router.patch("/approve/{user_id}")
-def approve_organization(user_id: int, admin_email: str | None = None, db: Session = Depends(get_db)):
-    require_admin(admin_email, db)
-
+def approve_organization(
+    user_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin_user),
+):
     org = db.query(User).filter(User.id == user_id, User.user_type == "organization").first()
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
@@ -190,9 +187,11 @@ def approve_organization(user_id: int, admin_email: str | None = None, db: Sessi
 
 
 @router.patch("/reject/{user_id}")
-def reject_organization(user_id: int, admin_email: str | None = None, db: Session = Depends(get_db)):
-    require_admin(admin_email, db)
-
+def reject_organization(
+    user_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin_user),
+):
     org = db.query(User).filter(User.id == user_id, User.user_type == "organization").first()
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")

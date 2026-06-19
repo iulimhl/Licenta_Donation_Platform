@@ -17,6 +17,15 @@ class NeedCreate(BaseModel):
     lng: float | None = None
     items: List[NeedItem]
 
+class NeedUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    location: str | None = None
+    image: str | None = None
+    lat: float | None = None
+    lng: float | None = None
+    items: List[NeedItem] | None = None
+
 class NeedResponse(BaseModel):
     id: int
     title: str

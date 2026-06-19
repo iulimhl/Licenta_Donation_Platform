@@ -15,4 +15,4 @@ class NeedModel(Base):
     lat = Column(Float, nullable=True)
     lng = Column(Float, nullable=True)
     items = Column(JSON, default=list)
-
+    item_embeddings = Column(JSON, nullable=True)

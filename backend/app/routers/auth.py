@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from db.database import get_db
+from dependencies.auth import get_current_user, require_self_or_admin
 from schemas.auth import (
     UserCreate,
     UserLogin,
@@ -11,10 +12,14 @@ from schemas.auth import (
     UserPublicResponse,
 )
 from services import auth_service
+from services.token_service import create_auth_token
+from services.upload_security import (
+    ALLOWED_IMAGE_EXTENSIONS,
+    ALLOWED_IMAGE_TYPES,
+    read_limited_upload,
+)
 from models.user import User
-import os
 import json
-import shutil
 import uuid
 from pathlib import Path
 
@@ -33,7 +38,11 @@ def register_user(payload: UserCreate, db: Session = Depends(get_db)):
 
     return {
         "message": "Cont creat cu succes!",
-        "user_type": new_user.user_type
+        "email": new_user.email,
+        "user_type": new_user.user_type,
+        "name": new_user.name,
+        "verification_status": new_user.verification_status,
+        "auth_token": create_auth_token(new_user.email),
     }
 
 
@@ -49,12 +58,18 @@ def login_user(payload: UserLogin, db: Session = Depends(get_db)):
         "email": user.email,
         "user_type": user.user_type,
         "name": user.name,
-        "verification_status": user.verification_status
+        "verification_status": user.verification_status,
+        "auth_token": create_auth_token(user.email),
     }
 
 
 @router.get("/user/{email}", response_model=UserResponse)
-def get_user_info(email: str, db: Session = Depends(get_db)):
+def get_user_info(
+    email: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_self_or_admin(email, current_user)
     user = auth_service.get_user_by_email(db, email)
 
     if not user:
@@ -95,7 +110,13 @@ def get_public_user_profile(email: str, db: Session = Depends(get_db)):
 
 
 @router.patch("/user/{email}", response_model=UserResponse)
-def update_user_info(email: str, payload: UserUpdate, db: Session = Depends(get_db)):
+def update_user_info(
+    email: str,
+    payload: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_self_or_admin(email, current_user)
     user = auth_service.update_user_profile(db, email, payload)
 
     if not user:
@@ -125,26 +146,27 @@ def update_user_info(email: str, payload: UserUpdate, db: Session = Depends(get_
     }
 
 
-def save_uploaded_file(file: UploadFile, folder: Path):
+async def save_uploaded_file(file: UploadFile, folder: Path):
     folder.mkdir(parents=True, exist_ok=True)
 
-    extension = os.path.splitext(file.filename)[1].lower()
-    allowed_extensions = {".png", ".jpg", ".jpeg", ".webp"}
-
-    if extension not in allowed_extensions:
-        raise HTTPException(status_code=400, detail="Unsupported image type")
-
+    content, extension = await read_limited_upload(file, ALLOWED_IMAGE_EXTENSIONS, ALLOWED_IMAGE_TYPES)
     unique_name = f"{uuid.uuid4().hex}{extension}"
     file_path = folder / unique_name
 
     with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        buffer.write(content)
 
     return file_path
 
 
 @router.post("/user/{email}/upload-logo")
-def upload_logo(email: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def upload_logo(
+    email: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_self_or_admin(email, current_user)
     user = db.query(User).filter(User.email == email).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -152,7 +174,7 @@ def upload_logo(email: str, file: UploadFile = File(...), db: Session = Depends(
     safe_email = email.replace("@", "_").replace(".", "_")
     folder = UPLOADS_DIR / "profiles" / safe_email / "logo"
 
-    saved_path = save_uploaded_file(file, folder)
+    saved_path = await save_uploaded_file(file, folder)
 
     relative_url = "/" + saved_path.relative_to(BASE_DIR).as_posix()
     user.logo_url = relative_url
@@ -164,7 +186,13 @@ def upload_logo(email: str, file: UploadFile = File(...), db: Session = Depends(
 
 
 @router.post("/user/{email}/upload-cover")
-def upload_cover(email: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def upload_cover(
+    email: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_self_or_admin(email, current_user)
     user = db.query(User).filter(User.email == email).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -172,7 +200,7 @@ def upload_cover(email: str, file: UploadFile = File(...), db: Session = Depends
     safe_email = email.replace("@", "_").replace(".", "_")
     folder = UPLOADS_DIR / "profiles" / safe_email / "cover"
 
-    saved_path = save_uploaded_file(file, folder)
+    saved_path = await save_uploaded_file(file, folder)
 
     relative_url = "/" + saved_path.relative_to(BASE_DIR).as_posix()
     user.cover_image_url = relative_url
@@ -184,7 +212,13 @@ def upload_cover(email: str, file: UploadFile = File(...), db: Session = Depends
 
 
 @router.post("/user/{email}/upload-gallery")
-def upload_gallery(email: str, files: list[UploadFile] = File(...), db: Session = Depends(get_db)):
+async def upload_gallery(
+    email: str,
+    files: list[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_self_or_admin(email, current_user)
     user = db.query(User).filter(User.email == email).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -201,7 +235,7 @@ def upload_gallery(email: str, files: list[UploadFile] = File(...), db: Session 
 
     new_images = []
     for file in files:
-        saved_path = save_uploaded_file(file, folder)
+        saved_path = await save_uploaded_file(file, folder)
         relative_url = "/" + saved_path.relative_to(BASE_DIR).as_posix()
         new_images.append(relative_url)
 

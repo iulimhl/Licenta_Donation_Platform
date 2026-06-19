@@ -5,12 +5,14 @@ import { apiFetch } from "../api/api";
 import SectionBanner from "../components/common/SectionBanner";
 import { donationCategories } from "../constants/donationCategories";
 import { isAdminUser } from "../utils/auth";
+import { useLanguage } from "../i18n/LanguageContext";
 import "../styles/listingPages.css";
 
 export default function Donations() {
   const navigate = useNavigate();
   const userEmail = localStorage.getItem("userEmail");
   const isAdmin = isAdminUser();
+  const { t } = useLanguage();
 
   const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
@@ -45,18 +47,18 @@ export default function Donations() {
       });
 
       if (!response.ok) {
-        alert(data?.detail || "Could not update donation status.");
+        alert(data?.detail || t("donations.updateError"));
         return;
       }
 
       setItems((prev) => prev.map((item) => (item.id === id ? data : item)));
     } catch (err) {
       console.error("Network error:", err);
-      alert("Could not contact the server.");
+      alert(t("donations.networkError"));
     }
   }
 
-  const categories = [{ value: "all", label: "All categories" }, ...donationCategories];
+  const categories = [{ value: "all", label: t("donations.allCategories") }, ...donationCategories];
 
   const filteredItems = useMemo(() => {
     const query = q.trim().toLowerCase();
@@ -80,7 +82,7 @@ export default function Donations() {
   if (loading) {
     return (
       <div className="listing-loading">
-        <h3>Loading donations...</h3>
+        <h3>{t("donations.loading")}</h3>
       </div>
     );
   }
@@ -88,8 +90,8 @@ export default function Donations() {
   return (
     <div className="listing-page">
       <SectionBanner
-        title="Donations"
-        subtitle="Browse available donated items or post something you no longer need."
+        title={t("donations.title")}
+        subtitle={t("donations.subtitle")}
       />
 
       <div className="listing-shell">
@@ -100,7 +102,7 @@ export default function Donations() {
                 type="text"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Search by title or location..."
+                placeholder={t("donations.search")}
                 className="listing-search-input"
               />
             </div>
@@ -110,7 +112,7 @@ export default function Donations() {
                 onClick={() => navigate("/postdonation")}
                 className="listing-add-button"
               >
-                + Add donation
+                {t("donations.add")}
               </button>
             )}
           </div>
@@ -144,8 +146,8 @@ export default function Donations() {
             </div>
           ) : (
             <div className="listing-empty-state">
-              <h3>No donations found</h3>
-              <p>Try another search, choose a different category, or post a new donation.</p>
+              <h3>{t("donations.emptyTitle")}</h3>
+              <p>{t("donations.emptyText")}</p>
             </div>
           )}
         </div>

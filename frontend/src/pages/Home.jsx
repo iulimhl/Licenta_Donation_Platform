@@ -9,6 +9,7 @@ import howImpactImg from "../assets/how-impact.png";
 import { HiOutlineArrowRight } from "react-icons/hi2";
 import SectionBanner from "../components/common/SectionBanner";
 import { isAdminUser } from "../utils/auth";
+import { useLanguage } from "../i18n/LanguageContext";
 import "../styles/pages/Home.css";
 
 export default function Home() {
@@ -24,6 +25,7 @@ export default function Home() {
   const userEmail = localStorage.getItem("userEmail");
   const userType = localStorage.getItem("userType");
   const isAdmin = isAdminUser();
+  const { t } = useLanguage();
 
   const primaryActionPath = isAdmin
     ? "/admin/verifications"
@@ -32,10 +34,10 @@ export default function Home() {
       : "/postdonation";
 
   const primaryActionLabel = isAdmin
-    ? "Open admin panel"
+    ? t("home.adminAction")
     : userType === "organization"
-      ? "Post a requirements list"
-      : "Donate an item";
+      ? t("home.organizationAction")
+      : t("home.donorAction");
 
   useEffect(() => {
     async function loadFeed() {
@@ -100,15 +102,15 @@ export default function Home() {
       );
     } catch (err) {
       console.error("Network error:", err);
-      alert("Could not contact the server.");
+      alert(t("donations.networkError"));
     }
   }
 
   return (
     <div className="home-page">
       <SectionBanner
-        title="Give your items a second life"
-        subtitle="Donate things you no longer need, support local organizations, and make a real impact in your community."
+        title={t("home.title")}
+        subtitle={t("home.subtitle")}
         actions={
           <button
             onClick={() => navigate(primaryActionPath)}
@@ -118,36 +120,36 @@ export default function Home() {
           </button>
         }
         stats={[
-          { value: stats.availableItems, label: "Available items" },
-          { value: stats.needLists, label: "Need lists" },
-          { value: stats.completedDonations, label: "Completed donations" },
+          { value: stats.availableItems, label: t("home.availableItems") },
+          { value: stats.needLists, label: t("home.needLists") },
+          { value: stats.completedDonations, label: t("home.completedDonations") },
         ]}
       />
 
       <div className="home-content">
         <section className="home-steps-section">
           <div className="home-section-header">
-            <h2>Donate in 3 simple steps</h2>
-            <p>A simple process for donors, recipients, and organizations.</p>
+            <h2>{t("home.stepsTitle")}</h2>
+            <p>{t("home.stepsSubtitle")}</p>
           </div>
 
           <div className="home-steps-grid">
             <StepCard
               image={howPostImg}
-              title="Post your item or check need lists"
-              text="Upload an item you no longer need and make it visible to people and organizations."
+              title={t("home.stepPostTitle")}
+              text={t("home.stepPostText")}
             />
 
             <StepCard
               image={howChatImg}
-              title="Connect in chat"
-              text="Use direct messages to discuss details, availability, and pickup."
+              title={t("home.stepChatTitle")}
+              text={t("home.stepChatText")}
             />
 
             <StepCard
               image={howImpactImg}
-              title="Make an impact"
-              text="Complete the handoff and help reduce waste in your local community."
+              title={t("home.stepImpactTitle")}
+              text={t("home.stepImpactText")}
             />
           </div>
         </section>
@@ -155,15 +157,15 @@ export default function Home() {
         <section className="home-recent-section">
           <div className="home-recent-header">
             <div>
-              <h2>Recently added</h2>
-              <p>A quick preview of the latest activity on the platform.</p>
+              <h2>{t("home.recentlyAdded")}</h2>
+              <p>{t("home.recentlyAddedSubtitle")}</p>
             </div>
           </div>
 
           {loading ? (
-            <div className="home-loading-box">Loading recent activity...</div>
+            <div className="home-loading-box">{t("home.loading")}</div>
           ) : recentItems.length === 0 ? (
-            <div className="home-loading-box">No recent activity yet.</div>
+            <div className="home-loading-box">{t("home.empty")}</div>
           ) : (
             <div className="home-recent-grid">
               {recentItems.map((item) =>
@@ -190,8 +192,8 @@ export default function Home() {
                 <div className="home-view-all-icon">
                   <HiOutlineArrowRight size={28} />
                 </div>
-                <h3>View All</h3>
-              <p>Explore all donations</p>
+                <h3>{t("home.viewAll")}</h3>
+                <p>{t("home.exploreAll")}</p>
               </div>
             </div>
           )}

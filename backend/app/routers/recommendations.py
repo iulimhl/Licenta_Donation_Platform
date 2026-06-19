@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from db.database import get_db
-from schemas.recommendation import NeedRecommendationsResponse
+from schemas.recommendation import DonationRecommendationsResponse, NeedRecommendationsResponse
 from services import recommendations_service
 
 router = APIRouter(prefix="/recommendations", tags=["recommendations"])
@@ -24,5 +24,25 @@ def get_need_recommendations(
 
     if result is None:
         raise HTTPException(status_code=404, detail="Need list not found")
+
+    return result
+
+
+@router.get("/donations/{donation_id}", response_model=DonationRecommendationsResponse)
+def get_donation_recommendations(
+    donation_id: int,
+    limit: int = 6,
+    min_score: float = 58,
+    db: Session = Depends(get_db),
+):
+    result = recommendations_service.get_donation_recommendations(
+        db=db,
+        donation_id=donation_id,
+        limit=limit,
+        min_score=min_score,
+    )
+
+    if result is None:
+        raise HTTPException(status_code=404, detail="Donation not found")
 
     return result

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Float, DateTime
+from sqlalchemy import Column, Integer, String, Text, Float, DateTime, JSON
 from datetime import datetime
 from db.database import Base
 
@@ -16,4 +16,5 @@ class DonationModel(Base):
     reserved_by_email = Column(String, nullable=True)
     lat = Column(Float, nullable=True)
     lng = Column(Float, nullable=True)
+    recommendation_embedding = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

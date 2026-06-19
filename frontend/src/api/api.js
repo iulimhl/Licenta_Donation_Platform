@@ -7,10 +7,16 @@ export function buildFileUrl(path) {
   return `${API_BASE}${path}`;
 }
 
+export function getAuthHeaders() {
+  const token = localStorage.getItem("authToken");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export async function apiFetch(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
     headers: {
       "Content-Type": "application/json",
+      ...getAuthHeaders(),
       ...(options.headers || {}),
     },
     ...options,

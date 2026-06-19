@@ -67,6 +67,19 @@
   border: 1px solid #e2e8f0;
 }
 
+.need-items-editor__existing-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 82px;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.need-items-editor__existing-fields .need-items-editor__input {
+  padding: 9px 10px;
+  font-size: 14px;
+}
+
 .need-items-editor__item span {
   color: #0f172a;
   font-weight: 700;
@@ -88,6 +101,15 @@
 @media (max-width: 640px) {
   .need-items-editor__row,
   .need-items-editor__row.compact {
+    grid-template-columns: 1fr;
+  }
+
+  .need-items-editor__item {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .need-items-editor__existing-fields {
     grid-template-columns: 1fr;
   }
 }

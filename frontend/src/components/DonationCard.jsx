@@ -55,7 +55,14 @@ export default function DonationCard({
       navigate("/login");
       return;
     }
-    navigate(`/chat/${encodeURIComponent(donation.owner_email)}?donationId=${donation.id}`);
+
+    const params = new URLSearchParams({
+      donationId: String(donation.id),
+      draftType: "reserve",
+      draft: `I want to reserve "${donation.title}". Could we discuss the pickup details?`,
+    });
+
+    navigate(`/chat/${encodeURIComponent(donation.owner_email)}?${params.toString()}`);
   }
 
   function handleDelete(e) {

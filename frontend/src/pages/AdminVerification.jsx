@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch, API_BASE } from "../api/api";
 import {
@@ -17,7 +17,10 @@ import {
 } from "react-icons/hi2";
 import { GoChecklist } from "react-icons/go";
 import { isAdminUser } from "../utils/auth";
+import SectionBanner from "../components/common/SectionBanner";
 import "../styles/pages/AdminVerification.css";
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50];
 
 export default function AdminVerification() {
   const navigate = useNavigate();
@@ -32,6 +35,11 @@ export default function AdminVerification() {
   const [activeTab, setActiveTab] = useState("verifications");
   const [donations, setDonations] = useState([]);
   const [needs, setNeeds] = useState([]);
+  const [moderationSearch, setModerationSearch] = useState("");
+  const [moderationStatus, setModerationStatus] = useState("all");
+  const [moderationSort, setModerationSort] = useState("newest");
+  const [moderationPage, setModerationPage] = useState(1);
+  const [moderationPageSize, setModerationPageSize] = useState(10);
 
   useEffect(() => {
     if (!userEmail) {
@@ -58,6 +66,39 @@ export default function AdminVerification() {
       loadNeedsForModeration();
     }
   }, [activeTab, isAdmin]);
+
+  useEffect(() => {
+    setModerationSearch("");
+    setModerationStatus("all");
+    setModerationSort("newest");
+    setModerationPage(1);
+  }, [activeTab]);
+
+  useEffect(() => {
+    setModerationPage(1);
+  }, [moderationSearch, moderationStatus, moderationSort, moderationPageSize]);
+
+  const moderationType = activeTab === "needs" ? "needs" : "donations";
+  const moderationSourceItems = moderationType === "needs" ? needs : donations;
+  const filteredModerationItems = useMemo(
+    () =>
+      activeTab === "verifications"
+        ? []
+        : filterModerationItems(
+            moderationSourceItems,
+            moderationType,
+            moderationSearch,
+            moderationStatus,
+            moderationSort
+          ),
+    [activeTab, moderationSourceItems, moderationSearch, moderationSort, moderationStatus, moderationType]
+  );
+  const moderationTotalPages = Math.max(1, Math.ceil(filteredModerationItems.length / moderationPageSize));
+  const moderationSafePage = Math.min(moderationPage, moderationTotalPages);
+  const paginatedModerationItems = filteredModerationItems.slice(
+    (moderationSafePage - 1) * moderationPageSize,
+    moderationSafePage * moderationPageSize
+  );
 
   async function loadPendingOrganizations() {
     try {
@@ -224,22 +265,10 @@ export default function AdminVerification() {
 
   return (
     <div className="admin-verification-page">
-      <section className="admin-verification-hero">
-        <div className="admin-verification-hero-overlay" />
-
-        <div className="admin-verification-hero-content">
-          <div className="admin-verification-eyebrow">
-            <HiOutlineShieldCheck size={16} />
-            <span>Admin panel</span>
-          </div>
-
-          <h1 className="admin-verification-title">Admin Panel</h1>
-
-          <p className="admin-verification-subtitle">
-            Review organization accounts and moderate public platform content.
-          </p>
-        </div>
-      </section>
+      <SectionBanner
+        title="Admin Panel"
+        subtitle="Review organization accounts and moderate public platform content."
+      />
 
       <div className="admin-verification-container">
         <div className="admin-tabs">
@@ -389,10 +418,24 @@ export default function AdminVerification() {
 
         {activeTab === "donations" && (
           <ModerationList
+            type="donations"
             loading={moderationLoading}
             emptyTitle="No donations to moderate"
             emptyText="There are no donation posts available right now."
-            items={donations}
+            items={paginatedModerationItems}
+            totalItems={donations.length}
+            filteredCount={filteredModerationItems.length}
+            page={moderationSafePage}
+            pageSize={moderationPageSize}
+            totalPages={moderationTotalPages}
+            search={moderationSearch}
+            status={moderationStatus}
+            sort={moderationSort}
+            onSearchChange={setModerationSearch}
+            onStatusChange={setModerationStatus}
+            onSortChange={setModerationSort}
+            onPageChange={setModerationPage}
+            onPageSizeChange={setModerationPageSize}
             renderItem={(donation) => (
               <div key={donation.id} className="admin-moderation-card">
                 <div>
@@ -424,10 +467,24 @@ export default function AdminVerification() {
 
         {activeTab === "needs" && (
           <ModerationList
+            type="needs"
             loading={moderationLoading}
             emptyTitle="No need lists to moderate"
             emptyText="There are no organization need lists available right now."
-            items={needs}
+            items={paginatedModerationItems}
+            totalItems={needs.length}
+            filteredCount={filteredModerationItems.length}
+            page={moderationSafePage}
+            pageSize={moderationPageSize}
+            totalPages={moderationTotalPages}
+            search={moderationSearch}
+            status={moderationStatus}
+            sort={moderationSort}
+            onSearchChange={setModerationSearch}
+            onStatusChange={setModerationStatus}
+            onSortChange={setModerationSort}
+            onPageChange={setModerationPage}
+            onPageSizeChange={setModerationPageSize}
             renderItem={(need) => (
               <div key={need.id} className="admin-moderation-card">
                 <div>
@@ -547,6 +604,79 @@ function getScoreLabel(score) {
   return "No match";
 }
 
+function getNeedStatus(need) {
+  const items = Array.isArray(need.items) ? need.items : [];
+
+  if (!items.length) {
+    return "open";
+  }
+
+  const completed = items.every((item) => {
+    const quantity = Number(item.quantity || 0);
+    const brought = Number(item.brought || 0);
+    return quantity > 0 && brought >= quantity;
+  });
+
+  return completed ? "completed" : "open";
+}
+
+function getModerationSearchText(item, type) {
+  if (type === "needs") {
+    const itemNames = Array.isArray(item.items)
+      ? item.items.map((needItem) => needItem.name).join(" ")
+      : "";
+
+    return [
+      item.title,
+      item.description,
+      item.location,
+      item.organization_name,
+      item.organization_email,
+      itemNames,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+  }
+
+  return [
+    item.title,
+    item.description,
+    item.category,
+    item.location,
+    item.status,
+    item.donor_name,
+    item.owner_email,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function filterModerationItems(items, type, search, status, sort) {
+  const normalizedSearch = search.trim().toLowerCase();
+
+  return [...items]
+    .filter((item) => {
+      const itemStatus = type === "needs" ? getNeedStatus(item) : item.status || "available";
+      const matchesStatus = status === "all" || itemStatus === status;
+      const matchesSearch =
+        !normalizedSearch || getModerationSearchText(item, type).includes(normalizedSearch);
+
+      return matchesStatus && matchesSearch;
+    })
+    .sort((first, second) => {
+      if (sort === "title") {
+        return (first.title || "").localeCompare(second.title || "");
+      }
+
+      const firstDate = new Date(first.created_at || 0).getTime();
+      const secondDate = new Date(second.created_at || 0).getTime();
+
+      return sort === "oldest" ? firstDate - secondDate : secondDate - firstDate;
+    });
+}
+
 function InfoRow({ icon, label, value }) {
   return (
     <div className="admin-info-row">
@@ -560,7 +690,27 @@ function InfoRow({ icon, label, value }) {
   );
 }
 
-function ModerationList({ loading, emptyTitle, emptyText, items, renderItem }) {
+function ModerationList({
+  type,
+  loading,
+  emptyTitle,
+  emptyText,
+  items,
+  totalItems,
+  filteredCount,
+  page,
+  pageSize,
+  totalPages,
+  search,
+  status,
+  sort,
+  onSearchChange,
+  onStatusChange,
+  onSortChange,
+  onPageChange,
+  onPageSizeChange,
+  renderItem,
+}) {
   if (loading) {
     return (
       <div className="admin-verification-loading">
@@ -569,18 +719,106 @@ function ModerationList({ loading, emptyTitle, emptyText, items, renderItem }) {
     );
   }
 
-  if (items.length === 0) {
-    return (
-      <div className="admin-verification-empty">
-        <h3>{emptyTitle}</h3>
-        <p>{emptyText}</p>
-      </div>
-    );
-  }
+  const startItem = filteredCount === 0 ? 0 : (page - 1) * pageSize + 1;
+  const endItem = Math.min(page * pageSize, filteredCount);
+  const statusOptions =
+    type === "needs"
+      ? [
+          { value: "all", label: "All statuses" },
+          { value: "open", label: "Open" },
+          { value: "completed", label: "Completed" },
+        ]
+      : [
+          { value: "all", label: "All statuses" },
+          { value: "available", label: "Available" },
+          { value: "reserved", label: "Reserved" },
+          { value: "inactive", label: "Inactive" },
+        ];
 
   return (
-    <div className="admin-moderation-list">
-      {items.map(renderItem)}
+    <div className="admin-moderation-panel">
+      <div className="admin-moderation-toolbar">
+        <input
+          type="search"
+          value={search}
+          onChange={(event) => onSearchChange(event.target.value)}
+          placeholder={type === "needs" ? "Search by title, organization, location, or item..." : "Search by title, owner, location, category..."}
+        />
+
+        <select value={status} onChange={(event) => onStatusChange(event.target.value)}>
+          {statusOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+
+        <select value={sort} onChange={(event) => onSortChange(event.target.value)}>
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="title">Title A-Z</option>
+        </select>
+
+        <select
+          value={pageSize}
+          onChange={(event) => onPageSizeChange(Number(event.target.value))}
+          aria-label="Items per page"
+        >
+          {PAGE_SIZE_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option} per page
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="admin-moderation-summary">
+        {filteredCount > 0 ? (
+          <span>
+            Showing {startItem}-{endItem} of {filteredCount}
+            {filteredCount !== totalItems ? ` filtered from ${totalItems}` : ""} posts
+          </span>
+        ) : (
+          <span>{totalItems} posts in this moderation queue</span>
+        )}
+      </div>
+
+      {items.length === 0 ? (
+        <div className="admin-verification-empty">
+          <h3>{totalItems > 0 ? "No matching posts" : emptyTitle}</h3>
+          <p>{totalItems > 0 ? "Try another search term or status filter." : emptyText}</p>
+        </div>
+      ) : (
+        <div className="admin-moderation-list">
+          {items.map(renderItem)}
+        </div>
+      )}
+
+      {filteredCount > 0 && (
+        <div className="admin-moderation-pagination">
+          <span>
+            Page {page} of {totalPages}
+          </span>
+
+          <div className="admin-moderation-page-buttons">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => onPageChange(page - 1)}
+            >
+              Previous
+            </button>
+
+            <button
+              type="button"
+              disabled={page >= totalPages}
+              onClick={() => onPageChange(page + 1)}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

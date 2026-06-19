@@ -8,8 +8,14 @@ from models.donation import DonationModel
 from models.need import NeedModel
 from models.user import User
 from services.semantic_matching_service import (
+    cosine_similarity,
     is_semantic_matching_available,
-    semantic_name_score,
+)
+from services.embedding_storage_service import (
+    build_donation_recommendation_text,
+    build_need_item_recommendation_text,
+    ensure_donation_embedding,
+    ensure_need_item_embedding,
 )
 
 
@@ -66,21 +72,11 @@ def get_first_image(image_value):
 
 
 def build_need_text(need, item):
-    parts = [
-        item.get("name"),
-        need.title,
-        need.description,
-    ]
-    return ". ".join(str(part) for part in parts if part)
+    return build_need_item_recommendation_text(need, item)
 
 
 def build_donation_text(donation):
-    parts = [
-        donation.title,
-        donation.category,
-        donation.description,
-    ]
-    return ". ".join(str(part) for part in parts if part)
+    return build_donation_recommendation_text(donation)
 
 
 def lexical_bonus(item_name, donation):
@@ -106,14 +102,13 @@ def lexical_bonus(item_name, donation):
     return min(bonus, 75)
 
 
-def score_match(need, item, donation):
-    semantic_score = semantic_name_score(
-        build_need_text(need, item),
-        build_donation_text(donation),
-        force=True,
-    )
+def score_match(need, item_index, item, donation):
+    need_embedding = ensure_need_item_embedding(need, item_index, item)
+    donation_embedding = ensure_donation_embedding(donation)
 
-    if semantic_score is None:
+    if need_embedding and donation_embedding:
+        semantic_score = round(cosine_similarity(need_embedding, donation_embedding) * 100, 2)
+    else:
         semantic_score = 0
 
     match_score = min(100, semantic_score + lexical_bonus(item.get("name"), donation))
@@ -144,7 +139,7 @@ def get_need_recommendations(db: Session, need_id: int, limit: int = 3, min_scor
 
         matches = []
         for donation in donations:
-            semantic_score, match_score = score_match(need, item, donation)
+            semantic_score, match_score = score_match(need, item_index, item, donation)
             if match_score < min_score:
                 continue
 
@@ -172,8 +167,62 @@ def get_need_recommendations(db: Session, need_id: int, limit: int = 3, min_scor
             "matches": matches[:limit],
         })
 
+    db.commit()
     return {
         "need_id": need.id,
         "model_available": is_semantic_matching_available(),
         "recommendations": recommendations,
+    }
+
+
+def get_donation_recommendations(db: Session, donation_id: int, limit: int = 6, min_score: float = 58):
+    donation = db.query(DonationModel).filter(DonationModel.id == donation_id).first()
+    if not donation:
+        return None
+
+    needs = db.query(NeedModel).all()
+    organization_emails = {need.organization_email for need in needs if need.organization_email}
+    organizations = {
+        user.email: user
+        for user in db.query(User).filter(User.email.in_(organization_emails)).all()
+    } if organization_emails else {}
+
+    recommendations = []
+
+    for need in needs:
+        for item_index, item in enumerate(need.items or []):
+            quantity = int(item.get("quantity") or 0)
+            brought = int(item.get("brought") or 0)
+            remaining = max(quantity - brought, 0)
+
+            if remaining <= 0:
+                continue
+
+            semantic_score, match_score = score_match(need, item_index, item, donation)
+            if match_score < min_score:
+                continue
+
+            organization = organizations.get(need.organization_email)
+            recommendations.append({
+                "need_id": need.id,
+                "title": need.title,
+                "location": need.location,
+                "organization_email": need.organization_email,
+                "organization_name": organization.name if organization else "Organization",
+                "item_index": item_index,
+                "item_name": item.get("name") or "",
+                "needed_quantity": quantity,
+                "brought_quantity": brought,
+                "remaining_quantity": remaining,
+                "semantic_score": semantic_score,
+                "match_score": match_score,
+            })
+
+    db.commit()
+    recommendations.sort(key=lambda recommendation: recommendation["match_score"], reverse=True)
+
+    return {
+        "donation_id": donation.id,
+        "model_available": is_semantic_matching_available(),
+        "recommendations": recommendations[:limit],
     }

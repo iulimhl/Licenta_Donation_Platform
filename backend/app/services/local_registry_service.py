@@ -33,14 +33,26 @@ def normalize_text(value):
     value = "".join(ch for ch in value if unicodedata.category(ch) != "Mn")
     value = re.sub(r"[^a-z0-9\s]", " ", value)
     value = re.sub(r"\s+", " ", value)
-    return value
+    return value.strip()
 
 
 def normalize_cif(value):
     if value is None:
         return ""
+    if pd.isna(value):
+        return ""
+
+    if not isinstance(value, str):
+        try:
+            numeric_value = float(value)
+            if numeric_value.is_integer():
+                value = str(int(numeric_value))
+        except (TypeError, ValueError):
+            pass
+
     value = str(value).strip().lower()
     value = value.replace("ro", "")
+    value = re.sub(r"\.0+$", "", value)
     value = re.sub(r"[^0-9]", "", value)
     return value
 
@@ -116,7 +128,10 @@ def score_name_match(input_name, row_name):
     if input_name == row_name:
         return 100
 
-    if input_name in row_name or row_name in input_name:
+    shorter_name = input_name if len(input_name) < len(row_name) else row_name
+    shorter_words = [word for word in shorter_name.split() if len(word) > 2]
+
+    if len(shorter_name) >= 5 and shorter_words and (input_name in row_name or row_name in input_name):
         return 70
 
     input_words = set(input_name.split())
@@ -219,13 +234,12 @@ def search_social_registry(df, name, cif):
                     "score": 100,
                 }
 
-            score = 30
-            if row_name_score == 70:
-                score += 50
-            elif row_name_score >= 35:
-                score += 30
+            if row_name_score >= 35:
+                score = 100
             elif row_name_score > 0:
-                score += 10
+                score = 85
+            else:
+                score = 70
         else:
             score = 0
             if row_name_score == 100:

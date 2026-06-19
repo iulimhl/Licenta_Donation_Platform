@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from models.message import Message
+from models.user import User
 
 def create_message(db: Session, sender_email: str, recipient_email: str, content: str, donation_id: int | None = None, need_id: int | None = None):
     db_message = Message(
@@ -42,12 +43,19 @@ def get_inbox(db: Session, user_email: str):
     ).order_by(Message.created_at.desc()).all()
 
     conversations = {}
+    other_emails = {
+        msg.recipient_email if msg.sender_email == user_email else msg.sender_email
+        for msg in messages
+    }
+    users = db.query(User).filter(User.email.in_(other_emails)).all() if other_emails else []
+    user_lookup = {user.email: user for user in users}
 
     for msg in messages:
         other_email = msg.recipient_email if msg.sender_email == user_email else msg.sender_email
         key = (other_email, msg.donation_id, msg.need_id)
 
         if key not in conversations:
+            other_user = user_lookup.get(other_email)
             unread = db.query(Message).filter(
                 (Message.recipient_email == user_email) &
                 (Message.sender_email == other_email) &
@@ -58,6 +66,8 @@ def get_inbox(db: Session, user_email: str):
 
             conversations[key] = {
                 "other_email": other_email,
+                "other_name": other_user.name if other_user else None,
+                "other_logo_url": other_user.logo_url if other_user else None,
                 "donation_id": msg.donation_id,
                 "need_id": msg.need_id,
                 "last_message": msg.content,

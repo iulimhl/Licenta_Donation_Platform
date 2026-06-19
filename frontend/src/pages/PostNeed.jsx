@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/api";
 import { reverseGeocode, getShortAddress } from "../api/geo";
 import NeedItemsEditor from "../components/NeedItemsEditor";
+import SectionBanner from "../components/common/SectionBanner";
 import "../styles/formPages.css";
 
 export default function PostNeed() {
@@ -194,9 +195,9 @@ export default function PostNeed() {
 
 function FormBanner() {
   return (
-    <section className="form-banner">
-      <h1>Post a requirement list</h1>
-      <p>Tell the community what your organization needs.</p>
-    </section>
+    <SectionBanner
+      title="Post a requirement list"
+      subtitle="Tell the community what your organization needs."
+    />
   );
 }

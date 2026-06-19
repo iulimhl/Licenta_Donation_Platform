@@ -3,8 +3,12 @@
 }
 
 .admin-verification-hero {
-  margin-top: 16px;
-  background: linear-gradient(90deg, #1d4f2d 0%, #4e7d44 100%);
+  background-color: #2d4f2b;
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.1) 1.4px, transparent 1.4px),
+    linear-gradient(135deg, #1d3b1c 0%, #2d4f2b 50%, #55774b 100%);
+  background-size: 30px 30px, 100% 100%;
+  background-position: 0 0, 0 0;
   color: white;
   padding: 52px 24px;
   position: relative;
@@ -12,12 +16,7 @@
 }
 
 .admin-verification-hero-overlay {
-  position: absolute;
-  inset: 0;
-  opacity: 0.12;
-  background-image: radial-gradient(rgba(255,255,255,0.35) 1px, transparent 1px);
-  background-size: 20px 20px;
-  pointer-events: none;
+  display: none;
 }
 
 .admin-verification-hero-content {
@@ -145,6 +144,50 @@
   gap: 14px;
 }
 
+.admin-moderation-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-moderation-toolbar {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) repeat(3, minmax(150px, max-content));
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid #d8ddd3;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.admin-moderation-toolbar input,
+.admin-moderation-toolbar select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #d8ddd3;
+  border-radius: 12px;
+  background: #f8faf8;
+  color: #1f2937;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 0 12px;
+  outline: none;
+}
+
+.admin-moderation-toolbar input:focus,
+.admin-moderation-toolbar select:focus {
+  border-color: #2f5d34;
+  box-shadow: 0 0 0 3px rgba(47, 93, 52, 0.12);
+}
+
+.admin-moderation-summary {
+  color: #5b6b60;
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .admin-moderation-card {
   background: #ffffff;
   border: 1px solid #d8ddd3;
@@ -204,6 +247,42 @@
 .admin-moderation-actions button.danger {
   background: #fff7f5;
   color: #d6553f;
+}
+
+.admin-moderation-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid #d8ddd3;
+  border-radius: 18px;
+  background: #ffffff;
+  color: #5b6b60;
+  font-size: 13px;
+  font-weight: 900;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.admin-moderation-page-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.admin-moderation-page-buttons button {
+  min-width: 96px;
+  min-height: 40px;
+  border: 1px solid #d8ddd3;
+  border-radius: 12px;
+  background: #f8faf8;
+  color: #2f5d34;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.admin-moderation-page-buttons button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .admin-verification-card-header {
@@ -486,6 +565,10 @@
     grid-template-columns: 1fr;
   }
 
+  .admin-moderation-toolbar {
+    grid-template-columns: 1fr;
+  }
+
   .admin-moderation-card {
     align-items: flex-start;
     flex-direction: column;
@@ -493,6 +576,16 @@
 
   .admin-moderation-actions,
   .admin-moderation-actions button {
+    width: 100%;
+  }
+
+  .admin-moderation-pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-moderation-page-buttons,
+  .admin-moderation-page-buttons button {
     width: 100%;
   }
 }

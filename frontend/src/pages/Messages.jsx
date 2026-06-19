@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiFetch } from "../api/api";
+import { apiFetch, buildFileUrl } from "../api/api";
 import {
   HiOutlineInbox,
   HiOutlineUserCircle,
 } from "react-icons/hi2";
 import SectionBanner from "../components/common/SectionBanner";
+import { getCleanMessagePreview } from "../utils/messageFormatting";
 import "../styles/pages/Messages.css";
 
 export default function Messages() {
@@ -110,6 +111,8 @@ export default function Messages() {
     navigate(`/chat/${encodeURIComponent(conv.other_email)}${query ? `?${query}` : ""}`);
   };
 
+  const getDisplayName = (conv) => conv.other_name || conv.other_email;
+
   if (loading) {
     return <div className="messages-loading">Loading messages...</div>;
   }
@@ -152,11 +155,15 @@ export default function Messages() {
                     <div className="messages-conversation-top">
                       <div className="messages-conversation-main">
                         <div className="messages-avatar">
-                          {conv.other_email?.charAt(0)?.toUpperCase() || "?"}
+                          {conv.other_logo_url ? (
+                            <img src={buildFileUrl(conv.other_logo_url)} alt={getDisplayName(conv)} />
+                          ) : (
+                            getDisplayName(conv)?.charAt(0)?.toUpperCase() || "?"
+                          )}
                         </div>
 
                         <div className="messages-conversation-text">
-                          <div className="messages-email">{conv.other_email}</div>
+                          <div className="messages-email">{getDisplayName(conv)}</div>
                           <div className="messages-context">{getConversationLabel(conv)}</div>
                         </div>
                       </div>
@@ -174,7 +181,7 @@ export default function Messages() {
                       </div>
                     </div>
 
-                    <div className="messages-preview">{conv.last_message}</div>
+                    <div className="messages-preview">{getCleanMessagePreview(conv.last_message)}</div>
                   </button>
                 ))
               )}

@@ -21,10 +21,15 @@ Base.metadata.create_all(bind=engine)
 def ensure_schema_updates():
     inspector = inspect(engine)
     donation_columns = {column["name"] for column in inspector.get_columns("donations")}
+    need_columns = {column["name"] for column in inspector.get_columns("needs")}
 
     with engine.begin() as connection:
         if "reserved_by_email" not in donation_columns:
             connection.execute(text("ALTER TABLE donations ADD COLUMN reserved_by_email VARCHAR"))
+        if "recommendation_embedding" not in donation_columns:
+            connection.execute(text("ALTER TABLE donations ADD COLUMN recommendation_embedding JSON"))
+        if "item_embeddings" not in need_columns:
+            connection.execute(text("ALTER TABLE needs ADD COLUMN item_embeddings JSON"))
 
 ensure_schema_updates()
 warm_registry_cache()

@@ -27,6 +27,7 @@ export default function Login() {
       if (response.ok) {
         localStorage.setItem("userEmail", data.email);
         localStorage.setItem("userType", data.user_type);
+        localStorage.setItem("authToken", data.auth_token);
         showNotification("Login successful! Redirecting...");
         setTimeout(() => navigate("/"), 1500);
       } else {

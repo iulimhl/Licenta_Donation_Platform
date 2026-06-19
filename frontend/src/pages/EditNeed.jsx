@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { apiFetch } from "../api/api";
 import NeedItemsEditor from "../components/NeedItemsEditor";
+import SectionBanner from "../components/common/SectionBanner";
 import "../styles/formPages.css";
 
 export default function EditNeed() {
@@ -82,27 +83,56 @@ export default function EditNeed() {
     setItems(items.filter((_, i) => i !== index));
   };
 
+  const updateItem = (index, field, value) => {
+    setItems((prev) =>
+      prev.map((item, itemIndex) => {
+        if (itemIndex !== index) return item;
+
+        if (field === "quantity") {
+          const minimumQuantity = Math.max(1, item.brought || 0);
+          const nextQuantity = Math.max(minimumQuantity, parseInt(value, 10) || minimumQuantity);
+          return { ...item, quantity: nextQuantity };
+        }
+
+        return { ...item, [field]: value };
+      })
+    );
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.title || !formData.location || items.length === 0) {
+    const normalizedItems = items.map((item) => ({
+      ...item,
+      name: item.name.trim(),
+      quantity: Math.max(1, parseInt(item.quantity, 10) || 1),
+      brought: Math.max(0, parseInt(item.brought, 10) || 0),
+    }));
+
+    if (!formData.title || !formData.location || normalizedItems.length === 0) {
       alert("Fill all fields");
+      return;
+    }
+
+    if (normalizedItems.some((item) => !item.name || item.quantity < item.brought)) {
+      alert("Check item names and quantities.");
       return;
     }
 
     setLoading(true);
 
     try {
-      const { response } = await apiFetch(`/needs/${id}`, {
+      const params = new URLSearchParams({ actor_email: userEmail });
+      const { response, data } = await apiFetch(`/needs/${id}?${params.toString()}`, {
         method: "PATCH",
-        body: JSON.stringify({ ...formData, items }),
+        body: JSON.stringify({ ...formData, items: normalizedItems }),
       });
 
       if (response.ok) {
         alert("Need updated successfully!");
         navigate("/profile");
       } else {
-        alert("Error updating need");
+        alert(data?.detail || "Error updating need");
       }
     } catch (err) {
       alert("Error: " + err.message);
@@ -117,12 +147,9 @@ export default function EditNeed() {
 
   return (
     <div className="form-page edit-need-page">
-      <div className="edit-need-shell">
-        <div className="edit-need-header">
-          <h1>Edit need</h1>
-          <p>Update your list of requirements</p>
-        </div>
+      <SectionBanner title="Edit need" subtitle="Update your list of requirements." />
 
+      <div className="edit-need-shell">
         <div className="form-card">
           <form onSubmit={handleSubmit} className="form-grid">
             <div>
@@ -167,6 +194,7 @@ export default function EditNeed() {
                 onCurrentItemChange={handleItemChange}
                 onAddItem={addItem}
                 onRemoveItem={removeItem}
+                onUpdateItem={updateItem}
                 compact
               />
             </div>

@@ -15,12 +15,14 @@ import {
 } from "react-icons/hi2";
 import { GoChecklist } from "react-icons/go";
 import { isAdminUser } from "../../utils/auth";
+import { useLanguage } from "../../i18n/LanguageContext";
 import "../../styles/components/Navbar.css";
 
 export default function Navbar() {
   const navigate = useNavigate();
   const userEmail = localStorage.getItem("userEmail");
   const isAdmin = isAdminUser();
+  const { language, setLanguage, t } = useLanguage();
 
   const [userName, setUserName] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
@@ -59,6 +61,7 @@ export default function Navbar() {
   function handleLogout() {
     localStorage.removeItem("userEmail");
     localStorage.removeItem("userType");
+    localStorage.removeItem("authToken");
     localStorage.removeItem("demoUser");
     closeMenu();
     navigate("/login");
@@ -84,7 +87,7 @@ export default function Navbar() {
           type="button"
           className="navbar-menu-button"
           onClick={() => setMenuOpen((open) => !open)}
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
+          aria-label={menuOpen ? t("nav.closeMenu") : t("nav.openMenu")}
           aria-expanded={menuOpen}
         >
           {menuOpen ? <HiOutlineXMark size={24} /> : <HiOutlineBars3 size={24} />}
@@ -94,22 +97,22 @@ export default function Navbar() {
           <nav className="navbar-nav">
             <NavLink to="/" end className={navClassName} onClick={closeMenu}>
               <HiOutlineHome size={20} />
-              <span>Home</span>
+              <span>{t("nav.home")}</span>
             </NavLink>
 
             <NavLink to="/donations" className={navClassName} onClick={closeMenu}>
               <HiOutlineGift size={20} />
-              <span>Donations</span>
+              <span>{t("nav.donations")}</span>
             </NavLink>
 
             <NavLink to="/needs" className={navClassName} onClick={closeMenu}>
               <GoChecklist size={22} />
-              <span>Need Lists</span>
+              <span>{t("nav.needLists")}</span>
             </NavLink>
 
             <NavLink to="/map" className={navClassName} onClick={closeMenu}>
               <HiOutlineMap size={20} />
-              <span>Organizations Map</span>
+              <span>{t("nav.organizationsMap")}</span>
             </NavLink>
 
             {userEmail ? (
@@ -117,7 +120,7 @@ export default function Navbar() {
                 {isAdmin && (
                   <NavLink to="/admin/verifications" className={navClassName} onClick={closeMenu}>
                     <HiOutlineShieldCheck size={20} />
-                    <span>Admin Panel</span>
+                    <span>{t("nav.adminPanel")}</span>
                   </NavLink>
                 )}
 
@@ -126,14 +129,14 @@ export default function Navbar() {
                     <NavLink to="/messages" className={navClassName} onClick={closeMenu}>
                       <span className="navbar-message-link">
                         <HiOutlineChatBubbleLeftRight size={20} />
-                        <span>Messages</span>
+                        <span>{t("nav.messages")}</span>
                         {unreadCount > 0 && <span className="navbar-badge">{unreadCount}</span>}
                       </span>
                     </NavLink>
 
                     <NavLink to="/profile" className={navClassName} onClick={closeMenu}>
                       <HiOutlineUser size={20} />
-                      <span>My Profile</span>
+                      <span>{t("nav.myProfile")}</span>
                     </NavLink>
                   </>
                 )}
@@ -142,18 +145,35 @@ export default function Navbar() {
               <>
                 <NavLink to="/login" className={navClassName} onClick={closeMenu}>
                   <HiOutlineArrowRightOnRectangle size={20} />
-                  <span>Login</span>
+                  <span>{t("nav.login")}</span>
                 </NavLink>
 
                 <NavLink to="/register" className={navClassName} onClick={closeMenu}>
                   <HiOutlineUserPlus size={20} />
-                  <span>Register</span>
+                  <span>{t("nav.register")}</span>
                 </NavLink>
               </>
             )}
           </nav>
 
           <div className="navbar-user-area">
+            <div className="navbar-language-toggle" aria-label="Language selector">
+              <button
+                type="button"
+                className={language === "en" ? "active" : ""}
+                onClick={() => setLanguage("en")}
+              >
+                EN
+              </button>
+              <button
+                type="button"
+                className={language === "ro" ? "active" : ""}
+                onClick={() => setLanguage("ro")}
+              >
+                RO
+              </button>
+            </div>
+
             {userEmail && (
               <>
                 <button
@@ -175,7 +195,7 @@ export default function Navbar() {
                 </button>
 
                 <button type="button" onClick={handleLogout} className="navbar-logout">
-                  Logout
+                  {t("nav.logout")}
                 </button>
               </>
             )}

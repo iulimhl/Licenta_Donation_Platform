@@ -6,6 +6,7 @@ export default function NeedItemsEditor({
   onCurrentItemChange,
   onAddItem,
   onRemoveItem,
+  onUpdateItem,
   compact = false,
 }) {
   return (
@@ -36,9 +37,27 @@ export default function NeedItemsEditor({
         <div className="need-items-editor__list">
           {items.map((item, idx) => (
             <div key={`${item.name}-${idx}`} className="need-items-editor__item">
-              <span>
-                {item.name} <strong>x{item.quantity}</strong>
-              </span>
+              {onUpdateItem ? (
+                <div className="need-items-editor__existing-fields">
+                  <input
+                    type="text"
+                    value={item.name}
+                    onChange={(event) => onUpdateItem(idx, "name", event.target.value)}
+                    className="need-items-editor__input need-items-editor__existing-name"
+                  />
+                  <input
+                    type="number"
+                    min={Math.max(1, item.brought || 0)}
+                    value={item.quantity}
+                    onChange={(event) => onUpdateItem(idx, "quantity", event.target.value)}
+                    className="need-items-editor__input need-items-editor__existing-quantity"
+                  />
+                </div>
+              ) : (
+                <span>
+                  {item.name} <strong>x{item.quantity}</strong>
+                </span>
+              )}
               <button type="button" onClick={() => onRemoveItem(idx)}>
                 Remove
               </button>

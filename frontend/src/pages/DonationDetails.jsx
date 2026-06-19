@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/api";
 import { getDonationCategoryLabel } from "../constants/donationCategories";
 import { isAdminUser } from "../utils/auth";
+import { HiOutlineArrowLeft } from "react-icons/hi2";
 import "../styles/pages/DonationDetails.css";
 
 export default function DonationDetails() {
@@ -13,6 +14,8 @@ export default function DonationDetails() {
 
   const [activeImage, setActiveImage] = useState("");
   const [imageList, setImageList] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false);
 
   const currentUserEmail = localStorage.getItem("userEmail");
   const isOwner = currentUserEmail === donation?.owner_email;
@@ -24,6 +27,7 @@ export default function DonationDetails() {
         const { response, data } = await apiFetch(`/donations/${id}`);
         if (response.ok) {
           setDonation(data);
+          setRecommendations([]);
 
           let parsedImages = [];
           try {
@@ -37,6 +41,22 @@ export default function DonationDetails() {
 
           setImageList(parsedImages);
           if (parsedImages.length > 0) setActiveImage(parsedImages[0]);
+
+          if (data.owner_email === currentUserEmail || isAdminUser()) {
+            setRecommendationsLoading(true);
+            apiFetch(`/recommendations/donations/${data.id}?limit=6&min_score=58`)
+              .then((recommendationsResult) => {
+                if (recommendationsResult.response.ok) {
+                  setRecommendations(recommendationsResult.data?.recommendations || []);
+                }
+              })
+              .catch((err) => {
+                console.error("Donation recommendations error:", err);
+              })
+              .finally(() => {
+                setRecommendationsLoading(false);
+              });
+          }
         }
       } catch (err) {
         console.error("Error fetching donation details:", err);
@@ -46,7 +66,7 @@ export default function DonationDetails() {
     }
 
     loadDonation();
-  }, [id]);
+  }, [id, currentUserEmail]);
 
   async function handleDelete() {
     const confirmDelete = window.confirm("Are you sure you want to delete this donation?");
@@ -77,7 +97,34 @@ export default function DonationDetails() {
       return;
     }
 
-    navigate(`/chat/${encodeURIComponent(donation.owner_email)}?donationId=${donation.id}`);
+    const params = new URLSearchParams({
+      donationId: String(donation.id),
+      draftType: "reserve",
+      draft: `I want to reserve "${donation.title}". Could we discuss the pickup details?`,
+    });
+
+    navigate(`/chat/${encodeURIComponent(donation.owner_email)}?${params.toString()}`);
+  }
+
+  function handleRecommendedNeedContact(match) {
+    if (!currentUserEmail) {
+      navigate("/login");
+      return;
+    }
+
+    if (!match.organization_email) {
+      alert("This organization cannot be contacted yet.");
+      return;
+    }
+
+    const content = `Hi! I saw your need list "${match.title}" and I think my donation "${donation.title}" could help with "${match.item_name}". Could we discuss the pickup details?`;
+    const params = new URLSearchParams({
+      donationId: String(donation.id),
+      needId: String(match.need_id),
+      draft: content,
+    });
+
+    navigate(`/chat/${encodeURIComponent(match.organization_email)}?${params.toString()}`);
   }
 
   async function handleReserve() {
@@ -121,7 +168,8 @@ export default function DonationDetails() {
   return (
     <div className="donation-details-page">
       <button onClick={() => navigate(-1)} className="donation-details-back">
-        Back to feed
+        <HiOutlineArrowLeft size={16} />
+        <span>Back to feed</span>
       </button>
 
       <div className="donation-details-layout">
@@ -175,6 +223,58 @@ export default function DonationDetails() {
             <h3>Description</h3>
             <p>{donation.description || "No description provided."}</p>
           </div>
+
+          {isOwner && (
+            <div className="donation-details-section donation-details-recommendations-section">
+              <div className="donation-details-recommendations-header">
+                <h3>Suggested need lists</h3>
+                <span>AI matches</span>
+              </div>
+
+              {recommendationsLoading ? (
+                <div className="donation-details-recommendations-empty">Loading matches...</div>
+              ) : recommendations.length === 0 ? (
+                <div className="donation-details-recommendations-empty">No matching need lists yet.</div>
+              ) : (
+                <div className="donation-details-recommendations-list">
+                  {recommendations.map((match) => (
+                    <div
+                      key={`${match.need_id}-${match.item_index}`}
+                      className="donation-details-recommendation-card"
+                    >
+                      <div>
+                        <div className="donation-details-recommendation-top">
+                          <strong>{match.item_name}</strong>
+                          <span>{match.remaining_quantity} still needed</span>
+                        </div>
+
+                        <h4>{match.title}</h4>
+                        <p>{match.organization_name}</p>
+                        <small>{match.location}</small>
+                      </div>
+
+                      <div className="donation-details-recommendation-actions">
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/need/${match.need_id}`)}
+                        >
+                          Details
+                        </button>
+
+                        <button
+                          type="button"
+                          className="primary"
+                          onClick={() => handleRecommendedNeedContact(match)}
+                        >
+                          Contact
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="donation-details-actions">
             {isAdmin ? (

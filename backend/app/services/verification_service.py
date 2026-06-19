@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from models.user import User
-from services.local_registry_service import search_all_local_registries
+from services.local_registry_service import normalize_cif, search_all_local_registries
 
 
 def verify_organization(db: Session, email: str, name: str, cif: str):
@@ -16,14 +16,21 @@ def verify_organization(db: Session, email: str, name: str, cif: str):
     normalized_cif = (cif or "").strip()
 
     result = search_all_local_registries(normalized_name, normalized_cif)
+    matched_cif = result["matched_cif"]
+    matched_name = result["matched_name"]
+    has_exact_cif_match = (
+        normalized_cif
+        and matched_cif
+        and normalize_cif(normalized_cif) == normalize_cif(matched_cif)
+    )
 
-    user.name = normalized_name
+    user.name = matched_name if has_exact_cif_match and matched_name else normalized_name
     user.cif = normalized_cif
     user.verification_score = result["score"]
     user.verification_status = "pending"
     user.verified = False
-    user.matched_name = result["matched_name"]
-    user.matched_cif = result["matched_cif"]
+    user.matched_name = matched_name
+    user.matched_cif = matched_cif
     user.verification_source = result["source"]
 
     db.commit()

@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { donationCategories } from "../constants/donationCategories";
+import SectionBanner from "./common/SectionBanner";
 import "../styles/components/DonationForm.css";
 
 export default function DonationForm({
@@ -45,12 +46,7 @@ export default function DonationForm({
 
   return (
     <>
-      <section className="donation-form-banner">
-        <div className="donation-form-banner-inner">
-          <h1>{pageTitle}</h1>
-          <p>{pageSubtitle}</p>
-        </div>
-      </section>
+      <SectionBanner title={pageTitle} subtitle={pageSubtitle} />
 
       <div className="donation-form-shell">
         <div className="donation-form-card">

@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { apiFetch } from "../api/api";
+import { geocodeAddress } from "../api/geo";
 import SectionBanner from "../components/common/SectionBanner";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
@@ -23,6 +24,25 @@ const userLocationIcon = L.divIcon({
   iconSize: [20, 20],
   iconAnchor: [10, 10],
 });
+
+async function resolveOrganizationPosition(org) {
+  const storedLat = org.lat != null ? Number(org.lat) : null;
+  const storedLng = org.lng != null ? Number(org.lng) : null;
+  const hasAddress = org.location || org.city || org.pickup_address;
+
+  if (hasAddress) {
+    const geocoded = await geocodeAddress(org);
+    if (geocoded.lat != null && geocoded.lng != null) {
+      return { ...org, lat: geocoded.lat, lng: geocoded.lng };
+    }
+  }
+
+  if (storedLat != null && storedLng != null) {
+    return { ...org, lat: storedLat, lng: storedLng };
+  }
+
+  return null;
+}
 
 function MapController({ organizations, userPos }) {
   const map = useMap();
@@ -56,13 +76,8 @@ export default function OngMap() {
       try {
         const { response, data } = await apiFetch("/organizations/map");
         if (response.ok) {
-          const located = (data || [])
-            .filter((org) => org.lat != null && org.lng != null)
-            .map((org) => ({
-              ...org,
-              lat: Number(org.lat),
-              lng: Number(org.lng),
-            }));
+          const resolved = await Promise.all((data || []).map(resolveOrganizationPosition));
+          const located = resolved.filter(Boolean);
 
           setOrganizations(located);
           setMapNotice(

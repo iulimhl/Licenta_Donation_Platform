@@ -19,7 +19,12 @@
 }
 
 .form-banner {
-  background: linear-gradient(90deg, #1d4f2d 0%, #4e7d44 100%);
+  background-color: #2d4f2b;
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.1) 1.4px, transparent 1.4px),
+    linear-gradient(135deg, #1d3b1c 0%, #2d4f2b 50%, #55774b 100%);
+  background-size: 30px 30px, 100% 100%;
+  background-position: 0 0, 0 0;
   color: #ffffff;
   padding: 48px 20px;
   text-align: center;
@@ -214,37 +219,15 @@
 }
 
 .edit-need-page {
-  padding: 40px 20px;
+  padding-bottom: 80px;
 }
 
 .edit-need-shell {
   max-width: 520px;
   width: 100%;
-  margin: 0 auto;
-}
-
-.edit-need-header {
-  background: #fef3c7;
-  padding: 26px 20px;
-  border-radius: 18px;
-  margin-bottom: 24px;
-  box-shadow: 0 14px 38px rgba(15, 23, 42, 0.08);
-  text-align: center;
-}
-
-.edit-need-header h1 {
-  margin: 0;
-  font-size: 24px;
-  color: #856404;
-  font-weight: 800;
-}
-
-.edit-need-header p {
-  margin: 6px 0 0;
-  color: #856404;
-  opacity: 0.8;
-  font-size: 14px;
-  font-weight: 500;
+  margin: 40px auto 0;
+  padding: 0 20px;
+  box-sizing: border-box;
 }
 
 .edit-need-description {

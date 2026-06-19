@@ -1,13 +1,26 @@
 .donation-form-banner {
-  background: linear-gradient(90deg, #1d4f2d 0%, #4e7d44 100%);
+  background-color: #2d4f2b;
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.1) 1.4px, transparent 1.4px),
+    linear-gradient(135deg, #1d3b1c 0%, #2d4f2b 50%, #55774b 100%);
+  background-size: 30px 30px, 100% 100%;
+  background-position: 0 0, 0 0;
   color: #ffffff;
   padding: 56px 20px;
   text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.donation-form-banner::before {
+  display: none;
 }
 
 .donation-form-banner-inner {
   max-width: 900px;
   margin: 0 auto;
+  position: relative;
+  z-index: 1;
 }
 
 .donation-form-banner h1 {

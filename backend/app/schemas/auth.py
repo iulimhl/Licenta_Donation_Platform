@@ -96,8 +96,13 @@ class LoginResponse(BaseModel):
     user_type: str
     name: str | None = None
     verification_status: str | None = None
+    auth_token: str
 
 
 class RegisterResponse(BaseModel):
     message: str
+    email: str
     user_type: str
+    name: str | None = None
+    verification_status: str | None = None
+    auth_token: str

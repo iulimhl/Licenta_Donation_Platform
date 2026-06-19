@@ -1,13 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { apiFetch } from "../api/api";
+import { apiFetch, buildFileUrl } from "../api/api";
 import {
-  HiOutlineChatBubbleLeftRight,
   HiOutlineInbox,
   HiOutlinePaperAirplane,
   HiOutlineCheckCircle,
   HiOutlineUserCircle,
 } from "react-icons/hi2";
+import SectionBanner from "../components/common/SectionBanner";
+import {
+  addReservationMetadata,
+  getCleanMessagePreview,
+  parseReservationMessage,
+} from "../utils/messageFormatting";
 import "../styles/pages/Chat.css";
 
 export default function Chat() {
@@ -22,6 +27,7 @@ export default function Chat() {
   const [loading, setLoading] = useState(false);
   const [loadingInbox, setLoadingInbox] = useState(true);
   const [otherUserName, setOtherUserName] = useState(otherEmail);
+  const [otherUserLogo, setOtherUserLogo] = useState("");
   const [donationTitle, setDonationTitle] = useState("");
   const [needDetails, setNeedDetails] = useState(null);
   const [isFulfilling, setIsFulfilling] = useState(false);
@@ -29,6 +35,7 @@ export default function Chat() {
   const [showModal, setShowModal] = useState(false);
   const [donationMap, setDonationMap] = useState({});
   const [needMap, setNeedMap] = useState({});
+  const [reservationDraftActive, setReservationDraftActive] = useState(false);
 
   const scrollContainerRef = useRef(null);
 
@@ -36,6 +43,7 @@ export default function Chat() {
   const donationId = searchParams.get("donationId");
   const needId = searchParams.get("needId");
   const draftMessage = searchParams.get("draft");
+  const draftType = searchParams.get("draftType");
 
   useEffect(() => {
     if (!userEmail) {
@@ -86,8 +94,9 @@ export default function Chat() {
   useEffect(() => {
     if (draftMessage && !newMessage) {
       setNewMessage(draftMessage);
+      setReservationDraftActive(draftType === "reserve");
     }
-  }, [draftMessage, newMessage]);
+  }, [draftMessage, draftType, newMessage]);
 
   const loadConversation = async () => {
     try {
@@ -144,10 +153,12 @@ export default function Chat() {
 
   const loadUserInfo = async () => {
     try {
-      const { data } = await apiFetch(`/auth/user/${encodeURIComponent(otherEmail)}`);
+      const { data } = await apiFetch(`/auth/public/${encodeURIComponent(otherEmail)}`);
       setOtherUserName(data?.name || otherEmail);
+      setOtherUserLogo(data?.logo_url || "");
     } catch (err) {
       console.error("Error loading user info:", err);
+      setOtherUserLogo("");
     }
 
     if (donationId) {
@@ -282,13 +293,18 @@ export default function Chat() {
 
     setLoading(true);
     try {
+      const messageContent =
+        reservationDraftActive && donationId
+          ? addReservationMetadata(newMessage, donationId)
+          : newMessage;
+
       const { response, data } = await apiFetch(
         `/messages/?sender_email=${encodeURIComponent(userEmail)}`,
         {
           method: "POST",
           body: JSON.stringify({
             recipient_email: otherEmail,
-            content: newMessage,
+            content: messageContent,
             donation_id: donationId ? parseInt(donationId) : null,
             need_id: needId ? parseInt(needId) : null,
           }),
@@ -302,6 +318,7 @@ export default function Chat() {
         };
         setMessages((prev) => [...prev, msg]);
         setNewMessage("");
+        setReservationDraftActive(false);
         loadInbox();
       }
     } catch (err) {
@@ -343,6 +360,8 @@ export default function Chat() {
     );
   };
 
+  const getDisplayName = (conv) => conv.other_name || conv.other_email;
+
   const activeKey = `${otherEmail}-${donationId ?? "none"}-${needId ?? "none"}`;
 
   const sortedConversations = useMemo(() => {
@@ -355,17 +374,10 @@ export default function Chat() {
 
   return (
     <div className="chat-page">
-      <section className="chat-banner">
-        <div className="chat-banner-inner">
-          <div className="chat-kicker">
-            <HiOutlineChatBubbleLeftRight size={16} />
-            <span>Community messages</span>
-          </div>
-
-          <h1>Messages</h1>
-          <p>Keep in touch with donors, recipients, and organizations in one place.</p>
-        </div>
-      </section>
+      <SectionBanner
+        title="Messages"
+        subtitle="Keep in touch with donors, recipients, and organizations in one place."
+      />
 
       <div className="chat-shell">
         <div className="chat-layout">
@@ -392,6 +404,7 @@ export default function Chat() {
                 sortedConversations.map((conv, idx) => {
                   const conversationKey = `${conv.other_email}-${conv.donation_id ?? "none"}-${conv.need_id ?? "none"}`;
                   const isActive = conversationKey === activeKey;
+                  const preview = getCleanMessagePreview(conv.last_message);
 
                   return (
                     <button
@@ -400,9 +413,19 @@ export default function Chat() {
                       className={`chat-conversation-button ${isActive ? "active" : ""}`}
                     >
                       <div className="chat-conversation-top">
-                        <div className="chat-conversation-text">
-                          <div className="chat-conversation-email">{conv.other_email}</div>
-                          <div className="chat-conversation-context">{getConversationLabel(conv)}</div>
+                        <div className="chat-conversation-main">
+                          <div className="chat-conversation-avatar">
+                            {conv.other_logo_url ? (
+                              <img src={buildFileUrl(conv.other_logo_url)} alt={getDisplayName(conv)} />
+                            ) : (
+                              getDisplayName(conv)?.charAt(0)?.toUpperCase() || "?"
+                            )}
+                          </div>
+
+                          <div className="chat-conversation-text">
+                            <div className="chat-conversation-email">{getDisplayName(conv)}</div>
+                            <div className="chat-conversation-context">{getConversationLabel(conv)}</div>
+                          </div>
                         </div>
 
                         {conv.unread_count > 0 && (
@@ -410,7 +433,7 @@ export default function Chat() {
                         )}
                       </div>
 
-                      <div className="chat-conversation-preview">{conv.last_message}</div>
+                      <div className="chat-conversation-preview">{preview}</div>
                     </button>
                   );
                 })
@@ -422,7 +445,11 @@ export default function Chat() {
             <div className="chat-thread-header">
               <div className="chat-thread-title-row">
                 <div className="chat-icon-box large">
-                  <HiOutlineUserCircle size={24} />
+                  {otherUserLogo ? (
+                    <img src={buildFileUrl(otherUserLogo)} alt={otherUserName} />
+                  ) : (
+                    <HiOutlineUserCircle size={24} />
+                  )}
                 </div>
 
                 <div>
@@ -467,6 +494,7 @@ export default function Chat() {
                 messages.map((msg, idx) => {
                   const isMe = msg.sender_email === userEmail;
                   const offer = parseOfferMessage(msg);
+                  const reservation = parseReservationMessage(msg);
                   const isSystemMessage =
                     msg.content?.startsWith("[SYSTEM]") ||
                     msg.content?.startsWith("[CONFIRMED_OFFER:");
@@ -477,6 +505,8 @@ export default function Chat() {
                         .trim()
                     : offer
                     ? offer.text
+                    : reservation
+                    ? reservation.text
                     : msg.content;
 
                   return (
@@ -488,6 +518,7 @@ export default function Chat() {
 
                       <div className="chat-message-bubble">
                         {offer && <div className="chat-offer-label">Item offer</div>}
+                        {reservation && <div className="chat-offer-label">Reservation request</div>}
                         <p>{visibleContent}</p>
                         {offer?.item && (
                           <div className="chat-offer-card">
@@ -506,6 +537,15 @@ export default function Chat() {
                             {offer.isConfirmed && (
                               <span className="chat-offer-confirmed">Confirmed</span>
                             )}
+                          </div>
+                        )}
+                        {reservation && (
+                          <div className="chat-offer-card">
+                            <div>
+                              <strong>{donationTitle || "Donation"}</strong>
+                              <span>Reservation request</span>
+                              <span>Discuss pickup details in chat</span>
+                            </div>
                           </div>
                         )}
                         <time>

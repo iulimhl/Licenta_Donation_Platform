@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { apiFetch } from "../api/api";
+import { apiFetch, getAuthHeaders } from "../api/api";
+import { geocodeAddress } from "../api/geo";
 import "../styles/formPages.css";
 import "../styles/pages/Register.css";
 
@@ -66,19 +67,10 @@ export default function Register() {
     let finalLng = coords.lng;
 
     if (userType === "organization" && (!finalLat || !finalLng) && location.trim()) {
-      try {
-        const query = encodeURIComponent(`${location}, Romania`);
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=ro&q=${query}&limit=1`
-        );
-        const data = await res.json();
-
-        if (data && data.length > 0) {
-          finalLat = parseFloat(data[0].lat);
-          finalLng = parseFloat(data[0].lon);
-        }
-      } catch (err) {
-        console.error("Geocoding failed", err);
+      const geocoded = await geocodeAddress({ location });
+      if (geocoded.lat != null && geocoded.lng != null) {
+        finalLat = geocoded.lat;
+        finalLng = geocoded.lng;
       }
     }
 
@@ -237,6 +229,10 @@ export default function Register() {
         return;
       }
 
+      localStorage.setItem("userEmail", data.email);
+      localStorage.setItem("userType", data.user_type);
+      localStorage.setItem("authToken", data.auth_token);
+
       if (userType === "organization") {
         try {
           const formData = new FormData();
@@ -247,6 +243,7 @@ export default function Register() {
             "http://127.0.0.1:8000/verification/upload-document",
             {
               method: "POST",
+              headers: getAuthHeaders(),
               body: formData,
             }
           );

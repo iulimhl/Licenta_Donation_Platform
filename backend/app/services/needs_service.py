@@ -3,6 +3,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from models.need import NeedModel
 from models.user import User
 from schemas.need import NeedCreate
+from services.embedding_storage_service import refresh_need_embeddings
 
 def _attach_organization_data(db: Session, need):
     if not need:
@@ -41,6 +42,7 @@ def create_new(db: Session, payload: NeedCreate):
     need_data["items"] = [item.model_dump() for item in payload.items]
 
     db_need = NeedModel(**need_data)
+    refresh_need_embeddings(db_need)
     db.add(db_need)
     db.commit()
     db.refresh(db_need)
@@ -84,6 +86,7 @@ def update_by_id(db: Session, need_id: int, update_data: dict):
             setattr(db_need, key, value)
 
     flag_modified(db_need, "items")
+    refresh_need_embeddings(db_need)
     db.commit()
     db.refresh(db_need)
     return _attach_organization_data(db, db_need)

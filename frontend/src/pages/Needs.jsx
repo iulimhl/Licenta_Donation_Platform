@@ -4,12 +4,14 @@ import NeedCard from "../components/NeedCard";
 import { apiFetch } from "../api/api";
 import SectionBanner from "../components/common/SectionBanner";
 import { isAdminUser } from "../utils/auth";
+import { useLanguage } from "../i18n/LanguageContext";
 import "../styles/listingPages.css";
 
 export default function Needs() {
   const navigate = useNavigate();
   const userEmail = localStorage.getItem("userEmail");
   const isAdmin = isAdminUser();
+  const { t } = useLanguage();
 
   const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
@@ -46,14 +48,14 @@ export default function Needs() {
       );
 
       if (!response.ok) {
-        alert("Error updating item.");
+        alert(t("needs.updateError"));
         return;
       }
 
       setItems((prev) => prev.map((item) => (item.id === needId ? data : item)));
     } catch (err) {
       console.error("Network error:", err);
-      alert("Failed to update item.");
+      alert(t("needs.networkError"));
     }
   }
 
@@ -74,7 +76,7 @@ export default function Needs() {
   if (loading) {
     return (
       <div className="listing-loading">
-        <h3>Loading needs...</h3>
+        <h3>{t("needs.loading")}</h3>
       </div>
     );
   }
@@ -82,8 +84,8 @@ export default function Needs() {
   return (
     <div className="listing-page">
       <SectionBanner
-        title="Requirements lists"
-        subtitle="Browse organization needs and check off the items you can bring to help out."
+        title={t("needs.title")}
+        subtitle={t("needs.subtitle")}
       />
 
       <div className="listing-shell">
@@ -91,8 +93,8 @@ export default function Needs() {
       {userType === "organization" && verificationStatus !== "verified" && (
         <div className={`needs-verification-alert ${verificationStatus === "rejected" ? "rejected" : "pending"}`}>
           {verificationStatus === "rejected"
-            ? "Your organization account was not approved by admin. You cannot post need lists right now."
-            : "Your organization account is waiting for admin approval. You can browse lists, but posting is disabled until verification is complete."}
+            ? t("needs.rejected")
+            : t("needs.pending")}
         </div>
       )}
         <div className="listing-toolbar">
@@ -102,7 +104,7 @@ export default function Needs() {
                 type="text"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Search by title, location, or item..."
+                placeholder={t("needs.search")}
                 className="listing-search-input"
               />
             </div>
@@ -118,11 +120,11 @@ export default function Needs() {
                 className="listing-add-button"
                 title={
                   verificationStatus === "verified"
-                    ? "Create a new need list"
-                    : "Available only after admin approval"
+                    ? t("needs.createTitle")
+                    : t("needs.unavailableTitle")
                 }
               >
-                + Add list
+                {t("needs.add")}
               </button>
             )}
           </div>
@@ -146,10 +148,10 @@ export default function Needs() {
           ) : (
             <div className="listing-empty-state">
               <h3>
-                No needs found
+                {t("needs.emptyTitle")}
               </h3>
               <p>
-                Try a different search or check back later for new requests.
+                {t("needs.emptyText")}
               </p>
             </div>
           )}
