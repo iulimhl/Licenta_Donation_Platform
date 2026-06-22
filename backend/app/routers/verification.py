@@ -59,7 +59,7 @@ def verify_organization(
 
 
 @router.get("/semantic-status")
-def get_semantic_status():
+def get_semantic_status(admin: User = Depends(require_admin_user)):
     return {
         "model_name": MODEL_NAME,
         "available": is_semantic_matching_available(),
@@ -68,7 +68,11 @@ def get_semantic_status():
 
 
 @router.get("/semantic-name-score")
-def get_semantic_name_score(input_name: str, registry_name: str):
+def get_semantic_name_score(
+    input_name: str,
+    registry_name: str,
+    admin: User = Depends(require_admin_user),
+):
     score = semantic_name_score(input_name, registry_name, force=True)
 
     return {

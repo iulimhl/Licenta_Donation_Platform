@@ -5,6 +5,7 @@ import SectionBanner from "../components/common/SectionBanner";
 import ProfileHeroCard from "../components/profile/ProfileHeroCard";
 import ProfileDonations from "../components/profile/ProfileDonations";
 import ProfileNeeds from "../components/profile/ProfileNeeds";
+import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import {
   HiOutlineUser,
   HiOutlineEnvelope,
@@ -55,6 +56,7 @@ function getVerificationBadge(status) {
 export default function Profile() {
   const navigate = useNavigate();
   const userEmail = localStorage.getItem("userEmail");
+  const { confirm, confirmDialog } = useConfirmDialog();
 
   const [myDonations, setMyDonations] = useState([]);
   const [myNeeds, setMyNeeds] = useState([]);
@@ -103,7 +105,12 @@ export default function Profile() {
   );
 
   async function handleDeleteDonation(id) {
-    if (!window.confirm("Sigur vrei sa stergi definitiv aceasta donatie?")) return;
+    const confirmed = await confirm({
+      title: "Stergi donatia?",
+      message: "Donatia va fi stearsa definitiv din platforma.",
+      confirmLabel: "Sterge",
+    });
+    if (!confirmed) return;
 
     try {
       const params = new URLSearchParams({ actor_email: userEmail });
@@ -139,13 +146,18 @@ export default function Profile() {
       setMyDonations((prev) =>
         prev.map((item) => (item.id === id ? data : item))
       );
-    } catch (err) {
+    } catch {
       alert("Error updating status");
     }
   }
 
   async function handleDeleteNeed(id) {
-    if (!window.confirm("Sigur vrei sa stergi definitiv aceasta lista de necesitati?")) return;
+    const confirmed = await confirm({
+      title: "Stergi lista de necesitati?",
+      message: "Lista va fi stearsa definitiv din platforma.",
+      confirmLabel: "Sterge",
+    });
+    if (!confirmed) return;
 
     try {
       const params = new URLSearchParams({ actor_email: userEmail });
@@ -295,6 +307,7 @@ export default function Profile() {
           )}
         </section>
       </div>
+      {confirmDialog}
     </div>
   );
 }

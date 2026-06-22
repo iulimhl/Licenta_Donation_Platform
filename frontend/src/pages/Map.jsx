@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -30,15 +31,15 @@ async function resolveOrganizationPosition(org) {
   const storedLng = org.lng != null ? Number(org.lng) : null;
   const hasAddress = org.location || org.city || org.pickup_address;
 
+  if (storedLat != null && storedLng != null) {
+    return { ...org, lat: storedLat, lng: storedLng };
+  }
+
   if (hasAddress) {
     const geocoded = await geocodeAddress(org);
     if (geocoded.lat != null && geocoded.lng != null) {
       return { ...org, lat: geocoded.lat, lng: geocoded.lng };
     }
-  }
-
-  if (storedLat != null && storedLng != null) {
-    return { ...org, lat: storedLat, lng: storedLng };
   }
 
   return null;
@@ -66,6 +67,7 @@ function MapController({ organizations, userPos }) {
 }
 
 export default function OngMap() {
+  const navigate = useNavigate();
   const [organizations, setOrganizations] = useState([]);
   const [userPos, setUserPos] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -135,7 +137,7 @@ export default function OngMap() {
                 <div className="map-popup">
                   <strong>{org.name}</strong>
                   <p>{org.location}</p>
-                  <button onClick={() => window.location.href = `/chat/${org.email}`}>
+                  <button onClick={() => navigate(`/chat/${encodeURIComponent(org.email)}`)}>
                     Contact
                   </button>
                 </div>

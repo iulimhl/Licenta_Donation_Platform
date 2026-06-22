@@ -1,117 +1,36 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiFetch, buildFileUrl } from "../api/api";
 import {
   HiOutlineInbox,
   HiOutlineUserCircle,
 } from "react-icons/hi2";
 import SectionBanner from "../components/common/SectionBanner";
-import { getCleanMessagePreview } from "../utils/messageFormatting";
+import ConversationList from "../components/messages/ConversationList";
+import { useInbox } from "../hooks/useInbox";
+import { buildConversationPath } from "../utils/conversations";
 import "../styles/pages/Messages.css";
 
 export default function Messages() {
   const userEmail = localStorage.getItem("userEmail");
   const navigate = useNavigate();
-
-  const [conversations, setConversations] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [donationMap, setDonationMap] = useState({});
-  const [needMap, setNeedMap] = useState({});
+  const {
+    loading,
+    unreadCount,
+    sortedConversations,
+    getConversationLabel,
+  } = useInbox({
+    userEmail,
+    enabled: Boolean(userEmail),
+    pollMs: 5000,
+    includeUnreadCount: true,
+    labelMode: "regarding",
+  });
 
   useEffect(() => {
     if (!userEmail) {
       navigate("/login");
-      return;
     }
-
-    loadEverything();
-    const interval = setInterval(loadInboxOnly, 5000);
-    return () => clearInterval(interval);
-  }, [userEmail]);
-
-  const loadEverything = async () => {
-    try {
-      await Promise.all([loadInboxOnly(), loadContextMaps()]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadInboxOnly = async () => {
-    try {
-      const { data: inboxData } = await apiFetch(
-        `/messages/inbox?user_email=${encodeURIComponent(userEmail)}`
-      );
-      setConversations(inboxData || []);
-
-      const { data: unreadData } = await apiFetch(
-        `/messages/unread-count?user_email=${encodeURIComponent(userEmail)}`
-      );
-      setUnreadCount(unreadData?.unread_count || 0);
-    } catch (err) {
-      console.error("Error loading inbox:", err);
-    }
-  };
-
-  const loadContextMaps = async () => {
-    try {
-      const [{ data: donationsData }, { data: needsData }] = await Promise.all([
-        apiFetch("/donations/"),
-        apiFetch("/needs/"),
-      ]);
-
-      const donationLookup = {};
-      (donationsData || []).forEach((item) => {
-        donationLookup[item.id] = item.title;
-      });
-
-      const needLookup = {};
-      (needsData || []).forEach((item) => {
-        needLookup[item.id] = item.title;
-      });
-
-      setDonationMap(donationLookup);
-      setNeedMap(needLookup);
-    } catch (err) {
-      console.error("Error loading conversation context maps:", err);
-    }
-  };
-
-  const sortedConversations = useMemo(() => {
-    return [...conversations].sort((a, b) => {
-      const da = a.last_message_date ? new Date(a.last_message_date).getTime() : 0;
-      const db = b.last_message_date ? new Date(b.last_message_date).getTime() : 0;
-      return db - da;
-    });
-  }, [conversations]);
-
-  const getConversationLabel = (conv) => {
-    if (conv.donation_id) {
-      return donationMap[conv.donation_id]
-        ? `Regarding donation: ${donationMap[conv.donation_id]}`
-        : "Regarding a donation";
-    }
-
-    if (conv.need_id) {
-      return needMap[conv.need_id]
-        ? `Regarding need list: ${needMap[conv.need_id]}`
-        : "Regarding a need list";
-    }
-
-    return "Direct conversation";
-  };
-
-  const openConversation = (conv) => {
-    const params = new URLSearchParams();
-    if (conv.donation_id) params.set("donationId", conv.donation_id);
-    if (conv.need_id) params.set("needId", conv.need_id);
-
-    const query = params.toString();
-    navigate(`/chat/${encodeURIComponent(conv.other_email)}${query ? `?${query}` : ""}`);
-  };
-
-  const getDisplayName = (conv) => conv.other_name || conv.other_email;
+  }, [navigate, userEmail]);
 
   if (loading) {
     return <div className="messages-loading">Loading messages...</div>;
@@ -143,48 +62,11 @@ export default function Messages() {
             </div>
 
             <div className="messages-list">
-              {sortedConversations.length === 0 ? (
-                <div className="messages-empty">No conversations yet.</div>
-              ) : (
-                sortedConversations.map((conv, idx) => (
-                  <button
-                    key={`${conv.other_email}-${conv.donation_id ?? "none"}-${conv.need_id ?? "none"}-${idx}`}
-                    onClick={() => openConversation(conv)}
-                    className="messages-conversation"
-                  >
-                    <div className="messages-conversation-top">
-                      <div className="messages-conversation-main">
-                        <div className="messages-avatar">
-                          {conv.other_logo_url ? (
-                            <img src={buildFileUrl(conv.other_logo_url)} alt={getDisplayName(conv)} />
-                          ) : (
-                            getDisplayName(conv)?.charAt(0)?.toUpperCase() || "?"
-                          )}
-                        </div>
-
-                        <div className="messages-conversation-text">
-                          <div className="messages-email">{getDisplayName(conv)}</div>
-                          <div className="messages-context">{getConversationLabel(conv)}</div>
-                        </div>
-                      </div>
-
-                      <div className="messages-conversation-meta">
-                        <div>
-                          {conv.last_message_date
-                            ? new Date(conv.last_message_date).toLocaleDateString()
-                            : ""}
-                        </div>
-
-                        {conv.unread_count > 0 && (
-                          <div className="messages-small-unread">{conv.unread_count}</div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="messages-preview">{getCleanMessagePreview(conv.last_message)}</div>
-                  </button>
-                ))
-              )}
+              <ConversationList
+                conversations={sortedConversations}
+                onOpen={(conversation) => navigate(buildConversationPath(conversation))}
+                getConversationLabel={getConversationLabel}
+              />
             </div>
           </div>
 

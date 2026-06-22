@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from datetime import datetime
 
 class DonationCreate(BaseModel):
     title: str
@@ -21,10 +22,13 @@ class DonationResponse(BaseModel):
     image: str | None = None
     owner_email: str | None = None
     reserved_by_email: str | None = None
+    lat: float | None = None
+    lng: float | None = None
     status: str
     donor_name: str | None = None
     phone: str | None = None
     phone_visible: bool | None = None
+    created_at: datetime | None = None
 
     class Config:
         from_attributes = True

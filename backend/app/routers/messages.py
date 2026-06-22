@@ -18,7 +18,7 @@ def send_message(
     if sender_email and sender_email != current_user.email:
         raise HTTPException(status_code=403, detail="You can only send messages as yourself")
 
-    return messages_service.create_message(
+    message, error = messages_service.create_message(
         db=db,
         sender_email=current_user.email,
         recipient_email=payload.recipient_email,
@@ -26,6 +26,20 @@ def send_message(
         donation_id=payload.donation_id,
         need_id=getattr(payload, 'need_id', None)
     )
+
+    if error == "recipient_not_found":
+        raise HTTPException(status_code=404, detail="Recipient not found")
+
+    if error == "same_user":
+        raise HTTPException(status_code=400, detail="You cannot send messages to yourself")
+
+    if error in {"donation_not_found", "need_not_found"}:
+        raise HTTPException(status_code=404, detail="Conversation context not found")
+
+    if error == "invalid_context":
+        raise HTTPException(status_code=403, detail="You cannot use this conversation context")
+
+    return message
 
 @router.get("/conversation", response_model=list[MessageResponse])
 def get_conversation(

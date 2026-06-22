@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean
-from datetime import datetime
+from datetime import datetime, timezone
 from db.database import Base
 
 class Message(Base):
@@ -11,5 +11,5 @@ class Message(Base):
     donation_id = Column(Integer, nullable=True)
     need_id = Column(Integer, nullable=True)
     content = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     is_read = Column(Boolean, default=False)

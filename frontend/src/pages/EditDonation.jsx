@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { apiFetch } from "../api/api";
 import DonationForm from "../components/DonationForm";
+import { useTimedNotification } from "../hooks/useTimedNotification";
+import { getDonationImages } from "../utils/donationImages";
 import "../styles/formPages.css";
 
 export default function EditDonation() {
@@ -11,7 +13,7 @@ export default function EditDonation() {
 
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
-  const [notification, setNotification] = useState({ message: "", type: "" });
+  const { notification, showNotification } = useTimedNotification();
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -21,8 +23,7 @@ export default function EditDonation() {
   });
 
   const showErrorToast = (msg) => {
-    setNotification({ message: msg, type: "error" });
-    setTimeout(() => setNotification({ message: "", type: "" }), 3000);
+    showNotification(msg, "error");
   };
 
   useEffect(() => {
@@ -36,17 +37,11 @@ export default function EditDonation() {
           .trim();
 
         if (dbEmail !== userEmail.toLowerCase().trim()) {
-          setNotification({ message: "You can only edit your own donations.", type: "error" });
+          showNotification("You can only edit your own donations.", "error");
           return setTimeout(() => navigate("/profile"), 2000);
         }
 
-        let existingImages = [];
-        try {
-          existingImages = JSON.parse(data.image);
-          if (!Array.isArray(existingImages)) existingImages = [data.image];
-        } catch (e) {
-          if (data.image) existingImages = [data.image];
-        }
+        const existingImages = getDonationImages(data.image);
 
         setFormData({
           title: data.title || "",
@@ -56,13 +51,13 @@ export default function EditDonation() {
           images: existingImages.filter(Boolean),
         });
         setChecking(false);
-      } catch (err) {
-        setNotification({ message: "Could not load donation details.", type: "error" });
+      } catch {
+        showNotification("Could not load donation details.", "error");
         setTimeout(() => navigate("/profile"), 2000);
       }
     };
     loadDonation();
-  }, [id, userEmail, navigate]);
+  }, [id, userEmail, navigate, showNotification]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -76,7 +71,7 @@ export default function EditDonation() {
       });
 
       if (response.ok) {
-        setNotification({ message: "Donation updated successfully!", type: "success" });
+        showNotification("Donation updated successfully!");
         setTimeout(() => navigate(`/donation/${id}`), 1500);
       } else {
         showErrorToast("Error updating donation. Please try again.");

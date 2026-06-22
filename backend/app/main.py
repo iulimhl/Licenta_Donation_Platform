@@ -1,3 +1,5 @@
+import threading
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -32,9 +34,21 @@ def ensure_schema_updates():
             connection.execute(text("ALTER TABLE needs ADD COLUMN item_embeddings JSON"))
 
 ensure_schema_updates()
-warm_registry_cache()
 
-app = FastAPI(title="IASIdoneaza API")
+def warm_registry_cache_safely():
+    try:
+        warm_registry_cache()
+    except Exception as exc:
+        print(f"Registry cache warmup failed: {exc}")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    threading.Thread(target=warm_registry_cache_safely, daemon=True).start()
+    yield
+
+
+app = FastAPI(title="IASIdoneaza API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

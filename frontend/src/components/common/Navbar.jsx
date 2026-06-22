@@ -14,8 +14,8 @@ import {
   HiOutlineXMark,
 } from "react-icons/hi2";
 import { GoChecklist } from "react-icons/go";
-import { isAdminUser } from "../../utils/auth";
-import { useLanguage } from "../../i18n/LanguageContext";
+import { clearAuthSession, isAdminUser } from "../../utils/auth";
+import { useLanguage } from "../../language/useLanguage";
 import "../../styles/components/Navbar.css";
 
 export default function Navbar() {
@@ -59,10 +59,7 @@ export default function Navbar() {
   }
 
   function handleLogout() {
-    localStorage.removeItem("userEmail");
-    localStorage.removeItem("userType");
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("demoUser");
+    clearAuthSession();
     closeMenu();
     navigate("/login");
   }

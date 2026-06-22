@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/api";
 import { reverseGeocode, getShortAddress } from "../api/geo";
-import NeedItemsEditor from "../components/NeedItemsEditor";
+import NeedForm from "../components/NeedForm";
 import SectionBanner from "../components/common/SectionBanner";
 import "../styles/formPages.css";
 
@@ -138,57 +138,24 @@ export default function PostNeed() {
 
   return (
     <div className="form-page">
-      <FormBanner />
-
-      <div className="form-container">
-        <div className="form-card">
-          <form onSubmit={handleSubmit} className="form-grid">
-            <div>
-              <label className="form-label">Title *</label>
-              <input
-                name="title"
-                type="text"
-                placeholder="e.g., School supplies"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                required
-                className="form-input"
-              />
-            </div>
-
-            <div>
-              <label className="form-label">Location *</label>
-              <input
-                name="location"
-                type="text"
-                placeholder="e.g. Copou, Iasi"
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                required
-                className="form-input"
-              />
-              <button type="button" onClick={handleUseMyLocation} className="post-need-location-button">
-                Use my current location
-              </button>
-            </div>
-
-            <div>
-              <label className="form-label">Add items to list *</label>
-              <NeedItemsEditor
-                items={items}
-                currentItem={currentItem}
-                onCurrentItemChange={handleItemChange}
-                onAddItem={addItem}
-                onRemoveItem={removeItem}
-              />
-            </div>
-
-            <button type="submit" disabled={loading} className="form-button primary post-need-submit">
-              {loading ? "Posting..." : "Post Requirements"}
-            </button>
-          </form>
-        </div>
-      </div>
+      <NeedForm
+        pageTitle="Post a requirement list"
+        pageSubtitle="Tell the community what your organization needs."
+        formData={formData}
+        setFormData={setFormData}
+        items={items}
+        currentItem={currentItem}
+        onCurrentItemChange={handleItemChange}
+        onAddItem={addItem}
+        onRemoveItem={removeItem}
+        onSubmit={handleSubmit}
+        loading={loading}
+        loadingText="Posting..."
+        submitButtonText="Post Requirements"
+        itemsLabel="Add items to list *"
+        onUseLocation={handleUseMyLocation}
+        submitClassName="post-need-submit"
+      />
     </div>
   );
 }

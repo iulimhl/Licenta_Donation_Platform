@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { apiFetch, buildFileUrl } from "../api/api";
 import {
@@ -8,11 +8,16 @@ import {
   HiOutlineUserCircle,
 } from "react-icons/hi2";
 import SectionBanner from "../components/common/SectionBanner";
+import ConversationList from "../components/messages/ConversationList";
+import { useInbox } from "../hooks/useInbox";
 import {
   addReservationMetadata,
-  getCleanMessagePreview,
   parseReservationMessage,
 } from "../utils/messageFormatting";
+import {
+  buildConversationPath,
+  getConversationKey,
+} from "../utils/conversations";
 import "../styles/pages/Chat.css";
 
 export default function Chat() {
@@ -22,10 +27,8 @@ export default function Chat() {
   const userEmail = localStorage.getItem("userEmail");
 
   const [messages, setMessages] = useState([]);
-  const [conversations, setConversations] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [loadingInbox, setLoadingInbox] = useState(true);
   const [otherUserName, setOtherUserName] = useState(otherEmail);
   const [otherUserLogo, setOtherUserLogo] = useState("");
   const [donationTitle, setDonationTitle] = useState("");
@@ -33,8 +36,6 @@ export default function Chat() {
   const [isFulfilling, setIsFulfilling] = useState(false);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [donationMap, setDonationMap] = useState({});
-  const [needMap, setNeedMap] = useState({});
   const [reservationDraftActive, setReservationDraftActive] = useState(false);
 
   const scrollContainerRef = useRef(null);
@@ -44,25 +45,17 @@ export default function Chat() {
   const needId = searchParams.get("needId");
   const draftMessage = searchParams.get("draft");
   const draftType = searchParams.get("draftType");
-
-  useEffect(() => {
-    if (!userEmail) {
-      navigate("/login");
-      return;
-    }
-
-    loadConversation();
-    loadUserInfo();
-    loadInbox();
-    loadContextMaps();
-
-    const interval = setInterval(() => {
-      loadConversation();
-      loadInbox();
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [otherEmail, userEmail, donationId, needId]);
+  const {
+    loading: loadingInbox,
+    sortedConversations,
+    refreshInbox,
+    getConversationLabel,
+  } = useInbox({
+    userEmail,
+    enabled: Boolean(userEmail),
+    pollMs: 3000,
+    labelMode: "short",
+  });
 
   useEffect(() => {
     if (messages.length > 0 && scrollContainerRef.current) {
@@ -98,7 +91,7 @@ export default function Chat() {
     }
   }, [draftMessage, draftType, newMessage]);
 
-  const loadConversation = async () => {
+  const loadConversation = useCallback(async () => {
     try {
       let path = `/messages/conversation?other_email=${encodeURIComponent(
         otherEmail
@@ -112,46 +105,9 @@ export default function Chat() {
     } catch (err) {
       console.error("Error loading conversation:", err);
     }
-  };
+  }, [donationId, needId, otherEmail, userEmail]);
 
-  const loadInbox = async () => {
-    try {
-      const { data } = await apiFetch(
-        `/messages/inbox?user_email=${encodeURIComponent(userEmail)}`
-      );
-      setConversations(data || []);
-    } catch (err) {
-      console.error("Error loading inbox:", err);
-    } finally {
-      setLoadingInbox(false);
-    }
-  };
-
-  const loadContextMaps = async () => {
-    try {
-      const [{ data: donationsData }, { data: needsData }] = await Promise.all([
-        apiFetch("/donations/"),
-        apiFetch("/needs/"),
-      ]);
-
-      const donationLookup = {};
-      (donationsData || []).forEach((item) => {
-        donationLookup[item.id] = item.title;
-      });
-
-      const needLookup = {};
-      (needsData || []).forEach((item) => {
-        needLookup[item.id] = item.title;
-      });
-
-      setDonationMap(donationLookup);
-      setNeedMap(needLookup);
-    } catch (err) {
-      console.error("Error loading context maps:", err);
-    }
-  };
-
-  const loadUserInfo = async () => {
+  const loadUserInfo = useCallback(async () => {
     try {
       const { data } = await apiFetch(`/auth/public/${encodeURIComponent(otherEmail)}`);
       setOtherUserName(data?.name || otherEmail);
@@ -183,7 +139,21 @@ export default function Chat() {
     } else {
       setNeedDetails(null);
     }
-  };
+  }, [donationId, needId, otherEmail]);
+
+  useEffect(() => {
+    if (!userEmail) {
+      navigate("/login");
+      return;
+    }
+
+    loadConversation();
+    loadUserInfo();
+
+    const interval = setInterval(loadConversation, 3000);
+
+    return () => clearInterval(interval);
+  }, [loadConversation, loadUserInfo, navigate, userEmail]);
 
   const handleConfirmFulfillment = async () => {
     if (!needDetails) return;
@@ -319,7 +289,7 @@ export default function Chat() {
         setMessages((prev) => [...prev, msg]);
         setNewMessage("");
         setReservationDraftActive(false);
-        loadInbox();
+        refreshInbox();
       }
     } catch (err) {
       console.error("Error sending message:", err);
@@ -332,45 +302,11 @@ export default function Chat() {
     ? (needDetails.items || []).every((i) => i.brought >= i.quantity)
     : false;
 
-  const getConversationLabel = (conv) => {
-    if (conv.donation_id) {
-      return donationMap[conv.donation_id]
-        ? `Donation: ${donationMap[conv.donation_id]}`
-        : "Donation conversation";
-    }
-
-    if (conv.need_id) {
-      return needMap[conv.need_id]
-        ? `Need list: ${needMap[conv.need_id]}`
-        : "Need list conversation";
-    }
-
-    return "Direct conversation";
-  };
-
-  const openConversation = (conv) => {
-    const params = new URLSearchParams();
-    if (conv.donation_id) params.set("donationId", conv.donation_id);
-    if (conv.need_id) params.set("needId", conv.need_id);
-
-    navigate(
-      `/chat/${encodeURIComponent(conv.other_email)}${
-        params.toString() ? `?${params.toString()}` : ""
-      }`
-    );
-  };
-
-  const getDisplayName = (conv) => conv.other_name || conv.other_email;
-
-  const activeKey = `${otherEmail}-${donationId ?? "none"}-${needId ?? "none"}`;
-
-  const sortedConversations = useMemo(() => {
-    return [...conversations].sort((a, b) => {
-      const da = a.last_message_date ? new Date(a.last_message_date).getTime() : 0;
-      const db = b.last_message_date ? new Date(b.last_message_date).getTime() : 0;
-      return db - da;
-    });
-  }, [conversations]);
+  const activeKey = getConversationKey({
+    other_email: otherEmail,
+    donation_id: donationId,
+    need_id: needId,
+  });
 
   return (
     <div className="chat-page">
@@ -396,48 +332,14 @@ export default function Chat() {
             </div>
 
             <div className="chat-inbox-list">
-              {loadingInbox ? (
-                <div className="chat-inbox-state">Loading inbox...</div>
-              ) : sortedConversations.length === 0 ? (
-                <div className="chat-inbox-state center">No conversations yet.</div>
-              ) : (
-                sortedConversations.map((conv, idx) => {
-                  const conversationKey = `${conv.other_email}-${conv.donation_id ?? "none"}-${conv.need_id ?? "none"}`;
-                  const isActive = conversationKey === activeKey;
-                  const preview = getCleanMessagePreview(conv.last_message);
-
-                  return (
-                    <button
-                      key={`${conversationKey}-${idx}`}
-                      onClick={() => openConversation(conv)}
-                      className={`chat-conversation-button ${isActive ? "active" : ""}`}
-                    >
-                      <div className="chat-conversation-top">
-                        <div className="chat-conversation-main">
-                          <div className="chat-conversation-avatar">
-                            {conv.other_logo_url ? (
-                              <img src={buildFileUrl(conv.other_logo_url)} alt={getDisplayName(conv)} />
-                            ) : (
-                              getDisplayName(conv)?.charAt(0)?.toUpperCase() || "?"
-                            )}
-                          </div>
-
-                          <div className="chat-conversation-text">
-                            <div className="chat-conversation-email">{getDisplayName(conv)}</div>
-                            <div className="chat-conversation-context">{getConversationLabel(conv)}</div>
-                          </div>
-                        </div>
-
-                        {conv.unread_count > 0 && (
-                          <div className="chat-unread-badge">{conv.unread_count}</div>
-                        )}
-                      </div>
-
-                      <div className="chat-conversation-preview">{preview}</div>
-                    </button>
-                  );
-                })
-              )}
+              <ConversationList
+                variant="chat"
+                loading={loadingInbox}
+                conversations={sortedConversations}
+                activeKey={activeKey}
+                onOpen={(conversation) => navigate(buildConversationPath(conversation))}
+                getConversationLabel={getConversationLabel}
+              />
             </div>
           </aside>
 

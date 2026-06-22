@@ -5,6 +5,9 @@ import json
 import os
 import secrets
 import time
+from dotenv import load_dotenv
+
+load_dotenv()
 
 SECRET_KEY = os.getenv("APP_SECRET_KEY") or secrets.token_urlsafe(32)
 TOKEN_TTL_SECONDS = int(os.getenv("AUTH_TOKEN_TTL_SECONDS", str(60 * 60 * 24 * 7)))

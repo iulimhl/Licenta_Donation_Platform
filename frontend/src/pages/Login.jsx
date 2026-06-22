@@ -1,20 +1,17 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { apiFetch } from "../api/api";
+import { useTimedNotification } from "../hooks/useTimedNotification";
+import { saveAuthSession } from "../utils/auth";
 import "../styles/formPages.css";
 import "../styles/pages/Login.css";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [notification, setNotification] = useState({ message: "", type: "" });
+  const { notification, showNotification } = useTimedNotification();
 
   const navigate = useNavigate();
-
-  const showNotification = (msg, type = "success") => {
-    setNotification({ message: msg, type });
-    setTimeout(() => setNotification({ message: "", type: "" }), 3000);
-  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -25,15 +22,13 @@ export default function Login() {
       });
 
       if (response.ok) {
-        localStorage.setItem("userEmail", data.email);
-        localStorage.setItem("userType", data.user_type);
-        localStorage.setItem("authToken", data.auth_token);
+        saveAuthSession(data);
         showNotification("Login successful! Redirecting...");
         setTimeout(() => navigate("/"), 1500);
       } else {
         showNotification(data.detail || "Invalid email or password", "error");
       }
-    } catch (error) {
+    } catch {
       showNotification("Server is not responding.", "error");
     }
   };

@@ -4,6 +4,11 @@ import { apiFetch, buildFileUrl } from "../api/api";
 import { HiOutlineMapPin, HiOutlineArrowLeft } from "react-icons/hi2";
 import OrganizationPreviewCard from "../components/profile/OrganizationPreviewCard";
 import { isAdminUser } from "../utils/auth";
+import {
+  buildNeedOfferMessage,
+  clampNeedOfferAmount,
+  getRemainingNeedQuantity,
+} from "../utils/needOffers";
 import "../styles/pages/NeedDetails.css";
 
 export default function NeedDetails() {
@@ -74,20 +79,12 @@ export default function NeedDetails() {
     navigate(`/chat/${encodeURIComponent(need.organization_email)}?needId=${need.id}`);
   }
 
-  function getRemainingQuantity(item) {
-    return Math.max((item.quantity || 0) - (item.brought || 0), 0);
-  }
-
   function getOfferQuantity(item, itemIndex) {
-    const remaining = getRemainingQuantity(item);
-    const value = Number(offerQuantities[itemIndex] || 1);
-    return Math.max(1, Math.min(value, remaining || 1));
+    return clampNeedOfferAmount(item, offerQuantities[itemIndex] || 1);
   }
 
   function handleOfferQuantityChange(item, itemIndex, value) {
-    const remaining = getRemainingQuantity(item);
-    const nextValue = Math.max(1, Math.min(Number(value) || 1, remaining || 1));
-    setOfferQuantities((prev) => ({ ...prev, [itemIndex]: nextValue }));
+    setOfferQuantities((prev) => ({ ...prev, [itemIndex]: clampNeedOfferAmount(item, value) }));
   }
 
   async function handleOfferItem(item, itemIndex) {
@@ -102,7 +99,7 @@ export default function NeedDetails() {
     setOfferingIndex(itemIndex);
 
     try {
-      const content = `[OFFER:item_index=${itemIndex};amount=${amount}] I can bring ${amount} ${item.name}.`;
+      const content = buildNeedOfferMessage(itemIndex, amount, item.name);
       const { response, data } = await apiFetch(
         `/messages/?sender_email=${encodeURIComponent(currentUserEmail)}`,
         {
@@ -253,7 +250,7 @@ export default function NeedDetails() {
               ) : (
                 items.map((item, idx) => {
                   const isCompleted = item.brought >= item.quantity && item.quantity > 0;
-                  const remaining = getRemainingQuantity(item);
+                  const remaining = getRemainingNeedQuantity(item);
                   const offerQuantity = getOfferQuantity(item, idx);
 
                   return (

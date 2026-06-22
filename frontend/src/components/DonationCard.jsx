@@ -2,6 +2,7 @@ import "../styles/components/DonationCard.css";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { HiOutlineMapPin } from "react-icons/hi2";
+import { getFirstDonationImage } from "../utils/donationImages";
 
 const statusLabels = {
   available: "Available",
@@ -25,13 +26,7 @@ export default function DonationCard({
   const isReservedBySomeoneElse =
     donation.status === "reserved" && donation.reserved_by_email && !reservedByCurrentUser;
 
-  let firstImage = donation.image;
-  try {
-    const parsedImages = JSON.parse(donation.image);
-    if (Array.isArray(parsedImages) && parsedImages.length > 0) {
-      firstImage = parsedImages[0];
-    }
-  } catch (e) {}
+  const firstImage = getFirstDonationImage(donation.image);
 
   function handleStatusChange(e, newStatus) {
     e.stopPropagation();
@@ -58,8 +53,7 @@ export default function DonationCard({
 
     const params = new URLSearchParams({
       donationId: String(donation.id),
-      draftType: "reserve",
-      draft: `I want to reserve "${donation.title}". Could we discuss the pickup details?`,
+      draft: `Hi! I am interested in "${donation.title}". Could we discuss the pickup details?`,
     });
 
     navigate(`/chat/${encodeURIComponent(donation.owner_email)}?${params.toString()}`);
@@ -128,13 +122,13 @@ export default function DonationCard({
                 </button>
 
                 {showDelete && (
-  <button
-    onClick={handleDelete}
-    className="vinted-action-btn delete-btn"
-  >
-    Delete
-  </button>
-)}
+                  <button
+                    onClick={handleDelete}
+                    className="vinted-action-btn delete-btn"
+                  >
+                    Delete
+                  </button>
+                )}
 
                 <div className="status-menu-container">
                   <button

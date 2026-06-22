@@ -9,7 +9,7 @@ import howImpactImg from "../assets/how-impact.png";
 import { HiOutlineArrowRight } from "react-icons/hi2";
 import SectionBanner from "../components/common/SectionBanner";
 import { isAdminUser } from "../utils/auth";
-import { useLanguage } from "../i18n/LanguageContext";
+import { useLanguage } from "../language/useLanguage";
 import "../styles/pages/Home.css";
 
 export default function Home() {

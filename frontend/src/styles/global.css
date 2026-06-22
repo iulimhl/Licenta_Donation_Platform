@@ -118,6 +118,66 @@ svg {
   background-size: 20px 20px;
 }
 
+.confirm-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.confirm-dialog {
+  width: min(420px, 100%);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+  padding: 22px;
+}
+
+.confirm-dialog h3 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+  color: #16202a;
+}
+
+.confirm-dialog p {
+  margin: 0;
+  line-height: 1.5;
+  color: #52606d;
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.confirm-dialog-actions button {
+  border: 0;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.confirm-dialog-cancel {
+  background: #eef2f6;
+  color: #334155;
+}
+
+.confirm-dialog-confirm.danger {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.confirm-dialog-confirm.default {
+  background: #2563eb;
+  color: #ffffff;
+}
+
 .glass-container {
   background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(12px);

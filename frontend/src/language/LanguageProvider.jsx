@@ -1,25 +1,24 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { LanguageContext } from "./useLanguage";
 import { translations } from "./translations";
-
-const LanguageContext = createContext(null);
 
 export function LanguageProvider({ children }) {
   const [language, setLanguageState] = useState(
     localStorage.getItem("language") || "en"
   );
 
-  function setLanguage(nextLanguage) {
+  const setLanguage = useCallback((nextLanguage) => {
     const supportedLanguage = translations[nextLanguage] ? nextLanguage : "en";
     localStorage.setItem("language", supportedLanguage);
     setLanguageState(supportedLanguage);
-  }
+  }, []);
 
-  function t(path) {
+  const t = useCallback((path) => {
     return path.split(".").reduce(
       (current, key) => current?.[key],
       translations[language]
     ) || path;
-  }
+  }, [language]);
 
   const value = useMemo(
     () => ({
@@ -27,7 +26,7 @@ export function LanguageProvider({ children }) {
       setLanguage,
       t,
     }),
-    [language]
+    [language, setLanguage, t]
   );
 
   return (
@@ -35,12 +34,4 @@ export function LanguageProvider({ children }) {
       {children}
     </LanguageContext.Provider>
   );
-}
-
-export function useLanguage() {
-  const context = useContext(LanguageContext);
-  if (!context) {
-    throw new Error("useLanguage must be used inside LanguageProvider");
-  }
-  return context;
 }

@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/api";
 import { getDonationCategoryLabel } from "../constants/donationCategories";
+import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { isAdminUser } from "../utils/auth";
+import { getDonationImages } from "../utils/donationImages";
 import { HiOutlineArrowLeft } from "react-icons/hi2";
 import "../styles/pages/DonationDetails.css";
 
@@ -16,6 +18,7 @@ export default function DonationDetails() {
   const [imageList, setImageList] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+  const { confirm, confirmDialog } = useConfirmDialog();
 
   const currentUserEmail = localStorage.getItem("userEmail");
   const isOwner = currentUserEmail === donation?.owner_email;
@@ -29,15 +32,7 @@ export default function DonationDetails() {
           setDonation(data);
           setRecommendations([]);
 
-          let parsedImages = [];
-          try {
-            parsedImages = JSON.parse(data.image);
-            if (!Array.isArray(parsedImages)) {
-              parsedImages = [data.image];
-            }
-          } catch (e) {
-            if (data.image) parsedImages = [data.image];
-          }
+          const parsedImages = getDonationImages(data.image);
 
           setImageList(parsedImages);
           if (parsedImages.length > 0) setActiveImage(parsedImages[0]);
@@ -69,7 +64,11 @@ export default function DonationDetails() {
   }, [id, currentUserEmail]);
 
   async function handleDelete() {
-    const confirmDelete = window.confirm("Are you sure you want to delete this donation?");
+    const confirmDelete = await confirm({
+      title: "Delete donation?",
+      message: "This donation will be permanently removed from the platform.",
+      confirmLabel: "Delete",
+    });
     if (!confirmDelete) return;
 
     try {
@@ -99,8 +98,7 @@ export default function DonationDetails() {
 
     const params = new URLSearchParams({
       donationId: String(donation.id),
-      draftType: "reserve",
-      draft: `I want to reserve "${donation.title}". Could we discuss the pickup details?`,
+      draft: `Hi! I am interested in "${donation.title}". Could we discuss the pickup details?`,
     });
 
     navigate(`/chat/${encodeURIComponent(donation.owner_email)}?${params.toString()}`);
@@ -315,7 +313,7 @@ export default function DonationDetails() {
                 )}
 
                 <button onClick={handleContact} className="donation-details-primary-action">
-                  Send message
+                  Contact donor
                 </button>
 
                 {donation.phone_visible && donation.phone && (
@@ -343,6 +341,7 @@ export default function DonationDetails() {
           </div>
         </div>
       </div>
+      {confirmDialog}
     </div>
   );
 }

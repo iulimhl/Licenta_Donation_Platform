@@ -1,8 +1,33 @@
 from sqlalchemy.orm import Session
+from models.donation import DonationModel
 from models.message import Message
+from models.need import NeedModel
 from models.user import User
 
 def create_message(db: Session, sender_email: str, recipient_email: str, content: str, donation_id: int | None = None, need_id: int | None = None):
+    recipient = db.query(User).filter(User.email == recipient_email).first()
+    if not recipient:
+        return None, "recipient_not_found"
+
+    if sender_email == recipient_email:
+        return None, "same_user"
+
+    participants = {sender_email, recipient_email}
+
+    if donation_id is not None:
+        donation = db.query(DonationModel).filter(DonationModel.id == donation_id).first()
+        if not donation:
+            return None, "donation_not_found"
+        if donation.owner_email not in participants:
+            return None, "invalid_context"
+
+    if need_id is not None:
+        need = db.query(NeedModel).filter(NeedModel.id == need_id).first()
+        if not need:
+            return None, "need_not_found"
+        if need.organization_email not in participants:
+            return None, "invalid_context"
+
     db_message = Message(
         sender_email=sender_email,
         recipient_email=recipient_email,
@@ -13,7 +38,7 @@ def create_message(db: Session, sender_email: str, recipient_email: str, content
     db.add(db_message)
     db.commit()
     db.refresh(db_message)
-    return db_message
+    return db_message, None
 
 def get_conversation(db: Session, user_email: str, other_email: str, donation_id: int | None = None, need_id: int | None = None):
     query = db.query(Message).filter(

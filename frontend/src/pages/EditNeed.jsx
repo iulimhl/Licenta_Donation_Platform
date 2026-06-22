@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { apiFetch } from "../api/api";
-import NeedItemsEditor from "../components/NeedItemsEditor";
-import SectionBanner from "../components/common/SectionBanner";
+import NeedForm from "../components/NeedForm";
 import "../styles/formPages.css";
 
 export default function EditNeed() {
@@ -56,11 +55,6 @@ export default function EditNeed() {
 
     loadNeed();
   }, [id, userEmail, navigate]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
 
   const handleItemChange = (e) => {
     const { name, value } = e.target;
@@ -147,64 +141,26 @@ export default function EditNeed() {
 
   return (
     <div className="form-page edit-need-page">
-      <SectionBanner title="Edit need" subtitle="Update your list of requirements." />
-
-      <div className="edit-need-shell">
-        <div className="form-card">
-          <form onSubmit={handleSubmit} className="form-grid">
-            <div>
-              <label className="form-label">Title *</label>
-              <input
-                name="title"
-                type="text"
-                value={formData.title}
-                onChange={handleChange}
-                required
-                className="form-input"
-              />
-            </div>
-
-            <div>
-              <label className="form-label">Location *</label>
-              <input
-                name="location"
-                type="text"
-                value={formData.location}
-                onChange={handleChange}
-                required
-                className="form-input"
-              />
-            </div>
-
-            <div>
-              <label className="form-label">Description</label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                className="form-textarea edit-need-description"
-              />
-            </div>
-
-            <div className="edit-need-items-section">
-              <label className="form-label">Items *</label>
-              <NeedItemsEditor
-                items={items}
-                currentItem={currentItem}
-                onCurrentItemChange={handleItemChange}
-                onAddItem={addItem}
-                onRemoveItem={removeItem}
-                onUpdateItem={updateItem}
-                compact
-              />
-            </div>
-
-            <button type="submit" disabled={loading} className="form-button primary edit-need-submit">
-              {loading ? "Saving..." : "Save Changes"}
-            </button>
-          </form>
-        </div>
-      </div>
+      <NeedForm
+        pageTitle="Edit need"
+        pageSubtitle="Update your list of requirements."
+        formData={formData}
+        setFormData={setFormData}
+        items={items}
+        currentItem={currentItem}
+        onCurrentItemChange={handleItemChange}
+        onAddItem={addItem}
+        onRemoveItem={removeItem}
+        onUpdateItem={updateItem}
+        onSubmit={handleSubmit}
+        loading={loading}
+        submitButtonText="Save Changes"
+        shellClassName="edit-need-shell"
+        itemsSectionClassName="edit-need-items-section"
+        descriptionClassName="edit-need-description"
+        submitClassName="edit-need-submit"
+        compactItems
+      />
     </div>
   );
 }

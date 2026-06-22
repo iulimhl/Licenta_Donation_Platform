@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, Float, DateTime, JSON
-from datetime import datetime
+from datetime import datetime, timezone
 from db.database import Base
 
 class DonationModel(Base):
@@ -17,4 +17,4 @@ class DonationModel(Base):
     lat = Column(Float, nullable=True)
     lng = Column(Float, nullable=True)
     recommendation_embedding = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiFetch, API_BASE, buildFileUrl, getAuthHeaders } from "../api/api";
-import { geocodeAddress } from "../api/geo";
+import { apiFetch } from "../api/api";
 import SectionBanner from "../components/common/SectionBanner";
+import EditProfileMediaSection from "../components/profile/EditProfileMediaSection";
+import EditProfileVerificationSection from "../components/profile/EditProfileVerificationSection";
+import { hasProfileAddress, resolveProfileCoordinates } from "../utils/profileLocation";
+import {
+  uploadProfileCover,
+  uploadProfileGallery,
+  uploadProfileLogo,
+} from "../utils/profileUploads";
 import "../styles/formPages.css";
 import "../styles/pages/EditProfile.css";
-
-function hasProfileAddress(form) {
-  return [form.pickup_address, form.location, form.city].some((value) => String(value || "").trim());
-}
 
 export default function EditProfile() {
   const navigate = useNavigate();
@@ -16,6 +19,7 @@ export default function EditProfile() {
   const logoInputRef = useRef(null);
   const coverInputRef = useRef(null);
   const galleryInputRef = useRef(null);
+  const verificationDocumentInputRef = useRef(null);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -23,6 +27,10 @@ export default function EditProfile() {
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [mapStatus, setMapStatus] = useState("");
   const [userType, setUserType] = useState("");
+  const [verificationStatus, setVerificationStatus] = useState("");
+  const [cif, setCif] = useState("");
+  const [verificationFile, setVerificationFile] = useState(null);
+  const [resubmittingVerification, setResubmittingVerification] = useState(false);
 
   const [logoFile, setLogoFile] = useState(null);
   const [coverFile, setCoverFile] = useState(null);
@@ -59,6 +67,8 @@ export default function EditProfile() {
         }
 
         setUserType(data.user_type || "");
+        setVerificationStatus(data.verification_status || "");
+        setCif(data.cif || "");
         setForm({
           name: data.name || "",
           location: data.location || "",
@@ -118,20 +128,12 @@ export default function EditProfile() {
     setGalleryPreviews(nextFiles.map((file) => URL.createObjectURL(file)));
   }
 
+  function handleVerificationFile(file) {
+    setVerificationFile(file || null);
+  }
+
   async function geocodeProfileLocation() {
-    if (userType !== "organization") {
-      return { lat: null, lng: null };
-    }
-
-    if (form.lat && form.lng) {
-      return { lat: form.lat, lng: form.lng };
-    }
-
-    if (!hasProfileAddress(form)) {
-      return { lat: null, lng: null };
-    }
-
-    return geocodeAddress(form);
+    return resolveProfileCoordinates(form, userType);
   }
 
   function handleUseCurrentLocation() {
@@ -183,65 +185,17 @@ export default function EditProfile() {
 
   async function uploadLogoIfNeeded() {
     if (!logoFile) return form.logo_url || null;
-
-    const formData = new FormData();
-    formData.append("file", logoFile);
-
-    const response = await fetch(`${API_BASE}/auth/user/${userEmail}/upload-logo`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: formData,
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data?.detail || "Could not upload logo.");
-    }
-
-    return data.logo_url;
+    return uploadProfileLogo(userEmail, logoFile);
   }
 
   async function uploadCoverIfNeeded() {
     if (!coverFile) return form.cover_image_url || null;
-
-    const formData = new FormData();
-    formData.append("file", coverFile);
-
-    const response = await fetch(`${API_BASE}/auth/user/${userEmail}/upload-cover`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: formData,
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data?.detail || "Could not upload cover.");
-    }
-
-    return data.cover_image_url;
+    return uploadProfileCover(userEmail, coverFile);
   }
 
   async function uploadGalleryIfNeeded() {
     if (!galleryFiles.length) return form.gallery_images || [];
-
-    const formData = new FormData();
-    galleryFiles.forEach((file) => formData.append("files", file));
-
-    const response = await fetch(`${API_BASE}/auth/user/${userEmail}/upload-gallery`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: formData,
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data?.detail || "Could not upload gallery.");
-    }
-
-    return data.gallery_images || [];
+    return uploadProfileGallery(userEmail, galleryFiles);
   }
 
   async function handleSubmit(e) {
@@ -297,6 +251,60 @@ export default function EditProfile() {
     }
   }
 
+  async function handleResubmitVerification() {
+    if (!verificationFile) {
+      alert("Please upload the fiscal registration certificate first.");
+      return;
+    }
+
+    if (!cif) {
+      alert("Your account has no CIF saved. Please contact an admin or register again with the correct CIF.");
+      return;
+    }
+
+    setResubmittingVerification(true);
+
+    try {
+      const documentForm = new FormData();
+      documentForm.append("email", userEmail);
+      documentForm.append("file", verificationFile);
+
+      const { response: uploadResponse, data: uploadData } = await apiFetch("/verification/upload-document", {
+        method: "POST",
+        body: documentForm,
+      });
+
+      if (!uploadResponse.ok) {
+        alert(uploadData?.detail || "Document upload failed.");
+        return;
+      }
+
+      const { response: verifyResponse, data: verifyData } = await apiFetch("/verification/organization", {
+        method: "POST",
+        body: JSON.stringify({
+          email: userEmail,
+          name: form.name || userEmail,
+          cif,
+        }),
+      });
+
+      if (!verifyResponse.ok) {
+        alert(verifyData?.detail || "Verification could not be submitted.");
+        return;
+      }
+
+      setVerificationStatus("pending");
+      setVerificationFile(null);
+      alert("Verification request sent again. An admin can review it now.");
+      navigate("/profile");
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Server error while resubmitting verification.");
+    } finally {
+      setResubmittingVerification(false);
+    }
+  }
+
   if (loading) {
     return <div className="form-loading">Loading...</div>;
   }
@@ -312,100 +320,29 @@ export default function EditProfile() {
           onSubmit={handleSubmit}
           className="form-card edit-profile-card has-media-sidebar"
         >
-          <section className="edit-profile-section edit-profile-media-section">
-            <div className="edit-profile-section-head">
-              <h2>Profile photo</h2>
-              <p>
-                {userType === "organization"
-                  ? "Update the logo, cover and gallery shown on your organization profile."
-                  : "Update the photo shown on your profile and in conversations."}
-              </p>
-            </div>
+          <EditProfileMediaSection
+            userType={userType}
+            form={form}
+            logoInputRef={logoInputRef}
+            coverInputRef={coverInputRef}
+            galleryInputRef={galleryInputRef}
+            logoPreview={logoPreview}
+            coverPreview={coverPreview}
+            galleryPreviews={galleryPreviews}
+            onLogoFile={handleLogoFile}
+            onCoverFile={handleCoverFile}
+            onGalleryFiles={handleGalleryFiles}
+          />
 
-            <input
-              ref={logoInputRef}
-              type="file"
-              accept=".png,.jpg,.jpeg,.webp"
-              onChange={(e) => handleLogoFile(e.target.files?.[0])}
-              className="edit-profile-hidden-file"
-            />
-
-            {userType === "organization" && (
-              <>
-              <input
-                ref={coverInputRef}
-                type="file"
-                accept=".png,.jpg,.jpeg,.webp"
-                onChange={(e) => handleCoverFile(e.target.files?.[0])}
-                className="edit-profile-hidden-file"
-              />
-              <input
-                ref={galleryInputRef}
-                type="file"
-                accept=".png,.jpg,.jpeg,.webp"
-                multiple
-                onChange={(e) => handleGalleryFiles(e.target.files)}
-                className="edit-profile-hidden-file"
-              />
-              </>
-            )}
-
-            <div className="edit-profile-photo-stack">
-              <button
-                type="button"
-                className={`edit-profile-logo-preview ${userType !== "organization" ? "user-avatar" : ""}`}
-                onClick={() => logoInputRef.current?.click()}
-              >
-                {logoPreview || form.logo_url ? (
-                  <img src={logoPreview || buildFileUrl(form.logo_url)} alt="Profile" />
-                ) : (
-                  <span className="edit-profile-media-plus">+</span>
-                )}
-                <span>{userType === "organization" ? "Change logo" : "Change photo"}</span>
-              </button>
-
-              {userType === "organization" && (
-                <button
-                  type="button"
-                  className="edit-profile-cover-preview"
-                  onClick={() => coverInputRef.current?.click()}
-                >
-                  {coverPreview || form.cover_image_url ? (
-                    <img src={coverPreview || buildFileUrl(form.cover_image_url)} alt="Cover" />
-                  ) : (
-                    <span className="edit-profile-media-plus">+</span>
-                  )}
-                  <span>Change cover</span>
-                </button>
-              )}
-            </div>
-
-            {userType === "organization" && (
-              <div className="edit-profile-gallery-block">
-                <div className="edit-profile-gallery-head">
-                  <h3>Gallery</h3>
-                  <button type="button" onClick={() => galleryInputRef.current?.click()}>
-                    Add photos
-                  </button>
-                </div>
-
-                <div className="edit-profile-gallery">
-                  {(galleryPreviews.length ? galleryPreviews : form.gallery_images?.map(buildFileUrl) || []).map((img, index) => (
-                    <img key={index} src={img} alt={`Gallery ${index + 1}`} />
-                  ))}
-
-                  <button
-                    type="button"
-                    className="edit-profile-add-photo"
-                    onClick={() => galleryInputRef.current?.click()}
-                  >
-                    <span>+</span>
-                    Add Photo
-                  </button>
-                </div>
-              </div>
-            )}
-          </section>
+          <EditProfileVerificationSection
+            userType={userType}
+            verificationStatus={verificationStatus}
+            verificationFile={verificationFile}
+            resubmittingVerification={resubmittingVerification}
+            inputRef={verificationDocumentInputRef}
+            onFileChange={handleVerificationFile}
+            onResubmit={handleResubmitVerification}
+          />
 
           <section className="edit-profile-section">
             <div className="edit-profile-grid">

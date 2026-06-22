@@ -2,12 +2,17 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { HiOutlineMapPin } from "react-icons/hi2";
 import { apiFetch, buildFileUrl } from "../api/api";
+import {
+  buildNeedOfferMessage,
+  clampNeedOfferAmount,
+  getRemainingNeedQuantity,
+} from "../utils/needOffers";
 import "../styles/components/NeedCard.css";
 
 export default function NeedCard({ need, onItemCheck, currentUserEmail, isOwner, isAdmin = false }) {
   const navigate = useNavigate();
   const items = need.items || [];
-  const firstAvailableIndex = items.findIndex((item) => getRemainingQuantity(item) > 0);
+  const firstAvailableIndex = items.findIndex((item) => getRemainingNeedQuantity(item) > 0);
   const [showOfferForm, setShowOfferForm] = useState(false);
   const [selectedItemIndex, setSelectedItemIndex] = useState(firstAvailableIndex >= 0 ? firstAvailableIndex : 0);
   const [offerAmount, setOfferAmount] = useState(1);
@@ -18,10 +23,6 @@ export default function NeedCard({ need, onItemCheck, currentUserEmail, isOwner,
   const progress = totalNeeded > 0 ? Math.round((totalBrought / totalNeeded) * 100) : 0;
   const headerImage = need.organization_cover_image_url || null;
   const hasAvailableItems = firstAvailableIndex >= 0;
-
-  function getRemainingQuantity(item) {
-    return Math.max((item?.quantity || 0) - (item?.brought || 0), 0);
-  }
 
   function openDetails() {
     navigate(`/need/${need.id}`);
@@ -40,7 +41,7 @@ export default function NeedCard({ need, onItemCheck, currentUserEmail, isOwner,
       return;
     }
 
-    if (firstAvailableIndex >= 0 && getRemainingQuantity(items[selectedItemIndex]) <= 0) {
+    if (firstAvailableIndex >= 0 && getRemainingNeedQuantity(items[selectedItemIndex]) <= 0) {
       setSelectedItemIndex(firstAvailableIndex);
       setOfferAmount(1);
     }
@@ -55,9 +56,7 @@ export default function NeedCard({ need, onItemCheck, currentUserEmail, isOwner,
   }
 
   function handleAmountChange(value) {
-    const remaining = getRemainingQuantity(items[selectedItemIndex]);
-    const nextAmount = Math.max(1, Math.min(Number(value) || 1, remaining || 1));
-    setOfferAmount(nextAmount);
+    setOfferAmount(clampNeedOfferAmount(items[selectedItemIndex], value));
   }
 
   async function handleSendOffer(e) {
@@ -69,15 +68,15 @@ export default function NeedCard({ need, onItemCheck, currentUserEmail, isOwner,
     }
 
     const item = items[selectedItemIndex];
-    const remaining = getRemainingQuantity(item);
-    const amount = Math.max(1, Math.min(Number(offerAmount) || 1, remaining || 1));
+    const remaining = getRemainingNeedQuantity(item);
+    const amount = clampNeedOfferAmount(item, offerAmount);
 
     if (!item || remaining <= 0) return;
 
     setSendingOffer(true);
 
     try {
-      const content = `[OFFER:item_index=${selectedItemIndex};amount=${amount}] I can bring ${amount} ${item.name}.`;
+      const content = buildNeedOfferMessage(selectedItemIndex, amount, item.name);
       const { response, data } = await apiFetch(
         `/messages/?sender_email=${encodeURIComponent(currentUserEmail)}`,
         {
@@ -176,7 +175,7 @@ export default function NeedCard({ need, onItemCheck, currentUserEmail, isOwner,
                   <span>Item</span>
                   <select value={selectedItemIndex} onChange={(e) => handleSelectedItemChange(e.target.value)}>
                     {items.map((item, idx) => {
-                      const remaining = getRemainingQuantity(item);
+                      const remaining = getRemainingNeedQuantity(item);
                       if (remaining <= 0) return null;
 
                       return (
@@ -193,7 +192,7 @@ export default function NeedCard({ need, onItemCheck, currentUserEmail, isOwner,
                   <input
                     type="number"
                     min="1"
-                    max={getRemainingQuantity(items[selectedItemIndex])}
+                    max={getRemainingNeedQuantity(items[selectedItemIndex])}
                     value={offerAmount}
                     onChange={(e) => handleAmountChange(e.target.value)}
                   />

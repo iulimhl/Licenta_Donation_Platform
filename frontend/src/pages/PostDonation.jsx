@@ -7,7 +7,6 @@ import { isAdminUser } from "../utils/auth";
 import "../styles/formPages.css";
 
 export default function PostDonation() {
-  const userEmail = localStorage.getItem("userEmail");
   const isAdmin = isAdminUser();
   const [formData, setFormData] = useState({
     title: "",
@@ -48,7 +47,6 @@ export default function PostDonation() {
     const payload = {
       ...formData,
       image: JSON.stringify(formData.images),
-      owner_email: localStorage.getItem("userEmail"),
     };
 
     try {

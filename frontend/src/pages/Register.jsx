@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { apiFetch, getAuthHeaders } from "../api/api";
+import { apiFetch } from "../api/api";
 import { geocodeAddress } from "../api/geo";
+import { useTimedNotification } from "../hooks/useTimedNotification";
+import { saveAuthSession } from "../utils/auth";
 import "../styles/formPages.css";
 import "../styles/pages/Register.css";
 
@@ -16,18 +18,13 @@ export default function Register() {
   const [coords, setCoords] = useState({ lat: null, lng: null });
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [notification, setNotification] = useState({ message: "", type: "" });
+  const { notification, showNotification } = useTimedNotification(3500);
   const [verificationFile, setVerificationFile] = useState(null);
   const [extracting, setExtracting] = useState(false);
   const [phone, setPhone] = useState("");
   const [phoneVisible] = useState(false);
 
   const navigate = useNavigate();
-
-  const showNotification = (msg, type = "success") => {
-    setNotification({ message: msg, type });
-    setTimeout(() => setNotification({ message: "", type: "" }), 3500);
-  };
 
   const handleGetLocation = () => {
     if (!navigator.geolocation) {
@@ -49,7 +46,7 @@ export default function Register() {
           const data = await res.json();
           setLocation(data.display_name || "Detected location");
           showNotification("Location detected!");
-        } catch (error) {
+        } catch {
           showNotification("Error getting exact address.", "error");
         }
 
@@ -89,12 +86,10 @@ export default function Register() {
       const formData = new FormData();
       formData.append("file", verificationFile);
 
-      const response = await fetch("http://127.0.0.1:8000/verification/extract-document", {
+      const { response, data } = await apiFetch("/verification/extract-document", {
         method: "POST",
         body: formData,
       });
-
-      const data = await response.json();
 
       if (!response.ok) {
         showNotification(data.detail || "Could not extract data.", "error");
@@ -229,9 +224,7 @@ export default function Register() {
         return;
       }
 
-      localStorage.setItem("userEmail", data.email);
-      localStorage.setItem("userType", data.user_type);
-      localStorage.setItem("authToken", data.auth_token);
+      saveAuthSession(data);
 
       if (userType === "organization") {
         try {
@@ -239,16 +232,13 @@ export default function Register() {
           formData.append("email", email);
           formData.append("file", verificationFile);
 
-          const uploadResponse = await fetch(
-            "http://127.0.0.1:8000/verification/upload-document",
+          const { response: uploadResponse, data: uploadData } = await apiFetch(
+            "/verification/upload-document",
             {
               method: "POST",
-              headers: getAuthHeaders(),
               body: formData,
             }
           );
-
-          const uploadData = await uploadResponse.json();
 
           if (!uploadResponse.ok) {
             showNotification(uploadData.detail || "Document upload failed.", "error");

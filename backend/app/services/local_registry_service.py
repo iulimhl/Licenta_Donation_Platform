@@ -2,7 +2,6 @@ import os
 import re
 import threading
 import unicodedata
-import pandas as pd
 
 try:
     from services.semantic_matching_service import (
@@ -23,6 +22,18 @@ SOCIAL_DIR = os.path.join(REGISTRIES_DIR, "servicii_sociale")
 
 _REGISTRY_CACHE = None
 _CACHE_LOCK = threading.Lock()
+_PANDAS = None
+
+
+def get_pandas():
+    global _PANDAS
+
+    if _PANDAS is None:
+        import pandas as pandas
+
+        _PANDAS = pandas
+
+    return _PANDAS
 
 
 def normalize_text(value):
@@ -39,7 +50,7 @@ def normalize_text(value):
 def normalize_cif(value):
     if value is None:
         return ""
-    if pd.isna(value):
+    if get_pandas().isna(value):
         return ""
 
     if not isinstance(value, str):
@@ -59,6 +70,7 @@ def normalize_cif(value):
 
 def find_header_row(path):
     try:
+        pd = get_pandas()
         preview = pd.read_excel(path, header=None, nrows=15)
     except Exception:
         return None
@@ -81,6 +93,7 @@ def find_header_row(path):
 
 def safe_read_excel_auto_header(path):
     try:
+        pd = get_pandas()
         header_row = find_header_row(path)
         if header_row is None:
             return pd.DataFrame()
@@ -155,7 +168,7 @@ def score_name_match(input_name, row_name):
     return max(lexical_score, semantic_verification_score or 0)
 
 
-def search_ong_registry(df, name): #asociatii, federatii, uniuni, fundatii
+def search_ong_registry(df, name):
     if df.empty:
         return None
 

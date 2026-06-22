@@ -2,10 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import NeedCard from "../components/NeedCard";
 import { apiFetch } from "../api/api";
-import SectionBanner from "../components/common/SectionBanner";
+import ListingPage from "../components/common/ListingPage";
 import { isAdminUser } from "../utils/auth";
-import { useLanguage } from "../i18n/LanguageContext";
-import "../styles/listingPages.css";
+import { useLanguage } from "../language/useLanguage";
 
 export default function Needs() {
   const navigate = useNavigate();
@@ -23,15 +22,15 @@ export default function Needs() {
     async function loadPageData() {
       try {
         const { data: needsData } = await apiFetch("/needs/");
-        setItems(needsData);
+        setItems(Array.isArray(needsData) ? needsData : []);
 
         if (userEmail) {
           const { data: userData } = await apiFetch(`/auth/user/${userEmail}`);
-          setUserType(userData.user_type);
-          setVerificationStatus(userData.verification_status || "unverified");
+          setUserType(userData?.user_type || null);
+          setVerificationStatus(userData?.verification_status || "unverified");
         }
       } catch (err) {
-        console.error("Eroare la încărcare:", err);
+        console.error("Needs loading error:", err);
       } finally {
         setLoading(false);
       }
@@ -65,98 +64,64 @@ export default function Needs() {
     return items.filter((item) => {
       return (
         !query ||
-        item.title.toLowerCase().includes(query) ||
-        item.location.toLowerCase().includes(query) ||
-        item.organization_email.toLowerCase().includes(query) ||
-        item.items.some((needItem) => needItem.name.toLowerCase().includes(query))
+        item.title?.toLowerCase().includes(query) ||
+        item.location?.toLowerCase().includes(query) ||
+        item.organization_email?.toLowerCase().includes(query) ||
+        item.items?.some((needItem) => needItem.name?.toLowerCase().includes(query))
       );
     });
   }, [items, q]);
 
-  if (loading) {
-    return (
-      <div className="listing-loading">
-        <h3>{t("needs.loading")}</h3>
-      </div>
-    );
-  }
-
   return (
-    <div className="listing-page">
-      <SectionBanner
-        title={t("needs.title")}
-        subtitle={t("needs.subtitle")}
-      />
-
-      <div className="listing-shell">
-
-      {userType === "organization" && verificationStatus !== "verified" && (
-        <div className={`needs-verification-alert ${verificationStatus === "rejected" ? "rejected" : "pending"}`}>
-          {verificationStatus === "rejected"
-            ? t("needs.rejected")
-            : t("needs.pending")}
-        </div>
-      )}
-        <div className="listing-toolbar">
-          <div className={`listing-toolbar-row ${userType === "organization" ? "with-action" : ""}`}>
-            <div className="listing-search-wrap">
-              <input
-                type="text"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder={t("needs.search")}
-                className="listing-search-input"
-              />
-            </div>
-
-            {userType === "organization" && (
-              <button
-                onClick={() => {
-                  if (verificationStatus === "verified") {
-                    navigate("/postneed");
-                  }
-                }}
-                disabled={verificationStatus !== "verified"}
-                className="listing-add-button"
-                title={
-                  verificationStatus === "verified"
-                    ? t("needs.createTitle")
-                    : t("needs.unavailableTitle")
-                }
-              >
-                {t("needs.add")}
-              </button>
-            )}
+    <ListingPage
+      title={t("needs.title")}
+      subtitle={t("needs.subtitle")}
+      loading={loading}
+      loadingText={t("needs.loading")}
+      searchValue={q}
+      searchPlaceholder={t("needs.search")}
+      onSearchChange={setQ}
+      notice={
+        userType === "organization" && verificationStatus !== "verified" && (
+          <div className={`needs-verification-alert ${verificationStatus === "rejected" ? "rejected" : "pending"}`}>
+            {verificationStatus === "rejected" ? t("needs.rejected") : t("needs.pending")}
           </div>
-        </div>
-
-        
-        <div className="listing-results">
-          {filteredItems.length > 0 ? (
-            <div className="listing-grid">
-              {filteredItems.map((need) => (
-                <NeedCard
-                  key={need.id}
-                  need={need}
-                  onItemCheck={handleItemCheck}
-                  currentUserEmail={userEmail}
-                  isOwner={userEmail === need.organization_email}
-                  isAdmin={isAdmin}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="listing-empty-state">
-              <h3>
-                {t("needs.emptyTitle")}
-              </h3>
-              <p>
-                {t("needs.emptyText")}
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+        )
+      }
+      action={
+        userType === "organization" && (
+          <button
+            onClick={() => {
+              if (verificationStatus === "verified") {
+                navigate("/postneed");
+              }
+            }}
+            disabled={verificationStatus !== "verified"}
+            className="listing-add-button"
+            title={
+              verificationStatus === "verified"
+                ? t("needs.createTitle")
+                : t("needs.unavailableTitle")
+            }
+          >
+            {t("needs.add")}
+          </button>
+        )
+      }
+      hasResults={filteredItems.length > 0}
+      emptyTitle={t("needs.emptyTitle")}
+      emptyText={t("needs.emptyText")}
+    >
+      {filteredItems.map((need) => (
+        <NeedCard
+          key={need.id}
+          need={need}
+          onItemCheck={handleItemCheck}
+          currentUserEmail={userEmail}
+          isOwner={userEmail === need.organization_email}
+          isAdmin={isAdmin}
+        />
+      ))}
+    </ListingPage>
   );
 }
