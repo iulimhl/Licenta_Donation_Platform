@@ -3,12 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { HiOutlineMapPin } from "react-icons/hi2";
 import { getFirstDonationImage } from "../utils/donationImages";
-
-const statusLabels = {
-  available: "Available",
-  reserved: "Reserved",
-  inactive: "No longer available",
-};
+import { useLanguage } from "../language/useLanguage";
 
 export default function DonationCard({
   donation,
@@ -22,9 +17,15 @@ export default function DonationCard({
 }) {
   const [showMenu, setShowMenu] = useState(false);
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const reservedByCurrentUser = donation.reserved_by_email === currentUserEmail;
   const isReservedBySomeoneElse =
     donation.status === "reserved" && donation.reserved_by_email && !reservedByCurrentUser;
+  const statusLabels = {
+    available: t("donationCard.available"),
+    reserved: t("donationCard.reserved"),
+    inactive: t("donationCard.inactive"),
+  };
 
   const firstImage = getFirstDonationImage(donation.image);
 
@@ -53,7 +54,7 @@ export default function DonationCard({
 
     const params = new URLSearchParams({
       donationId: String(donation.id),
-      draft: `Hi! I am interested in "${donation.title}". Could we discuss the pickup details?`,
+      draft: t("donationCard.contactDraft").replace("{title}", donation.title),
     });
 
     navigate(`/chat/${encodeURIComponent(donation.owner_email)}?${params.toString()}`);
@@ -76,12 +77,12 @@ export default function DonationCard({
           <img src={firstImage} alt={donation.title} className="donation-image" />
         ) : (
           <div className="donation-placeholder">
-            <span>No Image</span>
+            <span>{t("donationCard.noImage")}</span>
           </div>
         )}
 
         <span className={`status-badge status-${donation.status || "available"}`}>
-          {statusLabels[donation.status] || "Available"}
+          {statusLabels[donation.status] || statusLabels.available}
         </span>
       </div>
 
@@ -95,7 +96,7 @@ export default function DonationCard({
 
         <div className="donation-footer-new">
           <div className="donation-owner">
-            <b>By: </b>{donation.donor_name || "Anonymous"}
+            <b>{t("donationCard.by")}: </b>{donation.donor_name || t("donationCard.anonymous")}
           </div>
 
           <div className="donation-actions-compact">
@@ -107,7 +108,7 @@ export default function DonationCard({
                 }}
                 className="vinted-action-btn contact-btn"
               >
-                Details
+                {t("donationCard.details")}
               </button>
             ) : isOwner ? (
               <>
@@ -118,7 +119,7 @@ export default function DonationCard({
                   }}
                   className="vinted-action-btn edit-btn"
                 >
-                  Edit
+                  {t("donationCard.edit")}
                 </button>
 
                 {showDelete && (
@@ -126,7 +127,7 @@ export default function DonationCard({
                     onClick={handleDelete}
                     className="vinted-action-btn delete-btn"
                   >
-                    Delete
+                    {t("donationCard.delete")}
                   </button>
                 )}
 
@@ -138,7 +139,7 @@ export default function DonationCard({
                     }}
                     className="vinted-action-btn status-btn"
                   >
-                    Status ▾
+                    {t("donationCard.status")}
                   </button>
 
                   {showMenu && (
@@ -165,7 +166,7 @@ export default function DonationCard({
                     onClick={handleReserve}
                     className={`vinted-action-btn reserve-btn ${donation.status}`}
                   >
-                    Reserve
+                    {t("donationCard.reserve")}
                   </button>
                 )}
 
@@ -175,7 +176,7 @@ export default function DonationCard({
                     disabled={isReservedBySomeoneElse || !reservedByCurrentUser}
                     className={`vinted-action-btn reserve-btn ${donation.status}`}
                   >
-                    {reservedByCurrentUser ? "Cancel reservation" : "Reserved"}
+                    {reservedByCurrentUser ? t("donationCard.cancelReservation") : t("donationCard.reserved")}
                   </button>
                 )}
 
@@ -185,7 +186,7 @@ export default function DonationCard({
                     disabled
                     className={`vinted-action-btn reserve-btn ${donation.status}`}
                   >
-                    Unavailable
+                    {t("donationCard.unavailable")}
                   </button>
                 )}
 
@@ -193,7 +194,7 @@ export default function DonationCard({
                   onClick={handleContact}
                   className="vinted-action-btn contact-btn"
                 >
-                  Contact
+                  {t("donationCard.contact")}
                 </button>
               </>
             )}

@@ -1,7 +1,10 @@
 import { colors, radius, shadow } from "../../styles/theme";
 import { HiOutlineMapPin } from "react-icons/hi2";
+import { useLanguage } from "../../language/useLanguage";
 
 export default function ProfileNeeds({ myNeeds, navigate, handleDeleteNeed }) {
+  const { t } = useLanguage();
+
   if (myNeeds.length === 0) {
     return (
       <div
@@ -15,7 +18,7 @@ export default function ProfileNeeds({ myNeeds, navigate, handleDeleteNeed }) {
         }}
       >
         <p style={{ margin: 0, color: colors.textSoft, fontSize: 15 }}>
-          No needs posted yet.{" "}
+          {t("profile.noNeeds")}{" "}
           <span
             onClick={() => navigate("/postneed")}
             style={{
@@ -24,7 +27,7 @@ export default function ProfileNeeds({ myNeeds, navigate, handleDeleteNeed }) {
               cursor: "pointer",
             }}
           >
-            Post one now
+            {t("profile.postOneNow")}
           </span>
         </p>
       </div>
@@ -61,7 +64,7 @@ export default function ProfileNeeds({ myNeeds, navigate, handleDeleteNeed }) {
               fontWeight: 700,
             }}
           >
-            Need list
+            {t("profile.needList")}
           </div>
 
           <div style={{ padding: 20 }}>
@@ -126,9 +129,9 @@ export default function ProfileNeeds({ myNeeds, navigate, handleDeleteNeed }) {
                   color: colors.white,
                   fontWeight: 700,
                   cursor: "pointer",
-                }}
-              >
-                Edit
+              }}
+            >
+                {t("profile.edit")}
               </button>
 
               <button
@@ -141,9 +144,9 @@ export default function ProfileNeeds({ myNeeds, navigate, handleDeleteNeed }) {
                   color: "#b91c1c",
                   fontWeight: 700,
                   cursor: "pointer",
-                }}
-              >
-                Delete
+              }}
+            >
+                {t("profile.delete")}
               </button>
             </div>
           </div>

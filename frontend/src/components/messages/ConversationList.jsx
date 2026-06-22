@@ -4,6 +4,7 @@ import {
   getConversationDisplayName,
   getConversationKey,
 } from "../../utils/conversations";
+import { useLanguage } from "../../language/useLanguage";
 
 export default function ConversationList({
   conversations,
@@ -13,15 +14,17 @@ export default function ConversationList({
   onOpen,
   getConversationLabel,
 }) {
+  const { t } = useLanguage();
+
   if (variant === "chat" && loading) {
-    return <div className="chat-inbox-state">Loading inbox...</div>;
+    return <div className="chat-inbox-state">{t("messages.inboxLoading")}</div>;
   }
 
   if (conversations.length === 0) {
     return variant === "chat" ? (
-      <div className="chat-inbox-state center">No conversations yet.</div>
+      <div className="chat-inbox-state center">{t("messages.empty")}</div>
     ) : (
-      <div className="messages-empty">No conversations yet.</div>
+      <div className="messages-empty">{t("messages.empty")}</div>
     );
   }
 

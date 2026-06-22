@@ -4,6 +4,7 @@ import {
   getConversationContextLabel,
   sortConversationsByDate,
 } from "../utils/conversations";
+import { useLanguage } from "../language/useLanguage";
 
 export function useInbox({
   userEmail,
@@ -12,6 +13,7 @@ export function useInbox({
   includeUnreadCount = false,
   labelMode = "regarding",
 } = {}) {
+  const { t } = useLanguage();
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -95,9 +97,29 @@ export function useInbox({
     [conversations]
   );
 
+  const conversationLabels = useMemo(
+    () => ({
+      regarding: {
+        donation: t("conversations.regardingDonation"),
+        donationFallback: t("conversations.regardingDonationFallback"),
+        need: t("conversations.regardingNeed"),
+        needFallback: t("conversations.regardingNeedFallback"),
+        direct: t("conversations.direct"),
+      },
+      short: {
+        donation: t("conversations.shortDonation"),
+        donationFallback: t("conversations.shortDonationFallback"),
+        need: t("conversations.shortNeed"),
+        needFallback: t("conversations.shortNeedFallback"),
+        direct: t("conversations.direct"),
+      },
+    }),
+    [t]
+  );
+
   const getConversationLabel = useCallback(
-    (conversation) => getConversationContextLabel(conversation, donationMap, needMap, labelMode),
-    [donationMap, labelMode, needMap]
+    (conversation) => getConversationContextLabel(conversation, donationMap, needMap, labelMode, conversationLabels),
+    [conversationLabels, donationMap, labelMode, needMap]
   );
 
   return {

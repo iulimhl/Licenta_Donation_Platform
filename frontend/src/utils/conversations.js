@@ -27,8 +27,8 @@ export function sortConversationsByDate(conversations) {
   });
 }
 
-export function getConversationContextLabel(conversation, donationMap, needMap, mode = "regarding") {
-  const labels = {
+export function getConversationContextLabel(conversation, donationMap, needMap, mode = "regarding", customLabels) {
+  const defaultLabels = {
     regarding: {
       donation: "Regarding donation",
       donationFallback: "Regarding a donation",
@@ -45,6 +45,7 @@ export function getConversationContextLabel(conversation, donationMap, needMap, 
     },
   };
 
+  const labels = customLabels || defaultLabels;
   const copy = labels[mode] || labels.regarding;
 
   if (conversation.donation_id) {

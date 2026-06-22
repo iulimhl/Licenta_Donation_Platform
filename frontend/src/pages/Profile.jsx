@@ -6,6 +6,7 @@ import ProfileHeroCard from "../components/profile/ProfileHeroCard";
 import ProfileDonations from "../components/profile/ProfileDonations";
 import ProfileNeeds from "../components/profile/ProfileNeeds";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
+import { useLanguage } from "../language/useLanguage";
 import {
   HiOutlineUser,
   HiOutlineEnvelope,
@@ -21,10 +22,10 @@ import {
 import { GoChecklist } from "react-icons/go";
 import "../styles/pages/Profile.css";
 
-function getVerificationBadge(status) {
+function getVerificationBadge(status, t) {
   if (status === "verified") {
     return {
-      text: "Verified organization",
+      text: t("profile.verified"),
       icon: <HiOutlineCheckBadge size={18} />,
       className: "verified",
     };
@@ -32,7 +33,7 @@ function getVerificationBadge(status) {
 
   if (status === "pending") {
     return {
-      text: "Verification pending",
+      text: t("profile.pending"),
       icon: <HiOutlineClock size={18} />,
       className: "pending",
     };
@@ -40,14 +41,14 @@ function getVerificationBadge(status) {
 
   if (status === "rejected") {
     return {
-      text: "Verification rejected",
+      text: t("profile.rejected"),
       icon: <HiOutlineXCircle size={18} />,
       className: "rejected",
     };
   }
 
   return {
-    text: "Not verified yet",
+    text: t("profile.unverified"),
     icon: <HiOutlineClock size={18} />,
     className: "unverified",
   };
@@ -57,6 +58,7 @@ export default function Profile() {
   const navigate = useNavigate();
   const userEmail = localStorage.getItem("userEmail");
   const { confirm, confirmDialog } = useConfirmDialog();
+  const { t } = useLanguage();
 
   const [myDonations, setMyDonations] = useState([]);
   const [myNeeds, setMyNeeds] = useState([]);
@@ -106,9 +108,9 @@ export default function Profile() {
 
   async function handleDeleteDonation(id) {
     const confirmed = await confirm({
-      title: "Stergi donatia?",
-      message: "Donatia va fi stearsa definitiv din platforma.",
-      confirmLabel: "Sterge",
+      title: t("profile.deleteDonationTitle"),
+      message: t("profile.deleteDonationText"),
+      confirmLabel: t("profile.deleteConfirm"),
     });
     if (!confirmed) return;
 
@@ -117,15 +119,15 @@ export default function Profile() {
       const { response } = await apiFetch(`/donations/${id}?${params.toString()}`, { method: "DELETE" });
 
       if (!response.ok) {
-        alert("Eroare la stergerea de pe server.");
+        alert(t("profile.deleteDonationError"));
         return;
       }
 
       setMyDonations((prev) => prev.filter((item) => item.id !== id));
-      alert("Donatia a fost stearsa!");
+      alert(t("profile.deleteDonationSuccess"));
     } catch (err) {
       console.error("Error:", err);
-      alert("Nu s-a putut contacta serverul.");
+      alert(t("profile.serverError"));
     }
   }
 
@@ -139,7 +141,7 @@ export default function Profile() {
       });
 
       if (!response.ok) {
-        alert(data?.detail || "Error updating status");
+        alert(data?.detail || t("profile.statusUpdateError"));
         return;
       }
 
@@ -147,15 +149,15 @@ export default function Profile() {
         prev.map((item) => (item.id === id ? data : item))
       );
     } catch {
-      alert("Error updating status");
+      alert(t("profile.statusUpdateError"));
     }
   }
 
   async function handleDeleteNeed(id) {
     const confirmed = await confirm({
-      title: "Stergi lista de necesitati?",
-      message: "Lista va fi stearsa definitiv din platforma.",
-      confirmLabel: "Sterge",
+      title: t("profile.deleteNeedTitle"),
+      message: t("profile.deleteNeedText"),
+      confirmLabel: t("profile.deleteConfirm"),
     });
     if (!confirmed) return;
 
@@ -164,15 +166,15 @@ export default function Profile() {
       const { response } = await apiFetch(`/needs/${id}?${params.toString()}`, { method: "DELETE" });
 
       if (!response.ok) {
-        alert("Eroare la stergere.");
+        alert(t("profile.deleteNeedError"));
         return;
       }
 
       setMyNeeds((prev) => prev.filter((item) => item.id !== id));
-      alert("Lista de necesitati a fost stearsa!");
+      alert(t("profile.deleteNeedSuccess"));
     } catch (err) {
       console.error("Error:", err);
-      alert("Nu s-a putut contacta serverul.");
+      alert(t("profile.serverError"));
     }
   }
 
@@ -191,45 +193,45 @@ export default function Profile() {
   }
 
   if (loading) {
-    return <div className="profile-loading">Loading...</div>;
+    return <div className="profile-loading">{t("profile.loading")}</div>;
   }
 
   const isOrganization = userType === "organization";
-  const verificationBadge = getVerificationBadge(verificationStatus);
+  const verificationBadge = getVerificationBadge(verificationStatus, t);
   const coverImage = isOrganization ? buildFileUrl(userData?.cover_image_url) : "";
   const avatarImage = buildFileUrl(userData?.logo_url);
   const galleryImages = isOrganization ? (userData?.gallery_images || []).map(buildFileUrl).filter(Boolean) : [];
   const profileDetails = [
     {
       icon: <HiOutlineUser size={18} />,
-      label: "Type",
-      value: isOrganization ? "Organization" : "User",
+      label: t("profile.type"),
+      value: isOrganization ? t("profile.organization") : t("profile.user"),
     },
     {
       icon: <HiOutlineEnvelope size={18} />,
-      label: "Email",
+      label: t("profile.email"),
       value: userEmail,
     },
     {
       icon: <HiOutlinePhone size={18} />,
-      label: "Phone",
+      label: t("profile.phone"),
       value: userData?.phone,
     },
     {
       icon: <HiOutlineMapPin size={18} />,
-      label: "Location",
+      label: t("profile.location"),
       value: userData?.city || userData?.location,
     },
     isOrganization && {
       icon: <HiOutlineGlobeAlt size={18} />,
-      label: "Website",
+      label: t("profile.website"),
       value: userData?.website,
     },
   ].filter(Boolean);
   const profileAction = (
     <button onClick={() => navigate("/edit-profile")} className="profile-edit-button">
       <HiOutlinePencilSquare size={18} />
-      <span>Edit profile</span>
+      <span>{t("profile.editProfile")}</span>
     </button>
   );
   const profileStatus = isOrganization ? (
@@ -243,14 +245,14 @@ export default function Profile() {
   return (
     <div className="pattern-bg profile-page">
       <SectionBanner
-        title="My Profile"
-        subtitle={isOrganization ? "Manage your organization profile and activity." : "Manage your profile and donations."}
+        title={t("profile.title")}
+        subtitle={isOrganization ? t("profile.subtitleOrganization") : t("profile.subtitleUser")}
       />
 
       <div className="profile-container">
         <ProfileHeroCard
           title={userName}
-          subtitle={isOrganization ? "Organization account" : "Personal account"}
+          subtitle={isOrganization ? t("profile.organizationAccount") : t("profile.personalAccount")}
           coverImage={coverImage}
           avatarImage={avatarImage}
           details={profileDetails}
@@ -262,14 +264,14 @@ export default function Profile() {
             <div className={`profile-verification-alert ${verificationStatus === "rejected" ? "rejected" : "pending"}`}>
               <h3>
                 {verificationStatus === "rejected"
-                  ? "Organization access is restricted"
-                  : "Organization verification is still pending"}
+                  ? t("profile.restrictedTitle")
+                  : t("profile.pendingTitle")}
               </h3>
 
               <p>
                 {verificationStatus === "rejected"
-                  ? "You cannot post need lists until your account is reviewed again by admin."
-                  : "You can complete your profile and browse the platform, but posting need lists is disabled until an admin approves your organization account."}
+                  ? t("profile.restrictedText")
+                  : t("profile.pendingText")}
               </p>
             </div>
           )}
@@ -278,19 +280,19 @@ export default function Profile() {
         <section className="profile-posts-section">
           <div className="profile-posts-header">
             <div>
-              <h2>My posts</h2>
+              <h2>{t("profile.myPosts")}</h2>
               <p>
                 {isOrganization
-                  ? `${myDonations.length} donations, ${myNeeds.length} need lists`
-                  : `${myDonations.length} donations, ${activeDonations} active`}
+                  ? `${myDonations.length} ${t("profile.donations")}, ${myNeeds.length} ${t("profile.needLists")}`
+                  : `${myDonations.length} ${t("profile.donations")}, ${activeDonations} ${t("profile.active")}`}
               </p>
             </div>
 
             <div className="profile-tabs">
-              {renderTabButton("donations", `Donations (${myDonations.length})`, <HiOutlineGift size={18} />)}
+              {renderTabButton("donations", `${t("profile.donationsTab")} (${myDonations.length})`, <HiOutlineGift size={18} />)}
 
               {isOrganization &&
-                renderTabButton("needs", `Need lists (${myNeeds.length})`, <GoChecklist size={18} />)}
+                renderTabButton("needs", `${t("profile.needListsTab")} (${myNeeds.length})`, <GoChecklist size={18} />)}
             </div>
           </div>
 

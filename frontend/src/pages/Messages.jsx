@@ -7,12 +7,14 @@ import {
 import SectionBanner from "../components/common/SectionBanner";
 import ConversationList from "../components/messages/ConversationList";
 import { useInbox } from "../hooks/useInbox";
+import { useLanguage } from "../language/useLanguage";
 import { buildConversationPath } from "../utils/conversations";
 import "../styles/pages/Messages.css";
 
 export default function Messages() {
   const userEmail = localStorage.getItem("userEmail");
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const {
     loading,
     unreadCount,
@@ -33,14 +35,14 @@ export default function Messages() {
   }, [navigate, userEmail]);
 
   if (loading) {
-    return <div className="messages-loading">Loading messages...</div>;
+    return <div className="messages-loading">{t("messages.loading")}</div>;
   }
 
   return (
     <div className="messages-page">
       <SectionBanner
-        title="Messages"
-        subtitle="Keep in touch with donors, recipients, and organizations in one place."
+        title={t("messages.title")}
+        subtitle={t("messages.subtitle")}
       />
 
       <div className="messages-shell">
@@ -53,8 +55,8 @@ export default function Messages() {
                 </div>
 
                 <div className="messages-inbox-title">
-                  <h2>Inbox</h2>
-                  <p>Your active conversations</p>
+                  <h2>{t("messages.inbox")}</h2>
+                  <p>{t("messages.activeConversations")}</p>
                 </div>
 
                 {unreadCount > 0 && <div className="messages-unread-badge">{unreadCount}</div>}
@@ -76,11 +78,8 @@ export default function Messages() {
                 <HiOutlineUserCircle size={34} />
               </div>
 
-              <h3>Select a conversation</h3>
-              <p>
-                Choose a chat from the left panel to continue the conversation.
-                The item context will stay attached to the thread.
-              </p>
+              <h3>{t("messages.selectTitle")}</h3>
+              <p>{t("messages.selectText")}</p>
             </div>
           </div>
         </div>

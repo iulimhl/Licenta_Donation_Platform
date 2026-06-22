@@ -6,6 +6,7 @@ import "leaflet/dist/leaflet.css";
 import { apiFetch } from "../api/api";
 import { geocodeAddress } from "../api/geo";
 import SectionBanner from "../components/common/SectionBanner";
+import { useLanguage } from "../language/useLanguage";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import "../styles/pages/Map.css";
@@ -68,6 +69,7 @@ function MapController({ organizations, userPos }) {
 
 export default function OngMap() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [organizations, setOrganizations] = useState([]);
   const [userPos, setUserPos] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -85,12 +87,12 @@ export default function OngMap() {
           setMapNotice(
             located.length
               ? ""
-              : "No verified organizations with a saved map location were found yet. Organizations can add one from Edit profile."
+              : t("map.noLocations")
           );
         }
       } catch (error) {
-        console.error("Eroare la incarcarea organizatiilor:", error);
-        setMapNotice("Could not load organizations for the map.");
+        console.error("Error loading organizations:", error);
+        setMapNotice(t("map.loadError"));
       } finally {
         setLoading(false);
       }
@@ -103,7 +105,7 @@ export default function OngMap() {
     }
 
     fetchOrgs();
-  }, []);
+  }, [t]);
 
   const locatedOrganizations = useMemo(() => organizations, [organizations]);
 
@@ -111,13 +113,13 @@ export default function OngMap() {
     ? userPos || [locatedOrganizations[0].lat, locatedOrganizations[0].lng]
     : defaultCenter;
 
-  if (loading) return <div className="map-loading">Se incarca harta...</div>;
+  if (loading) return <div className="map-loading">{t("map.loading")}</div>;
 
   return (
     <div className="map-page">
       <SectionBanner
-        title="Organizations Map"
-        subtitle="Discover verified organizations and collection points in your area."
+        title={t("map.title")}
+        subtitle={t("map.subtitle")}
       />
 
       <div className="map-shell">
@@ -127,7 +129,7 @@ export default function OngMap() {
 
           {userPos && (
             <Marker position={userPos} icon={userLocationIcon}>
-              <Popup>You are here</Popup>
+              <Popup>{t("map.userHere")}</Popup>
             </Marker>
           )}
 
@@ -138,7 +140,7 @@ export default function OngMap() {
                   <strong>{org.name}</strong>
                   <p>{org.location}</p>
                   <button onClick={() => navigate(`/chat/${encodeURIComponent(org.email)}`)}>
-                    Contact
+                    {t("map.contact")}
                   </button>
                 </div>
               </Popup>

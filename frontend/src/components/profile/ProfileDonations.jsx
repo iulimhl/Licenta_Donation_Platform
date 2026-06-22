@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import DonationCard from "../DonationCard";
 import { colors, radius, shadow } from "../../styles/theme";
+import { useLanguage } from "../../language/useLanguage";
 
 export default function ProfileDonations({
   myDonations,
@@ -8,6 +9,7 @@ export default function ProfileDonations({
   handleDeleteDonation,
 }) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const userEmail = localStorage.getItem("userEmail");
 
   if (!myDonations.length) {
@@ -23,7 +25,7 @@ export default function ProfileDonations({
         }}
       >
         <p style={{ margin: 0, color: colors.textSoft, fontSize: 15 }}>
-          No donations posted yet.{" "}
+          {t("profile.noDonations")}{" "}
           <span
             onClick={() => navigate("/postdonation")}
             style={{
@@ -32,7 +34,7 @@ export default function ProfileDonations({
               cursor: "pointer",
             }}
           >
-            Post one now
+            {t("profile.postOneNow")}
           </span>
         </p>
       </div>
