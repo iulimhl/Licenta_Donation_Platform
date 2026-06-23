@@ -2,58 +2,6 @@
   padding-bottom: 40px;
 }
 
-.admin-verification-hero {
-  background-color: #2d4f2b;
-  background-image:
-    radial-gradient(rgba(255, 255, 255, 0.1) 1.4px, transparent 1.4px),
-    linear-gradient(135deg, #1d3b1c 0%, #2d4f2b 50%, #55774b 100%);
-  background-size: 30px 30px, 100% 100%;
-  background-position: 0 0, 0 0;
-  color: white;
-  padding: 52px 24px;
-  position: relative;
-  overflow: hidden;
-}
-
-.admin-verification-hero-overlay {
-  display: none;
-}
-
-.admin-verification-hero-content {
-  position: relative;
-  z-index: 1;
-  text-align: center;
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-.admin-verification-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  opacity: 0.9;
-  margin-bottom: 12px;
-}
-
-.admin-verification-title {
-  margin: 0;
-  font-size: 44px;
-  font-weight: 900;
-  line-height: 1.08;
-}
-
-.admin-verification-subtitle {
-  margin: 12px auto 0;
-  max-width: 760px;
-  font-size: 16px;
-  line-height: 1.7;
-  opacity: 0.96;
-}
-
 .admin-verification-container {
   width: calc(100% - 72px);
   max-width: 1400px;
@@ -84,14 +32,6 @@
   border-color: #2f5d34;
   background: #e8f1e6;
   color: #2f5d34;
-}
-
-.admin-verification-loading,
-.admin-verification-empty {
-  background: var(--admin-white, #ffffff);
-  border: 1px solid var(--admin-border, #d8ddd3);
-  border-radius: 24px;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 }
 
 .admin-verification-loading {
@@ -129,10 +69,6 @@
 }
 
 .admin-verification-card {
-  background: #ffffff;
-  border: 1px solid #d8ddd3;
-  border-radius: 24px;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
   padding: 22px;
   display: flex;
   flex-direction: column;
@@ -155,10 +91,6 @@
   gap: 12px;
   align-items: center;
   padding: 14px;
-  border: 1px solid #d8ddd3;
-  border-radius: 18px;
-  background: #ffffff;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 }
 
 .admin-moderation-toolbar input,
@@ -189,10 +121,6 @@
 }
 
 .admin-moderation-card {
-  background: #ffffff;
-  border: 1px solid #d8ddd3;
-  border-radius: 18px;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
   padding: 18px;
   display: flex;
   justify-content: space-between;
@@ -255,13 +183,9 @@
   align-items: center;
   gap: 16px;
   padding: 14px 16px;
-  border: 1px solid #d8ddd3;
-  border-radius: 18px;
-  background: #ffffff;
   color: #5b6b60;
   font-size: 13px;
   font-weight: 900;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 }
 
 .admin-moderation-page-buttons {
@@ -552,11 +476,101 @@
   color: #1f2937;
 }
 
-@media (max-width: 900px) {
-  .admin-verification-title {
-    font-size: 34px;
-  }
+.admin-reject-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.58);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 10000;
+}
 
+.admin-reject-modal {
+  width: min(520px, 96vw);
+  background: #ffffff;
+  border-radius: 22px;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.25);
+  padding: 24px;
+}
+
+.admin-reject-modal h3 {
+  margin: 0 0 8px;
+  color: #1f2937;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.admin-reject-modal p {
+  margin: 0 0 16px;
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.admin-reject-modal textarea {
+  width: 100%;
+  border: 1px solid #d8ddd3;
+  border-radius: 14px;
+  background: #f8faf8;
+  color: #1f2937;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  outline: none;
+  padding: 12px;
+  resize: vertical;
+}
+
+.admin-reject-modal textarea:focus {
+  border-color: #d6553f;
+  box-shadow: 0 0 0 3px rgba(214, 85, 63, 0.12);
+}
+
+.admin-reject-error {
+  margin-top: 10px;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  background: #fff1f2;
+  color: #991b1b;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 10px 12px;
+}
+
+.admin-reject-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.admin-reject-actions button {
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 900;
+  padding: 11px 16px;
+}
+
+.admin-reject-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.admin-reject-actions .secondary {
+  border: 1px solid #d8ddd3;
+  background: #ffffff;
+  color: #1f2937;
+}
+
+.admin-reject-actions .danger {
+  border: none;
+  background: #d6553f;
+  color: #ffffff;
+}
+
+@media (max-width: 900px) {
   .admin-verification-container {
     width: calc(100% - 32px);
   }
@@ -587,6 +601,15 @@
   .admin-moderation-page-buttons,
   .admin-moderation-page-buttons button {
     width: 100%;
+  }
+
+  .admin-reject-actions,
+  .admin-reject-actions button {
+    width: 100%;
+  }
+
+  .admin-reject-actions {
+    flex-direction: column;
   }
 
 }

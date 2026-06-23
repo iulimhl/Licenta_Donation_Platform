@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { apiFetch } from "../api/api";
 import NeedForm from "../components/NeedForm";
+import { useTimedNotification } from "../hooks/useTimedNotification";
+import { useLanguage } from "../language/useLanguage";
 import "../styles/formPages.css";
 
 export default function EditNeed() {
@@ -11,6 +13,8 @@ export default function EditNeed() {
 
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
+  const { notification, showNotification } = useTimedNotification(3200);
+  const { t } = useLanguage();
 
   const [formData, setFormData] = useState({
     title: "",
@@ -32,7 +36,7 @@ export default function EditNeed() {
         const { data } = await apiFetch(`/needs/${id}`);
 
         if (data.organization_email !== userEmail) {
-          alert("You can only edit your own needs.");
+          showNotification(t("editNeed.ownOnly"), "error");
           navigate("/profile");
           return;
         }
@@ -46,7 +50,7 @@ export default function EditNeed() {
         setItems(data.items || []);
       } catch (err) {
         console.error("Error loading need:", err);
-        alert("Could not load need.");
+        showNotification(t("editNeed.loadError"), "error");
         navigate("/profile");
       } finally {
         setChecking(false);
@@ -54,7 +58,7 @@ export default function EditNeed() {
     };
 
     loadNeed();
-  }, [id, userEmail, navigate]);
+  }, [id, userEmail, navigate, showNotification, t]);
 
   const handleItemChange = (e) => {
     const { name, value } = e.target;
@@ -69,7 +73,7 @@ export default function EditNeed() {
       setItems([...items, { ...currentItem, brought: 0 }]);
       setCurrentItem({ name: "", quantity: 1 });
     } else {
-      alert("Enter item name");
+      showNotification(t("editNeed.enterItemName"), "error");
     }
   };
 
@@ -104,12 +108,12 @@ export default function EditNeed() {
     }));
 
     if (!formData.title || !formData.location || normalizedItems.length === 0) {
-      alert("Fill all fields");
+      showNotification(t("editNeed.fillAll"), "error");
       return;
     }
 
     if (normalizedItems.some((item) => !item.name || item.quantity < item.brought)) {
-      alert("Check item names and quantities.");
+      showNotification(t("editNeed.checkItems"), "error");
       return;
     }
 
@@ -123,27 +127,33 @@ export default function EditNeed() {
       });
 
       if (response.ok) {
-        alert("Need updated successfully!");
+        showNotification(t("editNeed.success"));
         navigate("/profile");
       } else {
-        alert(data?.detail || "Error updating need");
+        showNotification(data?.detail || t("editNeed.updateError"), "error");
       }
     } catch (err) {
-      alert("Error: " + err.message);
+      showNotification(err.message || t("editNeed.serverError"), "error");
     } finally {
       setLoading(false);
     }
   };
 
   if (checking) {
-    return <div className="form-loading">Loading...</div>;
+    return <div className="form-loading">{t("editNeed.loading")}</div>;
   }
 
   return (
     <div className="form-page edit-need-page">
+      {notification.message && (
+        <div className={`page-notification centered ${notification.type === "error" ? "error" : "success"}`}>
+          {notification.message}
+        </div>
+      )}
+
       <NeedForm
-        pageTitle="Edit need"
-        pageSubtitle="Update your list of requirements."
+        pageTitle={t("editNeed.title")}
+        pageSubtitle={t("editNeed.subtitle")}
         formData={formData}
         setFormData={setFormData}
         items={items}
@@ -154,7 +164,7 @@ export default function EditNeed() {
         onUpdateItem={updateItem}
         onSubmit={handleSubmit}
         loading={loading}
-        submitButtonText="Save Changes"
+        submitButtonText={t("editNeed.submit")}
         shellClassName="edit-need-shell"
         itemsSectionClassName="edit-need-items-section"
         descriptionClassName="edit-need-description"

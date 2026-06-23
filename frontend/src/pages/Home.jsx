@@ -9,6 +9,7 @@ import howImpactImg from "../assets/how-impact.png";
 import { HiOutlineArrowRight } from "react-icons/hi2";
 import SectionBanner from "../components/common/SectionBanner";
 import { isAdminUser } from "../utils/auth";
+import { useTimedNotification } from "../hooks/useTimedNotification";
 import { useLanguage } from "../language/useLanguage";
 import "../styles/pages/Home.css";
 
@@ -26,6 +27,7 @@ export default function Home() {
   const userType = localStorage.getItem("userType");
   const isAdmin = isAdminUser();
   const { t } = useLanguage();
+  const { notification, showNotification } = useTimedNotification(3200);
 
   const primaryActionPath = isAdmin
     ? "/admin/verifications"
@@ -89,8 +91,8 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        alert(data?.detail || "Could not update donation status.");
-        return;
+        showNotification(data?.detail || t("donations.updateError"), "error");
+        return null;
       }
 
       setRecentItems((prevItems) =>
@@ -100,9 +102,11 @@ export default function Home() {
             : item
         )
       );
+      return data;
     } catch (err) {
       console.error("Network error:", err);
-      alert(t("donations.networkError"));
+      showNotification(t("donations.networkError"), "error");
+      return null;
     }
   }
 
@@ -125,6 +129,12 @@ export default function Home() {
           { value: stats.completedDonations, label: t("home.completedDonations") },
         ]}
       />
+
+      {notification.message && (
+        <div className={`page-notification centered ${notification.type === "error" ? "error" : "success"}`}>
+          {notification.message}
+        </div>
+      )}
 
       <div className="home-content">
         <section className="home-steps-section">

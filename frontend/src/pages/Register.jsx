@@ -3,7 +3,9 @@ import { useNavigate, Link } from "react-router-dom";
 import { apiFetch } from "../api/api";
 import { geocodeAddress } from "../api/geo";
 import { useTimedNotification } from "../hooks/useTimedNotification";
+import { useLanguage } from "../language/useLanguage";
 import { saveAuthSession } from "../utils/auth";
+import { HiOutlineCheckCircle, HiOutlineXCircle } from "react-icons/hi2";
 import "../styles/formPages.css";
 import "../styles/pages/Register.css";
 
@@ -19,6 +21,7 @@ export default function Register() {
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const { notification, showNotification } = useTimedNotification(3500);
+  const { t } = useLanguage();
   const [verificationFile, setVerificationFile] = useState(null);
   const [extracting, setExtracting] = useState(false);
   const [phone, setPhone] = useState("");
@@ -28,7 +31,7 @@ export default function Register() {
 
   const handleGetLocation = () => {
     if (!navigator.geolocation) {
-      showNotification("Geolocation is not supported.", "error");
+      showNotification(t("register.geoUnsupported"), "error");
       return;
     }
 
@@ -44,16 +47,16 @@ export default function Register() {
             `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`
           );
           const data = await res.json();
-          setLocation(data.display_name || "Detected location");
-          showNotification("Location detected!");
+          setLocation(data.display_name || t("register.detectedLocation"));
+          showNotification(t("register.locationDetected"));
         } catch {
-          showNotification("Error getting exact address.", "error");
+          showNotification(t("register.exactAddressError"), "error");
         }
 
         setLoadingLocation(false);
       },
       () => {
-        showNotification("Access to location denied.", "error");
+        showNotification(t("register.locationDenied"), "error");
         setLoadingLocation(false);
       }
     );
@@ -76,7 +79,7 @@ export default function Register() {
 
   const handleExtractFromDocument = async () => {
     if (!verificationFile) {
-      showNotification("Please upload a document first.", "error");
+      showNotification(t("register.uploadDocumentFirst"), "error");
       return;
     }
 
@@ -92,23 +95,17 @@ export default function Register() {
       });
 
       if (!response.ok) {
-        showNotification(data.detail || "Could not extract data.", "error");
+        showNotification(data.detail || t("register.extractError"), "error");
         return;
       }
 
       if (data.document_type_guess === "fiscal_attestation_certificate") {
-        showNotification(
-          "This looks like a fiscal attestation certificate, not a fiscal registration certificate.",
-          "error"
-        );
+        showNotification(t("register.fiscalAttestationWarning"), "error");
         return;
       }
 
       if (data.document_type_guess === "trade_registry_certificate") {
-        showNotification(
-          "This looks like a trade registry document. Please upload the fiscal registration certificate.",
-          "error"
-        );
+        showNotification(t("register.tradeRegistryWarning"), "error");
         return;
       }
 
@@ -116,10 +113,10 @@ export default function Register() {
       if (data.cif) setCif(data.cif);
       if (data.location) setLocation(data.location);
 
-      showNotification("Document processed successfully!");
+      showNotification(t("register.documentProcessed"));
     } catch (error) {
       console.error("OCR error:", error);
-      showNotification("OCR extraction failed.", "error");
+      showNotification(t("register.ocrFailed"), "error");
     } finally {
       setExtracting(false);
     }
@@ -144,50 +141,50 @@ export default function Register() {
     e.preventDefault();
 
     if (!email.trim() || !password.trim()) {
-      showNotification("Please fill in login details.", "error");
+      showNotification(t("register.loginDetailsRequired"), "error");
       return;
     }
 
     if (!isPasswordValid) {
-      showNotification("Please choose a stronger password.", "error");
+      showNotification(t("register.strongerPassword"), "error");
       return;
     }
 
     if (userType === "user" && !fullName.trim()) {
-      showNotification("Please enter your full name.", "error");
+      showNotification(t("register.fullNameRequired"), "error");
       return;
     }
 
     if (!phone.trim()) {
-      showNotification("Please enter your phone number.", "error");
+      showNotification(t("register.phoneRequired"), "error");
       return;
     }
 
     if (userType === "organization") {
       if (!orgName.trim()) {
-        showNotification("Please enter the organization name.", "error");
+        showNotification(t("register.organizationNameRequired"), "error");
         return;
       }
 
       if (!location.trim()) {
-        showNotification("Please enter the organization address.", "error");
+        showNotification(t("register.addressRequired"), "error");
         return;
       }
 
       if (!cif.trim()) {
-        showNotification("Please enter the organization CIF.", "error");
+        showNotification(t("register.cifRequired"), "error");
         return;
       }
 
       if (!verificationFile) {
-        showNotification("Please upload the fiscal registration certificate.", "error");
+        showNotification(t("register.certificateRequired"), "error");
         return;
       }
 
       const allowedTypes = ["image/png", "image/jpeg", "application/pdf", "image/webp"];
 
       if (!allowedTypes.includes(verificationFile.type)) {
-        showNotification("Unsupported document type.", "error");
+        showNotification(t("register.unsupportedDocument"), "error");
         return;
       }
     }
@@ -218,7 +215,7 @@ export default function Register() {
       if (!response.ok) {
         const message = Array.isArray(data.detail)
           ? data.detail.map((e) => e.msg).join(" | ")
-          : data.detail || "Registration error";
+          : data.detail || t("register.registrationError");
         showNotification(message, "error");
         setSubmitting(false);
         return;
@@ -241,13 +238,13 @@ export default function Register() {
           );
 
           if (!uploadResponse.ok) {
-            showNotification(uploadData.detail || "Document upload failed.", "error");
+            showNotification(uploadData.detail || t("register.documentUploadFailed"), "error");
             setSubmitting(false);
             return;
           }
         } catch (uploadError) {
           console.error("Document upload error:", uploadError);
-          showNotification("Account created, but document upload failed.", "error");
+          showNotification(t("register.accountCreatedDocumentFailed"), "error");
           setSubmitting(false);
           return;
         }
@@ -261,22 +258,22 @@ export default function Register() {
           });
 
           if (verifyResponse.ok) {
-            showNotification("Account created. Verification is pending.");
+            showNotification(t("register.verificationPending"));
           } else {
-            showNotification("Account created, but verification failed.", "error");
+            showNotification(t("register.verificationFailed"), "error");
           }
         } catch (verificationError) {
           console.error("Verification error:", verificationError);
-          showNotification("Account created, but verification could not be completed.", "error");
+          showNotification(t("register.verificationNotCompleted"), "error");
         }
       } else {
-        showNotification("Account created successfully!");
+        showNotification(t("register.accountCreated"));
       }
 
       setTimeout(() => navigate("/login"), 2200);
     } catch (error) {
       console.error("Register error:", error);
-      showNotification("Server connection error.", "error");
+      showNotification(t("register.serverConnectionError"), "error");
     } finally {
       setSubmitting(false);
     }
@@ -286,7 +283,7 @@ export default function Register() {
     <div className="form-page centered register-page">
       {notification.message && (
         <div className={`register-notification ${notification.type === "error" ? "error" : "success"}`}>
-          <span>{notification.type === "error" ? "x" : "✓"}</span>
+          <span>{notification.type === "error" ? <HiOutlineXCircle size={16} /> : <HiOutlineCheckCircle size={16} />}</span>
           <span>{notification.message}</span>
         </div>
       )}
@@ -294,8 +291,8 @@ export default function Register() {
       <div className="register-card">
         <div className="register-card-inner">
           <div className="register-heading">
-            <h2>Create your account</h2>
-            <p>Create an account to donate, connect, and support local communities.</p>
+            <h2>{t("register.title")}</h2>
+            <p>{t("register.subtitle")}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="register-form">
@@ -305,7 +302,7 @@ export default function Register() {
                 onClick={() => setUserType("user")}
                 className={`register-type-button ${userType === "user" ? "active" : ""}`}
               >
-                User
+                {t("register.user")}
               </button>
 
               <button
@@ -313,12 +310,12 @@ export default function Register() {
                 onClick={() => setUserType("organization")}
                 className={`register-type-button ${userType === "organization" ? "active" : ""}`}
               >
-                Organization
+                {t("register.organization")}
               </button>
             </div>
 
             <div>
-              <label className="form-label">Email</label>
+              <label className="form-label">{t("register.email")}</label>
               <input
                 type="email"
                 placeholder="ana@example.com"
@@ -330,7 +327,7 @@ export default function Register() {
             </div>
 
             <div>
-              <label className="form-label">Phone number</label>
+              <label className="form-label">{t("register.phone")}</label>
               <input
                 type="text"
                 placeholder="07xxxxxxxx"
@@ -342,7 +339,7 @@ export default function Register() {
             </div>
 
             <div className={showPasswordBubble ? "register-password-field with-bubble" : ""}>
-              <label className="form-label">Password</label>
+              <label className="form-label">{t("register.password")}</label>
 
               <div className="register-password-wrap">
                 <input
@@ -356,10 +353,10 @@ export default function Register() {
 
                 {showPasswordBubble && (
                   <div className="register-password-bubble">
-                    <PasswordRule ok={passwordChecks.minLength} text="At least 8 characters" />
-                    <PasswordRule ok={passwordChecks.uppercase} text="One uppercase letter" />
-                    <PasswordRule ok={passwordChecks.lowercase} text="One lowercase letter" />
-                    <PasswordRule ok={passwordChecks.number} text="One number" />
+                    <PasswordRule ok={passwordChecks.minLength} text={t("register.passwordMin")} />
+                    <PasswordRule ok={passwordChecks.uppercase} text={t("register.passwordUppercase")} />
+                    <PasswordRule ok={passwordChecks.lowercase} text={t("register.passwordLowercase")} />
+                    <PasswordRule ok={passwordChecks.number} text={t("register.passwordNumber")} />
                   </div>
                 )}
               </div>
@@ -367,7 +364,7 @@ export default function Register() {
 
             {userType === "user" && (
               <div>
-                <label className="form-label">Full name</label>
+                <label className="form-label">{t("register.fullName")}</label>
                 <input
                   type="text"
                   placeholder="Ana Popescu"
@@ -382,10 +379,10 @@ export default function Register() {
             {userType === "organization" && (
               <>
                 <div>
-                  <label className="form-label">Organization name</label>
+                  <label className="form-label">{t("register.organizationName")}</label>
                   <input
                     type="text"
-                    placeholder="Organization name"
+                    placeholder={t("register.organizationName")}
                     value={orgName}
                     onChange={(e) => setOrgName(e.target.value)}
                     required
@@ -394,7 +391,7 @@ export default function Register() {
                 </div>
 
                 <div>
-                  <label className="form-label">CIF</label>
+                  <label className="form-label">{t("register.cif")}</label>
                   <input
                     type="text"
                     placeholder="12345678"
@@ -406,10 +403,10 @@ export default function Register() {
                 </div>
 
                 <div>
-                  <label className="form-label">Address</label>
+                  <label className="form-label">{t("register.address")}</label>
                   <input
                     type="text"
-                    placeholder="Enter address or use GPS"
+                    placeholder={t("register.addressPlaceholder")}
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                     required
@@ -422,12 +419,12 @@ export default function Register() {
                     disabled={loadingLocation}
                     className="register-secondary-button"
                   >
-                    {loadingLocation ? "Detecting..." : "Use current location"}
+                    {loadingLocation ? t("register.detecting") : t("register.useCurrentLocation")}
                   </button>
                 </div>
 
                 <div>
-                  <label className="form-label">Fiscal registration certificate</label>
+                  <label className="form-label">{t("register.certificate")}</label>
                   <input
                     type="file"
                     accept=".png,.jpg,.jpeg,.pdf,.webp"
@@ -441,7 +438,7 @@ export default function Register() {
                     disabled={extracting}
                     className="register-secondary-button"
                   >
-                    {extracting ? "Extracting..." : "Auto-fill from document"}
+                    {extracting ? t("register.extracting") : t("register.autoFillDocument")}
                   </button>
                 </div>
               </>
@@ -452,13 +449,13 @@ export default function Register() {
               disabled={!isPasswordValid || submitting}
               className="form-button primary register-submit"
             >
-              {submitting ? "Creating..." : "Create account"}
+              {submitting ? t("register.creating") : t("register.createAccount")}
             </button>
           </form>
 
           <div className="register-footer">
             <p>
-              Already have an account? <Link to="/login">Log in</Link>
+              {t("register.alreadyHaveAccount")} <Link to="/login">{t("register.logIn")}</Link>
             </p>
           </div>
         </div>
@@ -470,7 +467,7 @@ export default function Register() {
 function PasswordRule({ ok, text }) {
   return (
     <div className={`register-password-rule ${ok ? "ok" : "error"}`}>
-      <span>{ok ? "✓" : "x"}</span>
+      <span>{ok ? <HiOutlineCheckCircle size={14} /> : <HiOutlineXCircle size={14} />}</span>
       <span>{text}</span>
     </div>
   );

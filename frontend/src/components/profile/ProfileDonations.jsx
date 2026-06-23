@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import DonationCard from "../DonationCard";
-import { colors, radius, shadow } from "../../styles/theme";
+import ProfileEmptyState from "./ProfileEmptyState";
 import { useLanguage } from "../../language/useLanguage";
 
 export default function ProfileDonations({
@@ -14,41 +14,16 @@ export default function ProfileDonations({
 
   if (!myDonations.length) {
     return (
-      <div
-        style={{
-          background: colors.white,
-          border: `1px solid ${colors.border}`,
-          borderRadius: radius.xl,
-          boxShadow: shadow.soft,
-          padding: "56px 24px",
-          textAlign: "center",
-        }}
-      >
-        <p style={{ margin: 0, color: colors.textSoft, fontSize: 15 }}>
-          {t("profile.noDonations")}{" "}
-          <span
-            onClick={() => navigate("/postdonation")}
-            style={{
-              color: colors.primary,
-              fontWeight: 800,
-              cursor: "pointer",
-            }}
-          >
-            {t("profile.postOneNow")}
-          </span>
-        </p>
-      </div>
+      <ProfileEmptyState
+        text={t("profile.noDonations")}
+        action={t("profile.postOneNow")}
+        onAction={() => navigate("/postdonation")}
+      />
     );
   }
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
-        gap: 24,
-      }}
-    >
+    <div className="profile-card-grid">
       {myDonations.map((donation) => (
         <DonationCard
           key={donation.id}

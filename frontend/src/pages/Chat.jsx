@@ -10,6 +10,7 @@ import {
 import SectionBanner from "../components/common/SectionBanner";
 import ConversationList from "../components/messages/ConversationList";
 import { useInbox } from "../hooks/useInbox";
+import { useLanguage } from "../language/useLanguage";
 import {
   addReservationMetadata,
   parseReservationMessage,
@@ -37,6 +38,9 @@ export default function Chat() {
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [reservationDraftActive, setReservationDraftActive] = useState(false);
+  const [threadError, setThreadError] = useState("");
+  const [sendError, setSendError] = useState("");
+  const { t } = useLanguage();
 
   const scrollContainerRef = useRef(null);
 
@@ -100,12 +104,19 @@ export default function Chat() {
       if (donationId) path += `&donation_id=${encodeURIComponent(donationId)}`;
       if (needId) path += `&need_id=${encodeURIComponent(needId)}`;
 
-      const { data } = await apiFetch(path);
+      const { response, data } = await apiFetch(path);
+      if (!response.ok) {
+        setThreadError(data?.detail || t("messages.threadLoadError"));
+        return;
+      }
+
+      setThreadError("");
       setMessages(data || []);
     } catch (err) {
       console.error("Error loading conversation:", err);
+      setThreadError(t("messages.threadLoadError"));
     }
-  }, [donationId, needId, otherEmail, userEmail]);
+  }, [donationId, needId, otherEmail, userEmail, t]);
 
   const loadUserInfo = useCallback(async () => {
     try {
@@ -234,7 +245,7 @@ export default function Chat() {
       );
 
       if (!response.ok) {
-        alert("Could not confirm this item.");
+        setSendError("Could not confirm this item.");
         return;
       }
 
@@ -253,7 +264,7 @@ export default function Chat() {
       loadConversation();
     } catch (err) {
       console.error("Confirm offer error:", err);
-      alert("Could not contact the server.");
+      setSendError("Could not contact the server.");
     }
   };
 
@@ -262,6 +273,7 @@ export default function Chat() {
     if (!newMessage.trim()) return;
 
     setLoading(true);
+    setSendError("");
     try {
       const messageContent =
         reservationDraftActive && donationId
@@ -281,18 +293,22 @@ export default function Chat() {
         }
       );
 
-      if (response.ok) {
-        const msg = {
-          ...data,
-          created_at: data?.created_at ?? new Date().toISOString(),
-        };
-        setMessages((prev) => [...prev, msg]);
-        setNewMessage("");
-        setReservationDraftActive(false);
-        refreshInbox();
+      if (!response.ok) {
+        setSendError(data?.detail || t("messages.sendError"));
+        return;
       }
+
+      const msg = {
+        ...data,
+        created_at: data?.created_at ?? new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, msg]);
+      setNewMessage("");
+      setReservationDraftActive(false);
+      refreshInbox();
     } catch (err) {
       console.error("Error sending message:", err);
+      setSendError(t("messages.sendError"));
     } finally {
       setLoading(false);
     }
@@ -311,13 +327,13 @@ export default function Chat() {
   return (
     <div className="chat-page">
       <SectionBanner
-        title="Messages"
-        subtitle="Keep in touch with donors, recipients, and organizations in one place."
+        title={t("messages.title")}
+        subtitle={t("messages.subtitle")}
       />
 
       <div className="chat-shell">
         <div className="chat-layout">
-          <aside className="chat-inbox-card">
+          <aside className="chat-inbox-card surface-card">
             <div className="chat-inbox-header">
               <div className="chat-inbox-title-row">
                 <div className="chat-icon-box">
@@ -325,8 +341,8 @@ export default function Chat() {
                 </div>
 
                 <div>
-                  <h2>Inbox</h2>
-                  <p>Your active conversations</p>
+                  <h2>{t("messages.inbox")}</h2>
+                  <p>{t("messages.activeConversations")}</p>
                 </div>
               </div>
             </div>
@@ -343,7 +359,7 @@ export default function Chat() {
             </div>
           </aside>
 
-          <main className="chat-main-card">
+          <main className="chat-main-card surface-card">
             <div className="chat-thread-header">
               <div className="chat-thread-title-row">
                 <div className="chat-icon-box large">
@@ -358,14 +374,16 @@ export default function Chat() {
                   <h2>{otherUserName}</h2>
                   <p>
                     {donationTitle
-                      ? `Regarding donation: "${donationTitle}"`
+                      ? `${t("conversations.regardingDonation")}: "${donationTitle}"`
                       : needDetails
-                      ? `Regarding need list: "${needDetails.title}"`
-                      : "Direct conversation"}
+                      ? `${t("conversations.regardingNeed")}: "${needDetails.title}"`
+                      : t("conversations.direct")}
                   </p>
                 </div>
               </div>
             </div>
+
+            {threadError && <div className="chat-feedback error">{threadError}</div>}
 
             {needDetails && userEmail === needDetails.organization_email && (
               <div className={`chat-fulfillment ${isNeedComplete ? "complete" : "pending"}`}>
@@ -391,7 +409,7 @@ export default function Chat() {
 
             <div ref={scrollContainerRef} className="chat-messages">
               {messages.length === 0 ? (
-                <div className="chat-empty-thread">No messages yet. Start the conversation!</div>
+                <div className="chat-empty-thread">{t("messages.emptyThread")}</div>
               ) : (
                 messages.map((msg, idx) => {
                   const isMe = msg.sender_email === userEmail;
@@ -416,7 +434,7 @@ export default function Chat() {
                       key={idx}
                       className={`chat-message-row ${isMe ? "me" : "other"} ${isSystemMessage ? "system" : ""}`}
                     >
-                      <span className="chat-message-author">{isMe ? "You" : otherUserName}</span>
+                      <span className="chat-message-author">{isMe ? t("messages.you") : otherUserName}</span>
 
                       <div className="chat-message-bubble">
                         {offer && <div className="chat-offer-label">Item offer</div>}
@@ -466,16 +484,17 @@ export default function Chat() {
             </div>
 
             <form onSubmit={handleSendMessage} className="chat-compose">
+              {sendError && <div className="chat-feedback error compose-error">{sendError}</div>}
               <input
                 type="text"
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Type a message..."
+                placeholder={t("messages.typeMessage")}
                 disabled={loading}
               />
               <button type="submit" disabled={loading || !newMessage.trim()}>
                 <HiOutlinePaperAirplane size={18} />
-                <span>Send</span>
+                <span>{loading ? t("messages.sending") : t("messages.send")}</span>
               </button>
             </form>
           </main>
@@ -484,7 +503,7 @@ export default function Chat() {
 
       {showModal && (
         <div className="chat-modal-backdrop">
-          <div className="chat-modal">
+          <div className="chat-modal surface-card">
             <h3>Confirm fulfillment?</h3>
 
             <p>

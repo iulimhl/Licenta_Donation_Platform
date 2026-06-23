@@ -1,4 +1,5 @@
 import "../styles/components/NeedItemsEditor.css";
+import { useLanguage } from "../language/useLanguage";
 
 export default function NeedItemsEditor({
   items,
@@ -9,13 +10,15 @@ export default function NeedItemsEditor({
   onUpdateItem,
   compact = false,
 }) {
+  const { t } = useLanguage();
+
   return (
     <div className="need-items-editor">
       <div className={`need-items-editor__row ${compact ? "compact" : ""}`}>
         <input
           type="text"
           name="name"
-          placeholder="Item name"
+          placeholder={t("needForm.itemName")}
           value={currentItem.name}
           onChange={onCurrentItemChange}
           className="need-items-editor__input need-items-editor__name"
@@ -29,7 +32,7 @@ export default function NeedItemsEditor({
           className="need-items-editor__input need-items-editor__quantity"
         />
         <button type="button" onClick={onAddItem} className="need-items-editor__add">
-          Add
+          {t("needForm.addItem")}
         </button>
       </div>
 
@@ -59,7 +62,7 @@ export default function NeedItemsEditor({
                 </span>
               )}
               <button type="button" onClick={() => onRemoveItem(idx)}>
-                Remove
+                {t("needForm.removeItem")}
               </button>
             </div>
           ))}

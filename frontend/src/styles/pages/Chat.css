@@ -2,60 +2,6 @@
   padding-bottom: 32px;
 }
 
-.chat-banner {
-  margin-top: 16px;
-  background: linear-gradient(90deg, #1d4f2d 0%, #4e7d44 100%);
-  color: #ffffff;
-  padding: 52px 24px;
-  position: relative;
-  overflow: hidden;
-}
-
-.chat-banner::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  opacity: 0.12;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.35) 1px, transparent 1px);
-  background-size: 20px 20px;
-  pointer-events: none;
-}
-
-.chat-banner-inner {
-  position: relative;
-  z-index: 1;
-  text-align: center;
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-.chat-kicker {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  opacity: 0.9;
-  margin-bottom: 12px;
-}
-
-.chat-banner h1 {
-  margin: 0;
-  font-size: 46px;
-  font-weight: 900;
-  line-height: 1.08;
-}
-
-.chat-banner p {
-  margin: 12px auto 0;
-  max-width: 760px;
-  font-size: 16px;
-  line-height: 1.7;
-  opacity: 0.96;
-}
-
 .chat-shell {
   width: calc(100% - 72px);
   max-width: 1680px;
@@ -71,15 +17,7 @@
 
 .chat-inbox-card,
 .chat-main-card {
-  background: #ffffff;
-  border-radius: 18px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 14px 38px rgba(15, 23, 42, 0.08);
   overflow: hidden;
-}
-
-.chat-inbox-card,
-.chat-main-card {
   display: flex;
   flex-direction: column;
 }
@@ -340,6 +278,20 @@
   padding: 20px;
 }
 
+.chat-feedback {
+  margin: 12px 20px 0;
+  border-radius: 12px;
+  padding: 11px 14px;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.chat-feedback.error {
+  background: #fff1f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
 .chat-message-row {
   display: flex;
   flex-direction: column;
@@ -477,9 +429,15 @@
 .chat-compose {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
   padding: 20px 24px;
   border-top: 1px solid #e2e8f0;
   background: #ffffff;
+}
+
+.chat-compose .compose-error {
+  flex: 0 0 100%;
+  margin: 0;
 }
 
 .chat-compose input {
@@ -520,13 +478,9 @@
 }
 
 .chat-modal {
-  background-color: #ffffff;
   padding: 30px;
-  border-radius: 18px;
   max-width: 420px;
   width: 90%;
-  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.1);
-  border: 1px solid #e2e8f0;
   text-align: center;
 }
 
@@ -577,19 +531,6 @@
 @media (max-width: 560px) {
   .chat-page {
     padding-bottom: 20px;
-  }
-
-  .chat-banner {
-    margin-top: 0;
-    padding: 36px 16px;
-  }
-
-  .chat-banner h1 {
-    font-size: 32px;
-  }
-
-  .chat-banner p {
-    font-size: 14px;
   }
 
   .chat-shell {

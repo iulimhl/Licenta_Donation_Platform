@@ -4,6 +4,8 @@ import { apiFetch } from "../api/api";
 import { reverseGeocode, getShortAddress } from "../api/geo";
 import DonationForm from "../components/DonationForm";
 import { isAdminUser } from "../utils/auth";
+import { useTimedNotification } from "../hooks/useTimedNotification";
+import { useLanguage } from "../language/useLanguage";
 import "../styles/formPages.css";
 
 export default function PostDonation() {
@@ -19,6 +21,8 @@ export default function PostDonation() {
     lng: null,
   });
   const [loading, setLoading] = useState(false);
+  const { notification, showNotification } = useTimedNotification(3200);
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -41,7 +45,10 @@ export default function PostDonation() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (formData.images.length === 0) return alert("Please add at least one photo.");
+    if (formData.images.length === 0) {
+      showNotification(t("postDonation.missingPhoto"), "error");
+      return;
+    }
     setLoading(true);
 
     const payload = {
@@ -54,9 +61,14 @@ export default function PostDonation() {
         method: "POST",
         body: JSON.stringify(payload),
       });
-      if (response.ok) navigate("/donations");
+      if (response.ok) {
+        navigate("/donations");
+      } else {
+        showNotification(t("postDonation.createError"), "error");
+      }
     } catch (error) {
       console.error(error);
+      showNotification(t("postDonation.serverError"), "error");
     } finally {
       setLoading(false);
     }
@@ -64,14 +76,20 @@ export default function PostDonation() {
 
   return (
     <div className="donation-form-page">
+      {notification.message && (
+        <div className={`page-notification centered ${notification.type === "error" ? "error" : "success"}`}>
+          {notification.message}
+        </div>
+      )}
+
       <DonationForm
-        pageTitle="Post a Donation"
-        pageSubtitle="Share what you don't need anymore. Add clear photos and details to help it find a new home."
+        pageTitle={t("postDonation.title")}
+        pageSubtitle={t("postDonation.subtitle")}
         formData={formData}
         setFormData={setFormData}
         onSubmit={handleSubmit}
         loading={loading}
-        submitButtonText="Post Donation"
+        submitButtonText={t("postDonation.submit")}
         onUseLocation={handleUseMyLocation}
       />
     </div>

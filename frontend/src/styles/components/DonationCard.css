@@ -84,6 +84,11 @@
   text-overflow: ellipsis;
   display: flex;
   align-items: center;
+  gap: 4px;
+}
+
+.donation-location svg {
+  flex-shrink: 0;
 }
 
 

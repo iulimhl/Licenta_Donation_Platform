@@ -35,7 +35,7 @@ export default function Messages() {
   }, [navigate, userEmail]);
 
   if (loading) {
-    return <div className="messages-loading">{t("messages.loading")}</div>;
+    return <div className="page-message">{t("messages.loading")}</div>;
   }
 
   return (
@@ -47,7 +47,7 @@ export default function Messages() {
 
       <div className="messages-shell">
         <div className="messages-layout">
-          <div className="messages-inbox-card">
+          <div className="messages-inbox-card surface-card">
             <div className="messages-inbox-header">
               <div className="messages-inbox-title-row">
                 <div className="messages-inbox-icon">
@@ -72,7 +72,7 @@ export default function Messages() {
             </div>
           </div>
 
-          <div className="messages-placeholder-panel">
+          <div className="messages-placeholder-panel surface-card">
             <div className="messages-placeholder-content">
               <div className="messages-placeholder-icon">
                 <HiOutlineUserCircle size={34} />

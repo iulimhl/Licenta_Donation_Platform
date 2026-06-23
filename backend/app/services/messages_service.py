@@ -3,6 +3,7 @@ from models.donation import DonationModel
 from models.message import Message
 from models.need import NeedModel
 from models.user import User
+import re
 
 def create_message(db: Session, sender_email: str, recipient_email: str, content: str, donation_id: int | None = None, need_id: int | None = None):
     recipient = db.query(User).filter(User.email == recipient_email).first()
@@ -110,3 +111,48 @@ def get_unread_count(db: Session, user_email: str):
     ).count()
 
     return {"unread_count": unread_count}
+
+def get_sent_offers(db: Session, user_email: str):
+    offer_messages = db.query(Message).filter(
+        Message.sender_email == user_email,
+        Message.content.like("[OFFER:%")
+    ).order_by(Message.created_at.desc()).all()
+
+    need_ids = {message.need_id for message in offer_messages if message.need_id}
+    needs = db.query(NeedModel).filter(NeedModel.id.in_(need_ids)).all() if need_ids else []
+    need_lookup = {need.id: need for need in needs}
+
+    recipient_emails = {message.recipient_email for message in offer_messages}
+    recipients = db.query(User).filter(User.email.in_(recipient_emails)).all() if recipient_emails else []
+    recipient_lookup = {user.email: user for user in recipients}
+
+    offers = []
+    for message in offer_messages:
+        match = re.match(r"^\[OFFER:item_index=(\d+)(?:;amount=(\d+))?\]\s*(.*)$", message.content or "")
+        if not match:
+            continue
+
+        item_index = int(match.group(1))
+        amount = int(match.group(2) or 0)
+        text = match.group(3) or "I can bring this item."
+        need = need_lookup.get(message.need_id)
+        item = None
+        if need and need.items and 0 <= item_index < len(need.items):
+            item = need.items[item_index]
+
+        recipient = recipient_lookup.get(message.recipient_email)
+        offers.append({
+            "id": message.id,
+            "recipient_email": message.recipient_email,
+            "recipient_name": recipient.name if recipient else message.recipient_email,
+            "need_id": message.need_id,
+            "need_title": need.title if need else "Need list",
+            "need_location": need.location if need else None,
+            "item_index": item_index,
+            "item_name": item.get("name") if item else "Item",
+            "amount": amount or 1,
+            "text": text,
+            "created_at": message.created_at,
+        })
+
+    return offers

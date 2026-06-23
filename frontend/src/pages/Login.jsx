@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { apiFetch } from "../api/api";
 import { useTimedNotification } from "../hooks/useTimedNotification";
+import { useLanguage } from "../language/useLanguage";
 import { saveAuthSession } from "../utils/auth";
 import "../styles/formPages.css";
 import "../styles/pages/Login.css";
@@ -10,6 +11,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { notification, showNotification } = useTimedNotification();
+  const { t } = useLanguage();
 
   const navigate = useNavigate();
 
@@ -23,13 +25,13 @@ export default function Login() {
 
       if (response.ok) {
         saveAuthSession(data);
-        showNotification("Login successful! Redirecting...");
+        showNotification(t("auth.loginSuccess"));
         setTimeout(() => navigate("/"), 1500);
       } else {
-        showNotification(data.detail || "Invalid email or password", "error");
+        showNotification(data.detail || t("auth.invalidLogin"), "error");
       }
     } catch {
-      showNotification("Server is not responding.", "error");
+      showNotification(t("auth.serverNotResponding"), "error");
     }
   };
 
@@ -44,13 +46,13 @@ export default function Login() {
       <div className="login-card">
         <div className="login-card-inner">
           <div className="login-heading">
-            <h2>Welcome back</h2>
-            <p>Sign in to continue managing donations and community support.</p>
+            <h2>{t("auth.welcomeBack")}</h2>
+            <p>{t("auth.loginSubtitle")}</p>
           </div>
 
           <form onSubmit={handleLogin} className="login-form">
             <div>
-              <label className="form-label">Email</label>
+              <label className="form-label">{t("auth.email")}</label>
               <input
                 type="email"
                 placeholder="ana@example.com"
@@ -62,7 +64,7 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="form-label">Password</label>
+              <label className="form-label">{t("auth.password")}</label>
               <input
                 type="password"
                 placeholder="********"
@@ -74,13 +76,13 @@ export default function Login() {
             </div>
 
             <button type="submit" className="form-button primary login-submit">
-              Log in
+              {t("auth.logIn")}
             </button>
           </form>
 
           <div className="login-footer">
             <p>
-              Don&apos;t have an account? <Link to="/register">Register now</Link>
+              {t("auth.noAccount")} <Link to="/register">{t("auth.registerNow")}</Link>
             </p>
           </div>
         </div>

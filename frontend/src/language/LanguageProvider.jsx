@@ -14,10 +14,10 @@ export function LanguageProvider({ children }) {
   }, []);
 
   const t = useCallback((path) => {
-    return path.split(".").reduce(
-      (current, key) => current?.[key],
-      translations[language]
-    ) || path;
+    const getValue = (source) =>
+      path.split(".").reduce((current, key) => current?.[key], source);
+
+    return getValue(translations[language]) || getValue(translations.en) || path;
   }, [language]);
 
   const value = useMemo(

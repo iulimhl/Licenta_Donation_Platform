@@ -11,6 +11,7 @@ from schemas.verification import (
     OrganizationVerificationRequest,
     OrganizationVerificationResponse,
     OCRExtractResponse,
+    VerificationRejectionRequest,
 )
 from services import verification_service, ocr_service
 from services.semantic_matching_service import (
@@ -184,6 +185,7 @@ def approve_organization(
 
     org.verification_status = "verified"
     org.verified = True
+    org.rejection_reason = None
     db.commit()
     db.refresh(org)
 
@@ -193,6 +195,7 @@ def approve_organization(
 @router.patch("/reject/{user_id}")
 def reject_organization(
     user_id: int,
+    payload: VerificationRejectionRequest | None = None,
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin_user),
 ):
@@ -202,6 +205,7 @@ def reject_organization(
 
     org.verification_status = "rejected"
     org.verified = False
+    org.rejection_reason = (payload.reason or "").strip() if payload else None
     db.commit()
     db.refresh(org)
 

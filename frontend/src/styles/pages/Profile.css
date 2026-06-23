@@ -317,6 +317,12 @@ button.profile-cover,
   line-height: 1.7;
 }
 
+.profile-verification-reason {
+  margin-top: 10px !important;
+  padding-top: 10px;
+  border-top: 1px solid currentColor;
+}
+
 .profile-posts-section {
   padding: 24px;
 }
@@ -369,6 +375,163 @@ button.profile-cover,
   border-color: #2f6b39;
   background: #eef5ec;
   color: #2f6b39;
+}
+
+.profile-empty-state {
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.profile-empty-state p {
+  margin: 0 0 16px;
+  color: #64748b;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.profile-empty-state button,
+.profile-offer-actions button {
+  border: none;
+  border-radius: 12px;
+  background: #2f6b39;
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 850;
+  padding: 11px 16px;
+}
+
+.profile-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+.profile-offers-list {
+  display: grid;
+  gap: 14px;
+}
+
+.profile-offer-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+}
+
+.profile-offer-card h3 {
+  margin: 4px 0 10px;
+  color: #0f172a;
+  font-size: 21px;
+  font-weight: 900;
+}
+
+.profile-offer-card p {
+  margin: 5px 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.profile-offer-card span {
+  display: inline-block;
+  margin-top: 8px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.profile-offer-eyebrow {
+  color: #2f6b39;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.profile-offer-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.profile-offer-actions button:first-child {
+  background: #eef5ec;
+  color: #2f6b39;
+}
+
+.profile-need-card {
+  overflow: hidden;
+}
+
+.profile-need-cover {
+  min-height: 220px;
+  background: #eef4ec;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 750;
+}
+
+.profile-need-body {
+  padding: 20px;
+}
+
+.profile-need-body h3 {
+  margin: 0 0 10px;
+  color: #0f172a;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.profile-need-location {
+  margin: 0 0 14px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.profile-need-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.profile-need-items span {
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
+.profile-need-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.profile-need-actions button {
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 10px 16px;
+}
+
+.profile-need-primary {
+  border: none;
+  background: linear-gradient(135deg, #2f5d34 0%, #3d7443 100%);
+  color: #ffffff;
+}
+
+.profile-need-danger {
+  border: 1px solid #fecaca;
+  background: #fff1f2;
+  color: #b91c1c;
 }
 
 @media (max-width: 780px) {
@@ -444,6 +607,15 @@ button.profile-cover,
 
   .profile-posts-section {
     padding: 18px;
+  }
+
+  .profile-offer-card {
+    flex-direction: column;
+  }
+
+  .profile-offer-actions,
+  .profile-offer-actions button {
+    width: 100%;
   }
 
   .profile-tabs,

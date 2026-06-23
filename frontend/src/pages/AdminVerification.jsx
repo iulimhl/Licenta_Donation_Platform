@@ -8,6 +8,8 @@ import ModerationList from "../components/admin/ModerationList";
 import VerificationCard from "../components/admin/VerificationCard";
 import SectionBanner from "../components/common/SectionBanner";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
+import { useTimedNotification } from "../hooks/useTimedNotification";
+import { useLanguage } from "../language/useLanguage";
 import { isAdminUser } from "../utils/auth";
 import { filterModerationItems } from "../utils/adminModeration";
 import "../styles/pages/AdminVerification.css";
@@ -17,12 +19,17 @@ export default function AdminVerification() {
   const userEmail = localStorage.getItem("userEmail");
   const isAdmin = isAdminUser();
   const { confirm, confirmDialog } = useConfirmDialog();
+  const { notification, showNotification } = useTimedNotification(3200);
+  const { t } = useLanguage();
 
   const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [moderationLoading, setModerationLoading] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [selectedOrg, setSelectedOrg] = useState(null);
+  const [rejectingOrg, setRejectingOrg] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectError, setRejectError] = useState("");
   const [activeTab, setActiveTab] = useState("verifications");
   const [donations, setDonations] = useState([]);
   const [needs, setNeeds] = useState([]);
@@ -115,44 +122,70 @@ export default function AdminVerification() {
       });
 
       if (!response.ok) {
-        alert("Could not approve organization.");
+        showNotification(t("admin.approveError"), "error");
         return;
       }
 
       setOrganizations((prev) => prev.filter((org) => org.id !== userId));
+      showNotification(t("admin.approveSuccess"));
 
       if (selectedOrg?.id === userId) {
         setSelectedOrg(null);
       }
     } catch (err) {
       console.error("Approve error:", err);
-      alert("Server error while approving.");
+      showNotification(t("admin.approveServerError"), "error");
     } finally {
       setActionLoadingId(null);
     }
   }
 
-  async function handleReject(userId) {
+  function openRejectDialog(organization) {
+    setSelectedOrg(null);
+    setRejectingOrg(organization);
+    setRejectReason("");
+    setRejectError("");
+  }
+
+  function closeRejectDialog() {
+    setRejectingOrg(null);
+    setRejectReason("");
+    setRejectError("");
+  }
+
+  async function handleReject() {
+    if (!rejectingOrg) return;
+
+    const reason = rejectReason.trim();
+    if (!reason) {
+      setRejectError(t("admin.rejectReasonRequired"));
+      return;
+    }
+
     try {
+      const userId = rejectingOrg.id;
       setActionLoadingId(userId);
       const params = new URLSearchParams({ admin_email: userEmail });
       const { response } = await apiFetch(`/verification/reject/${userId}?${params.toString()}`, {
         method: "PATCH",
+        body: JSON.stringify({ reason }),
       });
 
       if (!response.ok) {
-        alert("Could not reject organization.");
+        setRejectError(t("admin.rejectError"));
         return;
       }
 
       setOrganizations((prev) => prev.filter((org) => org.id !== userId));
+      showNotification(t("admin.rejectSuccess"));
 
       if (selectedOrg?.id === userId) {
         setSelectedOrg(null);
       }
+      closeRejectDialog();
     } catch (err) {
       console.error("Reject error:", err);
-      alert("Server error while rejecting.");
+      setRejectError(t("admin.rejectServerError"));
     } finally {
       setActionLoadingId(null);
     }
@@ -186,9 +219,9 @@ export default function AdminVerification() {
 
   async function handleDeleteDonation(donation) {
     const confirmed = await confirm({
-      title: "Delete donation?",
-      message: `This will permanently delete "${donation.title}".`,
-      confirmLabel: "Delete",
+      title: t("admin.deleteDonationTitle"),
+      message: t("admin.deleteDonationMessage").replace("{title}", donation.title),
+      confirmLabel: t("admin.deleteConfirm"),
     });
     if (!confirmed) return;
 
@@ -198,14 +231,15 @@ export default function AdminVerification() {
       const { response } = await apiFetch(`/donations/${donation.id}?${params.toString()}`, { method: "DELETE" });
 
       if (!response.ok) {
-        alert("Could not delete donation.");
+        showNotification(t("admin.deleteDonationError"), "error");
         return;
       }
 
       setDonations((prev) => prev.filter((item) => item.id !== donation.id));
+      showNotification(t("admin.deleteDonationSuccess"));
     } catch (err) {
       console.error("Delete donation error:", err);
-      alert("Server error while deleting donation.");
+      showNotification(t("admin.deleteDonationServerError"), "error");
     } finally {
       setActionLoadingId(null);
     }
@@ -213,9 +247,9 @@ export default function AdminVerification() {
 
   async function handleDeleteNeed(need) {
     const confirmed = await confirm({
-      title: "Delete need list?",
-      message: `This will permanently delete "${need.title}".`,
-      confirmLabel: "Delete",
+      title: t("admin.deleteNeedTitle"),
+      message: t("admin.deleteNeedMessage").replace("{title}", need.title),
+      confirmLabel: t("admin.deleteConfirm"),
     });
     if (!confirmed) return;
 
@@ -225,14 +259,15 @@ export default function AdminVerification() {
       const { response } = await apiFetch(`/needs/${need.id}?${params.toString()}`, { method: "DELETE" });
 
       if (!response.ok) {
-        alert("Could not delete need list.");
+        showNotification(t("admin.deleteNeedError"), "error");
         return;
       }
 
       setNeeds((prev) => prev.filter((item) => item.id !== need.id));
+      showNotification(t("admin.deleteNeedSuccess"));
     } catch (err) {
       console.error("Delete need error:", err);
-      alert("Server error while deleting need list.");
+      showNotification(t("admin.deleteNeedServerError"), "error");
     } finally {
       setActionLoadingId(null);
     }
@@ -241,9 +276,15 @@ export default function AdminVerification() {
   return (
     <div className="admin-verification-page">
       <SectionBanner
-        title="Admin Panel"
-        subtitle="Review organization accounts and moderate public platform content."
+        title={t("admin.title")}
+        subtitle={t("admin.subtitle")}
       />
+
+      {notification.message && (
+        <div className={`page-notification centered ${notification.type === "error" ? "error" : "success"}`}>
+          {notification.message}
+        </div>
+      )}
 
       <div className="admin-verification-container">
         <div className="admin-tabs">
@@ -282,7 +323,7 @@ export default function AdminVerification() {
             organizations={organizations}
             actionLoadingId={actionLoadingId}
             onApprove={handleApprove}
-            onReject={handleReject}
+            onReject={openRejectDialog}
             onOpenDocument={setSelectedOrg}
           />
         )}
@@ -366,7 +407,16 @@ export default function AdminVerification() {
         actionLoadingId={actionLoadingId}
         onClose={() => setSelectedOrg(null)}
         onApprove={handleApprove}
-        onReject={handleReject}
+        onReject={openRejectDialog}
+      />
+      <RejectReasonModal
+        organization={rejectingOrg}
+        reason={rejectReason}
+        error={rejectError}
+        isLoading={actionLoadingId === rejectingOrg?.id}
+        onReasonChange={setRejectReason}
+        onClose={closeRejectDialog}
+        onSubmit={handleReject}
       />
       {confirmDialog}
     </div>
@@ -382,12 +432,12 @@ function VerificationQueue({
   onOpenDocument,
 }) {
   if (loading) {
-    return <div className="admin-verification-loading">Loading pending organizations...</div>;
+    return <div className="admin-verification-loading surface-card">Loading pending organizations...</div>;
   }
 
   if (organizations.length === 0) {
     return (
-      <div className="admin-verification-empty">
+      <div className="admin-verification-empty surface-card">
         <h3>No pending organizations</h3>
         <p>All organization verification requests have been reviewed.</p>
       </div>
@@ -410,6 +460,51 @@ function VerificationQueue({
   );
 }
 
+function RejectReasonModal({
+  organization,
+  reason,
+  error,
+  isLoading,
+  onReasonChange,
+  onClose,
+  onSubmit,
+}) {
+  const { t } = useLanguage();
+
+  if (!organization) return null;
+  const organizationLabel = organization.name || organization.email;
+
+  return (
+    <div className="admin-reject-modal-overlay" onClick={onClose}>
+      <div className="admin-reject-modal" onClick={(event) => event.stopPropagation()}>
+        <h3>{t("admin.rejectTitle")}</h3>
+        <p>
+          {t("admin.rejectText").replace("{name}", organizationLabel)}
+        </p>
+
+        <textarea
+          value={reason}
+          onChange={(event) => onReasonChange(event.target.value)}
+          placeholder={t("admin.rejectReasonPlaceholder")}
+          rows={4}
+        />
+
+        {error && <div className="admin-reject-error">{error}</div>}
+
+        <div className="admin-reject-actions">
+          <button type="button" onClick={onClose} className="secondary" disabled={isLoading}>
+            {t("admin.rejectCancel")}
+          </button>
+
+          <button type="button" onClick={onSubmit} className="danger" disabled={isLoading}>
+            {isLoading ? t("admin.rejecting") : t("admin.rejectConfirm")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ModerationCard({
   title,
   meta,
@@ -421,7 +516,7 @@ function ModerationCard({
   onDelete,
 }) {
   return (
-    <div className="admin-moderation-card">
+    <div className="admin-moderation-card surface-card">
       <div>
         <h3>{title}</h3>
         <p>{meta}</p>

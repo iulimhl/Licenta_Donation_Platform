@@ -61,6 +61,7 @@ class UserResponse(BaseModel):
     cif: str | None = None
     verification_status: str | None = None
     verification_score: float | None = None
+    rejection_reason: str | None = None
 
     description: str | None = None
     phone: str | None = None

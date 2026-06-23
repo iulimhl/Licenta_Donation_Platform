@@ -13,6 +13,9 @@ class OrganizationVerificationResponse(BaseModel):
     status: str
     message: str
 
+class VerificationRejectionRequest(BaseModel):
+    reason: str | None = None
+
 class OCRExtractResponse(BaseModel):
     name: str | None = None
     cif: str | None = None

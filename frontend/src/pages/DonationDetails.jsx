@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/api";
 import { getDonationCategoryLabel } from "../constants/donationCategories";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
+import { useTimedNotification } from "../hooks/useTimedNotification";
+import { useLanguage } from "../language/useLanguage";
 import { isAdminUser } from "../utils/auth";
 import { getDonationImages } from "../utils/donationImages";
 import { HiOutlineArrowLeft } from "react-icons/hi2";
@@ -18,7 +20,10 @@ export default function DonationDetails() {
   const [imageList, setImageList] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+  const [reservationNotice, setReservationNotice] = useState("");
   const { confirm, confirmDialog } = useConfirmDialog();
+  const { notification, showNotification } = useTimedNotification(3200);
+  const { t } = useLanguage();
 
   const currentUserEmail = localStorage.getItem("userEmail");
   const isOwner = currentUserEmail === donation?.owner_email;
@@ -65,9 +70,9 @@ export default function DonationDetails() {
 
   async function handleDelete() {
     const confirmDelete = await confirm({
-      title: "Delete donation?",
-      message: "This donation will be permanently removed from the platform.",
-      confirmLabel: "Delete",
+      title: t("donationDetails.deleteTitle"),
+      message: t("donationDetails.deleteText"),
+      confirmLabel: t("donationDetails.deleteConfirm"),
     });
     if (!confirmDelete) return;
 
@@ -78,30 +83,40 @@ export default function DonationDetails() {
       });
 
       if (!response.ok) {
-        alert("Could not delete donation.");
+        showNotification(t("donationDetails.deleteError"), "error");
         return;
       }
 
-      alert("Donation deleted successfully.");
+      showNotification(t("donationDetails.deleteSuccess"));
       navigate(isAdmin ? "/admin/verifications" : "/profile");
     } catch (err) {
       console.error("Delete error:", err);
-      alert("Server error while deleting.");
+      showNotification(t("donationDetails.deleteServerError"), "error");
     }
   }
 
-  function handleContact() {
+  function getContactDraft(currentDonation = donation) {
+    return t("donationCard.contactDraft").replace("{title}", currentDonation.title);
+  }
+
+  function openDonationChat(currentDonation = donation, draftType = "") {
     if (!currentUserEmail) {
       navigate("/login");
       return;
     }
 
     const params = new URLSearchParams({
-      donationId: String(donation.id),
-      draft: `Hi! I am interested in "${donation.title}". Could we discuss the pickup details?`,
+      donationId: String(currentDonation.id),
+      draft: getContactDraft(currentDonation),
     });
 
-    navigate(`/chat/${encodeURIComponent(donation.owner_email)}?${params.toString()}`);
+    if (draftType) params.set("draftType", draftType);
+
+    navigate(`/chat/${encodeURIComponent(currentDonation.owner_email)}?${params.toString()}`);
+  }
+
+  function handleContact() {
+    openDonationChat(donation);
   }
 
   function handleRecommendedNeedContact(match) {
@@ -111,11 +126,14 @@ export default function DonationDetails() {
     }
 
     if (!match.organization_email) {
-      alert("This organization cannot be contacted yet.");
+      showNotification(t("donationDetails.contactUnavailable"), "error");
       return;
     }
 
-    const content = `Hi! I saw your need list "${match.title}" and I think my donation "${donation.title}" could help with "${match.item_name}". Could we discuss the pickup details?`;
+    const content = t("donationDetails.recommendedNeedDraft")
+      .replace("{needTitle}", match.title)
+      .replace("{donationTitle}", donation.title)
+      .replace("{itemName}", match.item_name);
     const params = new URLSearchParams({
       donationId: String(donation.id),
       needId: String(match.need_id),
@@ -140,23 +158,28 @@ export default function DonationDetails() {
       });
 
       if (!response.ok) {
-        alert(data?.detail || "Could not update donation status.");
+        showNotification(data?.detail || t("donationDetails.updateStatusError"), "error");
         return;
       }
 
       setDonation(data);
+      if (newStatus === "reserved") {
+        setReservationNotice(t("donationDetails.reservedNotice"));
+      } else {
+        setReservationNotice("");
+      }
     } catch (err) {
       console.error("Reserve error:", err);
-      alert("Could not contact the server.");
+      showNotification(t("donationDetails.serverError"), "error");
     }
   }
 
   if (loading) {
-    return <div className="donation-details-message loading">Loading details...</div>;
+    return <div className="page-message loading">{t("donationDetails.loading")}</div>;
   }
 
   if (!donation) {
-    return <div className="donation-details-message error">Item not found!</div>;
+    return <div className="page-message error">{t("donationDetails.notFound")}</div>;
   }
 
   const reservedByCurrentUser = donation.reserved_by_email === currentUserEmail;
@@ -165,18 +188,24 @@ export default function DonationDetails() {
 
   return (
     <div className="donation-details-page">
+      {notification.message && (
+        <div className={`page-notification donation-details-notification-space ${notification.type === "error" ? "error" : "success"}`}>
+          {notification.message}
+        </div>
+      )}
+
       <button onClick={() => navigate(-1)} className="donation-details-back">
         <HiOutlineArrowLeft size={16} />
-        <span>Back to feed</span>
+        <span>{t("donationDetails.backToFeed")}</span>
       </button>
 
       <div className="donation-details-layout">
         <div className="donation-details-media-column">
-          <div className="donation-details-image-frame">
+          <div className="donation-details-image-frame surface-card">
             {activeImage ? (
               <img src={activeImage} alt={donation.title} className="donation-details-main-image" />
             ) : (
-              <div className="donation-details-no-image">No image available</div>
+              <div className="donation-details-no-image">{t("donationDetails.noImage")}</div>
             )}
           </div>
 
@@ -195,50 +224,50 @@ export default function DonationDetails() {
           )}
         </div>
 
-        <div className="donation-details-card">
+        <div className="donation-details-card surface-card">
           <h1>{donation.title}</h1>
 
           <div className="donation-details-meta">
             <div className="donation-details-meta-row">
-              <span>Category</span>
+              <span>{t("donationDetails.category")}</span>
               <strong className="capitalize">{getDonationCategoryLabel(donation.category)}</strong>
             </div>
 
             <div className="donation-details-meta-row">
-              <span>Location</span>
+              <span>{t("donationDetails.location")}</span>
               <strong>{donation.location}</strong>
             </div>
 
             <div className="donation-details-meta-row">
-              <span>Status</span>
+              <span>{t("donationDetails.status")}</span>
               <span className={`donation-details-status ${donation.status || "inactive"}`}>
-                {donation.status === "inactive" ? "no longer available" : donation.status}
+                {donation.status === "inactive" ? t("donationDetails.noLongerAvailable") : donation.status}
               </span>
             </div>
           </div>
 
           <div className="donation-details-section">
-            <h3>Description</h3>
-            <p>{donation.description || "No description provided."}</p>
+            <h3>{t("donationDetails.description")}</h3>
+            <p>{donation.description || t("donationDetails.noDescription")}</p>
           </div>
 
           {isOwner && (
             <div className="donation-details-section donation-details-recommendations-section">
               <div className="donation-details-recommendations-header">
-                <h3>Suggested need lists</h3>
-                <span>AI matches</span>
+                <h3>{t("donationDetails.suggestedNeeds")}</h3>
+                <span>{t("donationDetails.recommended")}</span>
               </div>
 
               {recommendationsLoading ? (
-                <div className="donation-details-recommendations-empty">Loading matches...</div>
+                <div className="empty-panel">{t("donationDetails.loadingMatches")}</div>
               ) : recommendations.length === 0 ? (
-                <div className="donation-details-recommendations-empty">No matching need lists yet.</div>
+                <div className="empty-panel">{t("donationDetails.noNeedMatches")}</div>
               ) : (
                 <div className="donation-details-recommendations-list">
                   {recommendations.map((match) => (
                     <div
                       key={`${match.need_id}-${match.item_index}`}
-                      className="donation-details-recommendation-card"
+                          className="donation-details-recommendation-card surface-card subtle"
                     >
                       <div>
                         <div className="donation-details-recommendation-top">
@@ -254,17 +283,18 @@ export default function DonationDetails() {
                       <div className="donation-details-recommendation-actions">
                         <button
                           type="button"
+                          className="action-button small soft"
                           onClick={() => navigate(`/need/${match.need_id}`)}
                         >
-                          Details
+                          {t("donationDetails.details")}
                         </button>
 
                         <button
                           type="button"
-                          className="primary"
+                          className="action-button small solid"
                           onClick={() => handleRecommendedNeedContact(match)}
                         >
-                          Contact
+                          {t("donationDetails.contact")}
                         </button>
                       </div>
                     </div>
@@ -277,28 +307,28 @@ export default function DonationDetails() {
           <div className="donation-details-actions">
             {isAdmin ? (
               <>
-                <button onClick={handleDelete} className="donation-details-danger-action">
-                  Delete donation
+                <button onClick={handleDelete} className="action-button full danger">
+                  {t("donationDetails.deleteDonation")}
                 </button>
               </>
             ) : isOwner ? (
               <>
                 <button
                   onClick={() => navigate(`/editdonation/${donation.id}`)}
-                  className="donation-details-primary-action"
+                  className="action-button full primary"
                 >
-                  Edit Item
+                  {t("donationDetails.editItem")}
                 </button>
 
-                <button onClick={handleDelete} className="donation-details-danger-action">
-                  Delete Item
+                <button onClick={handleDelete} className="action-button full danger">
+                  {t("donationDetails.deleteItem")}
                 </button>
               </>
             ) : (
               <>
                 {donation.status === "available" && (
-                  <button onClick={handleReserve} className="donation-details-primary-action">
-                    Reserve item
+                  <button onClick={handleReserve} className="action-button full primary">
+                    {t("donationDetails.reserveItem")}
                   </button>
                 )}
 
@@ -306,30 +336,45 @@ export default function DonationDetails() {
                   <button
                     onClick={handleReserve}
                     disabled={isReservedBySomeoneElse || !reservedByCurrentUser}
-                    className="donation-details-secondary-action"
+                    className="action-button full secondary"
                   >
-                    {reservedByCurrentUser ? "Cancel reservation" : "Reserved by another user"}
+                    {reservedByCurrentUser ? t("donationDetails.cancelReservation") : t("donationDetails.reservedByAnotherUser")}
                   </button>
                 )}
 
-                <button onClick={handleContact} className="donation-details-primary-action">
-                  Contact donor
+                {reservedByCurrentUser && (
+                  <button onClick={() => openDonationChat(donation, "reserve")} className="action-button full primary">
+                    {t("donationDetails.continueChat")}
+                  </button>
+                )}
+
+                <button onClick={handleContact} className="action-button full primary">
+                  {t("donationDetails.contactDonor")}
                 </button>
 
                 {donation.phone_visible && donation.phone && (
-                  <a href={`tel:${donation.phone}`} className="donation-details-secondary-action">
-                    Call donor
+                  <a href={`tel:${donation.phone}`} className="action-button full secondary">
+                    {t("donationDetails.callDonor")}
                   </a>
                 )}
               </>
             )}
           </div>
 
+          {reservationNotice && (
+            <div className="donation-details-reservation-notice">
+              <span>{reservationNotice}</span>
+              <button type="button" onClick={() => openDonationChat(donation, "reserve")}>
+                {t("donationDetails.continueChat")}
+              </button>
+            </div>
+          )}
+
           <div className="donation-details-owner-box">
             <p>
-              Posted by:{" "}
+              {t("donationDetails.postedBy")}:{" "}
               <strong onClick={() => navigate(`/user/${encodeURIComponent(donation.owner_email)}`)}>
-                {donation.donor_name || "Anonymous"}
+                {donation.donor_name || t("donationDetails.anonymous")}
               </strong>
             </p>
 

@@ -37,11 +37,23 @@ export default function DonationCard({
     setShowMenu(false);
   }
 
-  function handleReserve(e) {
+  async function handleReserve(e) {
     e.stopPropagation();
     const newStatus = donation.status === "available" ? "reserved" : "available";
+
     if (onReserve) {
-      onReserve(donation.id, newStatus);
+      const updatedDonation = await onReserve(donation.id, newStatus);
+
+      if (newStatus === "reserved") {
+        const donationForChat = updatedDonation || donation;
+        const params = new URLSearchParams({
+          donationId: String(donationForChat.id),
+          draft: t("donationCard.contactDraft").replace("{title}", donationForChat.title),
+          draftType: "reserve",
+        });
+
+        navigate(`/chat/${encodeURIComponent(donationForChat.owner_email)}?${params.toString()}`);
+      }
     }
   }
 
@@ -90,7 +102,7 @@ export default function DonationCard({
         <h3 className="donation-title">{donation.title}</h3>
 
         <p className="donation-location">
-          <HiOutlineMapPin size={18} style={{ marginRight: "4px", verticalAlign: "middle" }} />
+          <HiOutlineMapPin size={18} />
           {donation.location}
         </p>
 

@@ -52,7 +52,7 @@ export default function DocumentModal({
           </button>
 
           <button
-            onClick={() => onReject(organization.id)}
+            onClick={() => onReject(organization)}
             disabled={isLoading}
             className={`admin-verification-modal-reject-btn ${isLoading ? "admin-verification-btn-disabled" : ""}`}
           >

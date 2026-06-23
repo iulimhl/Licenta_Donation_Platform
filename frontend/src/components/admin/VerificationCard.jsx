@@ -27,7 +27,7 @@ export default function VerificationCard({
   const isLoading = actionLoadingId === organization.id;
 
   return (
-    <div className="admin-verification-card">
+    <div className="admin-verification-card surface-card">
       <div className="admin-verification-card-header">
         <div className="admin-verification-card-icon">
           <HiOutlineBuildingOffice2 size={22} />
@@ -72,7 +72,7 @@ export default function VerificationCard({
         </button>
 
         <button
-          onClick={() => onReject(organization.id)}
+          onClick={() => onReject(organization)}
           disabled={isLoading}
           className={`admin-verification-reject-btn ${isLoading ? "admin-verification-btn-disabled" : ""}`}
         >

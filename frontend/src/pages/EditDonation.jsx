@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { apiFetch } from "../api/api";
 import DonationForm from "../components/DonationForm";
 import { useTimedNotification } from "../hooks/useTimedNotification";
+import { useLanguage } from "../language/useLanguage";
 import { getDonationImages } from "../utils/donationImages";
 import "../styles/formPages.css";
 
@@ -14,6 +15,7 @@ export default function EditDonation() {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
   const { notification, showNotification } = useTimedNotification();
+  const { t } = useLanguage();
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -37,7 +39,7 @@ export default function EditDonation() {
           .trim();
 
         if (dbEmail !== userEmail.toLowerCase().trim()) {
-          showNotification("You can only edit your own donations.", "error");
+          showNotification(t("editDonation.ownOnly"), "error");
           return setTimeout(() => navigate("/profile"), 2000);
         }
 
@@ -52,16 +54,16 @@ export default function EditDonation() {
         });
         setChecking(false);
       } catch {
-        showNotification("Could not load donation details.", "error");
+        showNotification(t("editDonation.loadError"), "error");
         setTimeout(() => navigate("/profile"), 2000);
       }
     };
     loadDonation();
-  }, [id, userEmail, navigate, showNotification]);
+  }, [id, userEmail, navigate, showNotification, t]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.title || !formData.location) return showErrorToast("Please fill all required fields.");
+    if (!formData.title || !formData.location) return showErrorToast(t("editDonation.requiredFields"));
     setLoading(true);
 
     try {
@@ -71,36 +73,36 @@ export default function EditDonation() {
       });
 
       if (response.ok) {
-        showNotification("Donation updated successfully!");
+        showNotification(t("editDonation.success"));
         setTimeout(() => navigate(`/donation/${id}`), 1500);
       } else {
-        showErrorToast("Error updating donation. Please try again.");
+        showErrorToast(t("editDonation.updateError"));
       }
     } catch (err) {
-      showErrorToast("Network error: " + err.message);
+      showErrorToast(t("editDonation.networkError").replace("{message}", err.message));
     } finally {
       setLoading(false);
     }
   };
 
-  if (checking) return <div className="donation-page-loading">Loading details...</div>;
+  if (checking) return <div className="donation-page-loading">{t("editDonation.loading")}</div>;
 
   return (
     <div className="donation-form-page">
       {notification.message && (
         <div className={`donation-page-toast ${notification.type === "error" ? "error" : "success"}`}>
-          {notification.type === "error" ? "x" : "✓"} {notification.message}
+          {notification.message}
         </div>
       )}
 
       <DonationForm
-        pageTitle="Edit Donation"
-        pageSubtitle="Update your item details or manage photos to help it find a new home."
+        pageTitle={t("editDonation.title")}
+        pageSubtitle={t("editDonation.subtitle")}
         formData={formData}
         setFormData={setFormData}
         onSubmit={handleSubmit}
         loading={loading}
-        submitButtonText="Save Changes"
+        submitButtonText={t("editDonation.submit")}
       />
     </div>
   );

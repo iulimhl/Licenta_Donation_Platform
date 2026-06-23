@@ -113,7 +113,7 @@ export default function OngMap() {
     ? userPos || [locatedOrganizations[0].lat, locatedOrganizations[0].lng]
     : defaultCenter;
 
-  if (loading) return <div className="map-loading">{t("map.loading")}</div>;
+  if (loading) return <div className="page-message">{t("map.loading")}</div>;
 
   return (
     <div className="map-page">
@@ -122,7 +122,7 @@ export default function OngMap() {
         subtitle={t("map.subtitle")}
       />
 
-      <div className="map-shell">
+      <div className="map-shell surface-card">
         <MapContainer center={center} zoom={userPos ? 13 : 7} className="map-canvas">
           <MapController organizations={locatedOrganizations} userPos={userPos} />
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />

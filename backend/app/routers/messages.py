@@ -76,3 +76,10 @@ def get_unread_count(
         raise HTTPException(status_code=403, detail="You can only read your own notifications")
 
     return messages_service.get_unread_count(db, current_user.email)
+
+@router.get("/sent-offers")
+def get_sent_offers(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return messages_service.get_sent_offers(db, current_user.email)

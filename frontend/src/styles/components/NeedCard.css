@@ -296,6 +296,13 @@
   cursor: pointer;
 }
 
+.need-card-offer-error {
+  grid-column: 1 / -1;
+  color: #991b1b;
+  font-size: 12px;
+  font-weight: 750;
+}
+
 @media (max-width: 560px) {
   .need-image-container {
     height: 170px;

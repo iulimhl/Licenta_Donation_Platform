@@ -1,5 +1,6 @@
 import NeedItemsEditor from "./NeedItemsEditor";
 import SectionBanner from "./common/SectionBanner";
+import { useLanguage } from "../language/useLanguage";
 
 export default function NeedForm({
   pageTitle,
@@ -14,9 +15,9 @@ export default function NeedForm({
   onUpdateItem,
   onSubmit,
   loading,
-  loadingText = "Saving...",
+  loadingText,
   submitButtonText,
-  itemsLabel = "Items *",
+  itemsLabel,
   onUseLocation,
   shellClassName = "form-container",
   itemsSectionClassName = "",
@@ -24,6 +25,10 @@ export default function NeedForm({
   submitClassName = "",
   compactItems = false,
 }) {
+  const { t } = useLanguage();
+  const resolvedLoadingText = loadingText || t("needForm.saving");
+  const resolvedItemsLabel = itemsLabel || t("needForm.items");
+
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -37,11 +42,11 @@ export default function NeedForm({
         <div className="form-card">
           <form onSubmit={onSubmit} className="form-grid">
             <div>
-              <label className="form-label">Title *</label>
+              <label className="form-label">{t("needForm.title")}</label>
               <input
                 name="title"
                 type="text"
-                placeholder="e.g., School supplies"
+                placeholder={t("needForm.titlePlaceholder")}
                 value={formData.title}
                 onChange={handleChange}
                 required
@@ -50,11 +55,11 @@ export default function NeedForm({
             </div>
 
             <div>
-              <label className="form-label">Location *</label>
+              <label className="form-label">{t("needForm.location")}</label>
               <input
                 name="location"
                 type="text"
-                placeholder="e.g. Copou, Iasi"
+                placeholder={t("needForm.locationPlaceholder")}
                 value={formData.location}
                 onChange={handleChange}
                 required
@@ -62,13 +67,13 @@ export default function NeedForm({
               />
               {onUseLocation && (
                 <button type="button" onClick={onUseLocation} className="post-need-location-button">
-                  Use my current location
+                  {t("needForm.useCurrentLocation")}
                 </button>
               )}
             </div>
 
             <div>
-              <label className="form-label">Description</label>
+              <label className="form-label">{t("needForm.description")}</label>
               <textarea
                 name="description"
                 value={formData.description || ""}
@@ -78,7 +83,7 @@ export default function NeedForm({
             </div>
 
             <div className={itemsSectionClassName}>
-              <label className="form-label">{itemsLabel}</label>
+              <label className="form-label">{resolvedItemsLabel}</label>
               <NeedItemsEditor
                 items={items}
                 currentItem={currentItem}
@@ -95,7 +100,7 @@ export default function NeedForm({
               disabled={loading}
               className={`form-button primary ${submitClassName}`.trim()}
             >
-              {loading ? loadingText : submitButtonText}
+              {loading ? resolvedLoadingText : submitButtonText}
             </button>
           </form>
         </div>

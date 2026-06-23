@@ -17,6 +17,7 @@ export default function NeedCard({ need, onItemCheck, currentUserEmail, isOwner,
   const [selectedItemIndex, setSelectedItemIndex] = useState(firstAvailableIndex >= 0 ? firstAvailableIndex : 0);
   const [offerAmount, setOfferAmount] = useState(1);
   const [sendingOffer, setSendingOffer] = useState(false);
+  const [offerError, setOfferError] = useState("");
 
   const totalNeeded = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
   const totalBrought = items.reduce((sum, item) => sum + (item.brought || 0), 0);
@@ -74,6 +75,7 @@ export default function NeedCard({ need, onItemCheck, currentUserEmail, isOwner,
     if (!item || remaining <= 0) return;
 
     setSendingOffer(true);
+    setOfferError("");
 
     try {
       const content = buildNeedOfferMessage(selectedItemIndex, amount, item.name);
@@ -91,14 +93,14 @@ export default function NeedCard({ need, onItemCheck, currentUserEmail, isOwner,
       );
 
       if (!response.ok) {
-        alert(data?.detail || "Could not send your offer.");
+        setOfferError(data?.detail || "Could not send your offer.");
         return;
       }
 
       navigate(`/chat/${encodeURIComponent(need.organization_email)}?needId=${need.id}`);
     } catch (err) {
       console.error("Offer message error:", err);
-      alert("Could not contact the server.");
+      setOfferError("Could not contact the server.");
     } finally {
       setSendingOffer(false);
     }
@@ -206,6 +208,8 @@ export default function NeedCard({ need, onItemCheck, currentUserEmail, isOwner,
                 >
                   {sendingOffer ? "Sending..." : "Send offer"}
                 </button>
+
+                {offerError && <div className="need-card-offer-error">{offerError}</div>}
               </div>
             )}
           </div>

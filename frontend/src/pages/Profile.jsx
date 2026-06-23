@@ -3,9 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { apiFetch, buildFileUrl } from "../api/api";
 import SectionBanner from "../components/common/SectionBanner";
 import ProfileHeroCard from "../components/profile/ProfileHeroCard";
+import ProfileActivity from "../components/profile/ProfileActivity";
 import ProfileDonations from "../components/profile/ProfileDonations";
 import ProfileNeeds from "../components/profile/ProfileNeeds";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
+import { useTimedNotification } from "../hooks/useTimedNotification";
 import { useLanguage } from "../language/useLanguage";
 import {
   HiOutlineUser,
@@ -58,10 +60,13 @@ export default function Profile() {
   const navigate = useNavigate();
   const userEmail = localStorage.getItem("userEmail");
   const { confirm, confirmDialog } = useConfirmDialog();
+  const { notification, showNotification } = useTimedNotification(3200);
   const { t } = useLanguage();
 
   const [myDonations, setMyDonations] = useState([]);
   const [myNeeds, setMyNeeds] = useState([]);
+  const [reservedDonations, setReservedDonations] = useState([]);
+  const [sentOffers, setSentOffers] = useState([]);
   const [userType, setUserType] = useState("");
   const [userName, setUserName] = useState("");
   const [verificationStatus, setVerificationStatus] = useState("");
@@ -87,10 +92,17 @@ export default function Profile() {
         setVerificationScore(fetchedUserData.verification_score ?? null);
 
         const { data: donationsData } = await apiFetch("/donations/");
-        setMyDonations((donationsData || []).filter((item) => item.owner_email === userEmail));
+        const donations = donationsData || [];
+        setMyDonations(donations.filter((item) => item.owner_email === userEmail));
+        setReservedDonations(
+          donations.filter((item) => item.status === "reserved" && item.reserved_by_email === userEmail)
+        );
 
         const { data: needsData } = await apiFetch("/needs/");
         setMyNeeds((needsData || []).filter((item) => item.organization_email === userEmail));
+
+        const { response: offersResponse, data: offersData } = await apiFetch("/messages/sent-offers");
+        setSentOffers(offersResponse.ok ? offersData || [] : []);
       } catch (err) {
         console.error("Error loading profile data:", err);
       } finally {
@@ -119,15 +131,15 @@ export default function Profile() {
       const { response } = await apiFetch(`/donations/${id}?${params.toString()}`, { method: "DELETE" });
 
       if (!response.ok) {
-        alert(t("profile.deleteDonationError"));
+        showNotification(t("profile.deleteDonationError"), "error");
         return;
       }
 
       setMyDonations((prev) => prev.filter((item) => item.id !== id));
-      alert(t("profile.deleteDonationSuccess"));
+      showNotification(t("profile.deleteDonationSuccess"));
     } catch (err) {
       console.error("Error:", err);
-      alert(t("profile.serverError"));
+      showNotification(t("profile.serverError"), "error");
     }
   }
 
@@ -141,15 +153,20 @@ export default function Profile() {
       });
 
       if (!response.ok) {
-        alert(data?.detail || t("profile.statusUpdateError"));
+        showNotification(data?.detail || t("profile.statusUpdateError"), "error");
         return;
       }
 
-      setMyDonations((prev) =>
-        prev.map((item) => (item.id === id ? data : item))
-      );
+      setMyDonations((prev) => prev.map((item) => (item.id === id ? data : item)));
+      setReservedDonations((prev) => {
+        const withoutCurrent = prev.filter((item) => item.id !== id);
+        if (data.status === "reserved" && data.reserved_by_email === userEmail) {
+          return [data, ...withoutCurrent];
+        }
+        return withoutCurrent;
+      });
     } catch {
-      alert(t("profile.statusUpdateError"));
+      showNotification(t("profile.statusUpdateError"), "error");
     }
   }
 
@@ -166,15 +183,15 @@ export default function Profile() {
       const { response } = await apiFetch(`/needs/${id}?${params.toString()}`, { method: "DELETE" });
 
       if (!response.ok) {
-        alert(t("profile.deleteNeedError"));
+        showNotification(t("profile.deleteNeedError"), "error");
         return;
       }
 
       setMyNeeds((prev) => prev.filter((item) => item.id !== id));
-      alert(t("profile.deleteNeedSuccess"));
+      showNotification(t("profile.deleteNeedSuccess"));
     } catch (err) {
       console.error("Error:", err);
-      alert(t("profile.serverError"));
+      showNotification(t("profile.serverError"), "error");
     }
   }
 
@@ -197,6 +214,7 @@ export default function Profile() {
   }
 
   const isOrganization = userType === "organization";
+  const showUserActivityTabs = !isOrganization;
   const verificationBadge = getVerificationBadge(verificationStatus, t);
   const coverImage = isOrganization ? buildFileUrl(userData?.cover_image_url) : "";
   const avatarImage = buildFileUrl(userData?.logo_url);
@@ -249,6 +267,12 @@ export default function Profile() {
         subtitle={isOrganization ? t("profile.subtitleOrganization") : t("profile.subtitleUser")}
       />
 
+      {notification.message && (
+        <div className={`page-notification centered ${notification.type === "error" ? "error" : "success"}`}>
+          {notification.message}
+        </div>
+      )}
+
       <div className="profile-container">
         <ProfileHeroCard
           title={userName}
@@ -273,6 +297,12 @@ export default function Profile() {
                   ? t("profile.restrictedText")
                   : t("profile.pendingText")}
               </p>
+
+              {verificationStatus === "rejected" && userData?.rejection_reason && (
+                <p className="profile-verification-reason">
+                  <strong>{t("profile.adminNote")}:</strong> {userData.rejection_reason}
+                </p>
+              )}
             </div>
           )}
         </ProfileHeroCard>
@@ -284,7 +314,7 @@ export default function Profile() {
               <p>
                 {isOrganization
                   ? `${myDonations.length} ${t("profile.donations")}, ${myNeeds.length} ${t("profile.needLists")}`
-                  : `${myDonations.length} ${t("profile.donations")}, ${activeDonations} ${t("profile.active")}`}
+                  : `${myDonations.length} ${t("profile.donations")}, ${activeDonations} ${t("profile.active")}, ${reservedDonations.length} ${t("profile.reserved")}`}
               </p>
             </div>
 
@@ -293,6 +323,12 @@ export default function Profile() {
 
               {isOrganization &&
                 renderTabButton("needs", `${t("profile.needListsTab")} (${myNeeds.length})`, <GoChecklist size={18} />)}
+
+              {showUserActivityTabs &&
+                renderTabButton("reservations", `${t("profile.reservationsTab")} (${reservedDonations.length})`, <HiOutlineClock size={18} />)}
+
+              {showUserActivityTabs &&
+                renderTabButton("offers", `${t("profile.offersTab")} (${sentOffers.length})`, <HiOutlineEnvelope size={18} />)}
             </div>
           </div>
 
@@ -306,6 +342,26 @@ export default function Profile() {
 
           {tab === "needs" && (
             <ProfileNeeds myNeeds={myNeeds} navigate={navigate} handleDeleteNeed={handleDeleteNeed} />
+          )}
+
+          {tab === "reservations" && (
+            <ProfileActivity
+              type="reservations"
+              reservedDonations={reservedDonations}
+              sentOffers={sentOffers}
+              onReserve={handleStatusChange}
+              currentUserEmail={userEmail}
+            />
+          )}
+
+          {tab === "offers" && (
+            <ProfileActivity
+              type="offers"
+              reservedDonations={reservedDonations}
+              sentOffers={sentOffers}
+              onReserve={handleStatusChange}
+              currentUserEmail={userEmail}
+            />
           )}
         </section>
       </div>

@@ -32,6 +32,7 @@ def verify_organization(db: Session, email: str, name: str, cif: str):
     user.matched_name = matched_name
     user.matched_cif = matched_cif
     user.verification_source = result["source"]
+    user.rejection_reason = None
 
     db.commit()
     db.refresh(user)

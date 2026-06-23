@@ -4,6 +4,7 @@ import NeedCard from "../components/NeedCard";
 import { apiFetch } from "../api/api";
 import ListingPage from "../components/common/ListingPage";
 import { isAdminUser } from "../utils/auth";
+import { useTimedNotification } from "../hooks/useTimedNotification";
 import { useLanguage } from "../language/useLanguage";
 
 export default function Needs() {
@@ -11,6 +12,7 @@ export default function Needs() {
   const userEmail = localStorage.getItem("userEmail");
   const isAdmin = isAdminUser();
   const { t } = useLanguage();
+  const { notification, showNotification } = useTimedNotification(3200);
 
   const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
@@ -47,14 +49,14 @@ export default function Needs() {
       );
 
       if (!response.ok) {
-        alert(t("needs.updateError"));
+        showNotification(t("needs.updateError"), "error");
         return;
       }
 
       setItems((prev) => prev.map((item) => (item.id === needId ? data : item)));
     } catch (err) {
       console.error("Network error:", err);
-      alert(t("needs.networkError"));
+      showNotification(t("needs.networkError"), "error");
     }
   }
 
@@ -112,6 +114,12 @@ export default function Needs() {
       emptyTitle={t("needs.emptyTitle")}
       emptyText={t("needs.emptyText")}
     >
+      {notification.message && (
+        <div className={`page-notification ${notification.type === "error" ? "error" : "success"}`}>
+          {notification.message}
+        </div>
+      )}
+
       {filteredItems.map((need) => (
         <NeedCard
           key={need.id}

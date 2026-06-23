@@ -1,5 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import { colors, radius, shadow } from "../../styles/theme";
 import { buildFileUrl } from "../../api/api";
 import {
   HiOutlineMapPin,
@@ -12,180 +11,67 @@ export default function OrganizationPreviewCard({ organization }) {
   const isVerified = organization.verification_status === "verified";
 
   return (
-    <div
-      style={{
-        background: colors.white,
-        border: `1px solid ${colors.border}`,
-        borderRadius: radius.xl,
-        boxShadow: shadow.soft,
-        padding: "22px",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-      }}
-    >
+    <div className="organization-preview-card surface-card">
       <div>
-        <div
-          style={{
-            width: "72px",
-            height: "72px",
-            borderRadius: "18px",
-            background: "#eef4ec",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            overflow: "hidden",
-            marginBottom: "16px",
-          }}
-        >
+        <div className="organization-preview-logo">
           {organization.logo_url ? (
             <img
               src={buildFileUrl(organization.logo_url)}
               alt={organization.name}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
             />
           ) : (
-            <span
-              style={{
-                fontWeight: 800,
-                fontSize: "22px",
-                color: colors.primaryDark,
-              }}
-            >
+            <span>
               {organization.name?.charAt(0)?.toUpperCase() || "O"}
             </span>
           )}
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            marginBottom: "10px",
-            flexWrap: "wrap",
-          }}
-        >
-          <h3
-            style={{
-              margin: 0,
-              fontSize: "24px",
-              color: colors.text,
-              fontWeight: 800,
-            }}
-          >
+        <div className="organization-preview-title-row">
+          <h3>
             {organization.name}
           </h3>
 
           {isVerified && (
-            <HiOutlineCheckBadge size={20} color={colors.primaryDark} />
+            <HiOutlineCheckBadge size={20} />
           )}
         </div>
 
         {organization.city && (
-          <p
-            style={{
-              margin: "0 0 8px 0",
-              color: colors.textSoft,
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
-          >
+          <p className="organization-preview-meta">
             <HiOutlineMapPin size={15} />
             {organization.city}
           </p>
         )}
 
         {organization.website && (
-          <p
-            style={{
-              margin: "0 0 12px 0",
-              color: colors.textSoft,
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
-          >
+          <p className="organization-preview-meta">
             <HiOutlineGlobeAlt size={15} />
             {organization.website}
           </p>
         )}
 
-        <p
-          style={{
-            margin: "0 0 16px 0",
-            color: colors.textSoft,
-            lineHeight: 1.6,
-            fontSize: "14px",
-          }}
-        >
+        <p className="organization-preview-description">
           {organization.description ||
             "This organization supports donation and community need lists."}
         </p>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-            gap: "10px",
-          }}
-        >
-          <div
-            style={{
-              border: `1px solid ${colors.border}`,
-              borderRadius: radius.md,
-              padding: "12px",
-              background: "#fafaf8",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "12px",
-                color: colors.textSoft,
-                marginBottom: "4px",
-              }}
-            >
+        <div className="organization-preview-stats">
+          <div className="organization-preview-stat">
+            <div>
               Active need lists
             </div>
-            <div
-              style={{
-                fontWeight: 800,
-                color: colors.text,
-                fontSize: "20px",
-              }}
-            >
+            <strong>
               {organization.active_need_lists}
-            </div>
+            </strong>
           </div>
 
-          <div
-            style={{
-              border: `1px solid ${colors.border}`,
-              borderRadius: radius.md,
-              padding: "12px",
-              background: "#fafaf8",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "12px",
-                color: colors.textSoft,
-                marginBottom: "4px",
-              }}
-            >
+          <div className="organization-preview-stat">
+            <div>
               Gallery photos
             </div>
-            <div
-              style={{
-                fontWeight: 800,
-                color: colors.text,
-                fontSize: "20px",
-              }}
-            >
+            <strong>
               {organization.gallery_count || organization.gallery_images?.length || 0}
-            </div>
+            </strong>
           </div>
         </div>
       </div>
@@ -194,16 +80,7 @@ export default function OrganizationPreviewCard({ organization }) {
         onClick={() =>
           navigate(`/organization/${encodeURIComponent(organization.email)}`)
         }
-        style={{
-          marginTop: "18px",
-          background: colors.primary,
-          color: colors.white,
-          border: "none",
-          borderRadius: radius.md,
-          padding: "12px 16px",
-          fontWeight: 700,
-          cursor: "pointer",
-        }}
+        className="organization-preview-button action-button primary"
       >
         View organization profile
       </button>

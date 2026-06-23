@@ -28,6 +28,7 @@ class User(Base):
     matched_name = Column(String, nullable=True)
     matched_cif = Column(String, nullable=True)
     verification_source = Column(String, nullable=True)
+    rejection_reason = Column(Text, nullable=True)
 
     founded_year = Column(Integer, nullable=True)
     mission = Column(Text, nullable=True)

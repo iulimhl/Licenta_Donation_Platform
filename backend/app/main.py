@@ -24,6 +24,7 @@ def ensure_schema_updates():
     inspector = inspect(engine)
     donation_columns = {column["name"] for column in inspector.get_columns("donations")}
     need_columns = {column["name"] for column in inspector.get_columns("needs")}
+    user_columns = {column["name"] for column in inspector.get_columns("users")}
 
     with engine.begin() as connection:
         if "reserved_by_email" not in donation_columns:
@@ -32,6 +33,8 @@ def ensure_schema_updates():
             connection.execute(text("ALTER TABLE donations ADD COLUMN recommendation_embedding JSON"))
         if "item_embeddings" not in need_columns:
             connection.execute(text("ALTER TABLE needs ADD COLUMN item_embeddings JSON"))
+        if "rejection_reason" not in user_columns:
+            connection.execute(text("ALTER TABLE users ADD COLUMN rejection_reason TEXT"))
 
 ensure_schema_updates()
 

@@ -5,6 +5,8 @@ import SectionBanner from "../components/common/SectionBanner";
 import EditProfileMediaSection from "../components/profile/EditProfileMediaSection";
 import EditProfileVerificationSection from "../components/profile/EditProfileVerificationSection";
 import { hasProfileAddress, resolveProfileCoordinates } from "../utils/profileLocation";
+import { useTimedNotification } from "../hooks/useTimedNotification";
+import { useLanguage } from "../language/useLanguage";
 import {
   uploadProfileCover,
   uploadProfileGallery,
@@ -28,9 +30,12 @@ export default function EditProfile() {
   const [mapStatus, setMapStatus] = useState("");
   const [userType, setUserType] = useState("");
   const [verificationStatus, setVerificationStatus] = useState("");
+  const [rejectionReason, setRejectionReason] = useState("");
   const [cif, setCif] = useState("");
   const [verificationFile, setVerificationFile] = useState(null);
   const [resubmittingVerification, setResubmittingVerification] = useState(false);
+  const { notification, showNotification } = useTimedNotification(4200);
+  const { t } = useLanguage();
 
   const [logoFile, setLogoFile] = useState(null);
   const [coverFile, setCoverFile] = useState(null);
@@ -62,12 +67,13 @@ export default function EditProfile() {
       try {
         const { response, data } = await apiFetch(`/auth/user/${userEmail}`);
         if (!response.ok || !data) {
-          alert("Could not load profile.");
+          showNotification(t("editProfile.loadError"), "error");
           return;
         }
 
         setUserType(data.user_type || "");
         setVerificationStatus(data.verification_status || "");
+        setRejectionReason(data.rejection_reason || "");
         setCif(data.cif || "");
         setForm({
           name: data.name || "",
@@ -88,14 +94,14 @@ export default function EditProfile() {
         });
       } catch (err) {
         console.error(err);
-        alert("Server error while loading profile.");
+        showNotification(t("editProfile.loadServerError"), "error");
       } finally {
         setLoading(false);
       }
     }
 
     loadUser();
-  }, [userEmail]);
+  }, [userEmail, showNotification, t]);
 
   function handleChange(e) {
     const { name, value, type, checked } = e.target;
@@ -138,7 +144,7 @@ export default function EditProfile() {
 
   function handleUseCurrentLocation() {
     if (!navigator.geolocation) {
-      setMapStatus("Geolocation is not supported by this browser.");
+      setMapStatus(t("editProfile.geolocationUnsupported"));
       return;
     }
 
@@ -148,7 +154,7 @@ export default function EditProfile() {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        let detectedLocation = "Detected location";
+        let detectedLocation = t("editProfile.detectedLocation");
 
         try {
           const response = await fetch(
@@ -166,11 +172,11 @@ export default function EditProfile() {
           lat: latitude,
           lng: longitude,
         }));
-        setMapStatus("Current location detected. Save changes to update the map.");
+        setMapStatus(t("editProfile.currentLocationSaved"));
         setLoadingLocation(false);
       },
       () => {
-        setMapStatus("Access to current location was denied.");
+        setMapStatus(t("editProfile.currentLocationDenied"));
         setLoadingLocation(false);
       }
     );
@@ -232,20 +238,20 @@ export default function EditProfile() {
       });
 
       if (!response.ok) {
-        alert(data?.detail || "Could not save profile.");
+        showNotification(data?.detail || t("editProfile.saveError"), "error");
         return;
       }
 
       if (userType === "organization" && hasProfileAddress(form) && (!coordinates.lat || !coordinates.lng)) {
-        alert("Profile updated, but the map location could not be found. Add a clearer city, county, and street for the pin to appear.");
+        showNotification(t("editProfile.mapLocationError"), "error");
       } else {
-        alert("Profile updated successfully!");
+        showNotification(t("editProfile.saveSuccess"));
       }
 
-      navigate("/profile");
+      setTimeout(() => navigate("/profile"), 1600);
     } catch (err) {
       console.error(err);
-      alert(err.message || "Server error while saving profile.");
+      showNotification(err.message || t("editProfile.saveServerError"), "error");
     } finally {
       setSaving(false);
     }
@@ -253,12 +259,12 @@ export default function EditProfile() {
 
   async function handleResubmitVerification() {
     if (!verificationFile) {
-      alert("Please upload the fiscal registration certificate first.");
+      showNotification(t("editProfile.uploadCertificateFirst"), "error");
       return;
     }
 
     if (!cif) {
-      alert("Your account has no CIF saved. Please contact an admin or register again with the correct CIF.");
+      showNotification(t("editProfile.missingCif"), "error");
       return;
     }
 
@@ -275,7 +281,7 @@ export default function EditProfile() {
       });
 
       if (!uploadResponse.ok) {
-        alert(uploadData?.detail || "Document upload failed.");
+        showNotification(uploadData?.detail || t("editProfile.documentUploadFailed"), "error");
         return;
       }
 
@@ -289,32 +295,39 @@ export default function EditProfile() {
       });
 
       if (!verifyResponse.ok) {
-        alert(verifyData?.detail || "Verification could not be submitted.");
+        showNotification(verifyData?.detail || t("editProfile.verificationSubmitError"), "error");
         return;
       }
 
       setVerificationStatus("pending");
       setVerificationFile(null);
-      alert("Verification request sent again. An admin can review it now.");
-      navigate("/profile");
+      showNotification(t("editProfile.verificationResent"));
+      setTimeout(() => navigate("/profile"), 1600);
     } catch (err) {
       console.error(err);
-      alert(err.message || "Server error while resubmitting verification.");
+      showNotification(err.message || t("editProfile.resubmitServerError"), "error");
     } finally {
       setResubmittingVerification(false);
     }
   }
 
   if (loading) {
-    return <div className="form-loading">Loading...</div>;
+    return <div className="form-loading">{t("editProfile.loading")}</div>;
   }
 
   return (
     <div className="form-page edit-profile-page">
       <SectionBanner
-        title="Edit profile"
-        subtitle="Update your account information and public profile details."
+        title={t("editProfile.title")}
+        subtitle={t("editProfile.subtitle")}
       />
+
+      {notification.message && (
+        <div className={`page-notification centered ${notification.type === "error" ? "error" : "success"}`}>
+          {notification.message}
+        </div>
+      )}
+
       <div className="form-container wide edit-profile-container">
         <form
           onSubmit={handleSubmit}
@@ -337,6 +350,7 @@ export default function EditProfile() {
           <EditProfileVerificationSection
             userType={userType}
             verificationStatus={verificationStatus}
+            rejectionReason={rejectionReason}
             verificationFile={verificationFile}
             resubmittingVerification={resubmittingVerification}
             inputRef={verificationDocumentInputRef}
@@ -345,6 +359,20 @@ export default function EditProfile() {
           />
 
           <section className="edit-profile-section">
+            {userType === "organization" && (
+              <div className="edit-profile-map-note">
+                <strong>Map location</strong>
+                <p>
+                  The organization map uses the pickup address, location, and city from this profile. If the address was filled from OCR, check it before saving so the pin appears in the right place.
+                </p>
+                <span>
+                  {form.lat && form.lng
+                    ? "A map pin is already saved for this profile."
+                    : "Coordinates will be searched again when you save the profile."}
+                </span>
+              </div>
+            )}
+
             <div className="edit-profile-grid">
               <div className="edit-profile-field large">
                 <label className="form-label">

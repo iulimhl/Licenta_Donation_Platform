@@ -4,12 +4,16 @@ import { apiFetch } from "../api/api";
 import { reverseGeocode, getShortAddress } from "../api/geo";
 import NeedForm from "../components/NeedForm";
 import SectionBanner from "../components/common/SectionBanner";
+import { useTimedNotification } from "../hooks/useTimedNotification";
+import { useLanguage } from "../language/useLanguage";
 import "../styles/formPages.css";
 
 export default function PostNeed() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
+  const { notification, showNotification } = useTimedNotification(3200);
+  const { t } = useLanguage();
   const userEmail = localStorage.getItem("userEmail");
 
   const [formData, setFormData] = useState({
@@ -83,7 +87,10 @@ export default function PostNeed() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (items.length === 0) return alert("Please add at least one item.");
+    if (items.length === 0) {
+      showNotification(t("postNeed.missingItem"), "error");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -96,16 +103,21 @@ export default function PostNeed() {
         }),
       });
 
-      if (response.ok) navigate("/needs");
+      if (response.ok) {
+        navigate("/needs");
+      } else {
+        showNotification(t("postNeed.createError"), "error");
+      }
     } catch (err) {
       console.error(err);
+      showNotification(t("postNeed.serverError"), "error");
     } finally {
       setLoading(false);
     }
   };
 
   if (checking) {
-    return <div className="form-loading">Checking permissions...</div>;
+    return <div className="form-loading">{t("postNeed.checking")}</div>;
   }
 
   if (verificationStatus !== "verified") {
@@ -113,22 +125,22 @@ export default function PostNeed() {
 
     return (
       <div className="form-page">
-        <FormBanner />
+        <FormBanner title={t("postNeed.title")} subtitle={t("postNeed.subtitle")} />
 
         <div className="form-container">
           <div className="form-card center">
             <h2 className="post-need-status-title">
-              {isRejected ? "Posting is disabled" : "Approval pending"}
+              {isRejected ? t("postNeed.disabledTitle") : t("postNeed.pendingTitle")}
             </h2>
 
             <p className="post-need-status-text">
               {isRejected
-                ? "Your organization account was not approved by admin, so you cannot post requirement lists at the moment."
-                : "Your organization account is waiting for admin approval. You will be able to post requirement lists after verification is completed."}
+                ? t("postNeed.disabledText")
+                : t("postNeed.pendingText")}
             </p>
 
             <button onClick={() => navigate("/profile")} className="form-button">
-              Back to profile
+              {t("postNeed.backToProfile")}
             </button>
           </div>
         </div>
@@ -138,9 +150,15 @@ export default function PostNeed() {
 
   return (
     <div className="form-page">
+      {notification.message && (
+        <div className={`page-notification centered ${notification.type === "error" ? "error" : "success"}`}>
+          {notification.message}
+        </div>
+      )}
+
       <NeedForm
-        pageTitle="Post a requirement list"
-        pageSubtitle="Tell the community what your organization needs."
+        pageTitle={t("postNeed.title")}
+        pageSubtitle={t("postNeed.subtitle")}
         formData={formData}
         setFormData={setFormData}
         items={items}
@@ -150,9 +168,9 @@ export default function PostNeed() {
         onRemoveItem={removeItem}
         onSubmit={handleSubmit}
         loading={loading}
-        loadingText="Posting..."
-        submitButtonText="Post Requirements"
-        itemsLabel="Add items to list *"
+        loadingText={t("postNeed.posting")}
+        submitButtonText={t("postNeed.submit")}
+        itemsLabel={t("postNeed.itemsLabel")}
         onUseLocation={handleUseMyLocation}
         submitClassName="post-need-submit"
       />
@@ -160,11 +178,11 @@ export default function PostNeed() {
   );
 }
 
-function FormBanner() {
+function FormBanner({ title, subtitle }) {
   return (
     <SectionBanner
-      title="Post a requirement list"
-      subtitle="Tell the community what your organization needs."
+      title={title}
+      subtitle={subtitle}
     />
   );
 }

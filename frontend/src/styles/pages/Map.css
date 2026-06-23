@@ -1,9 +1,3 @@
-.map-loading {
-  padding: 100px;
-  text-align: center;
-  color: #2f6b39;
-}
-
 .map-page {
   min-height: 100vh;
   background-color: #f6f7f4;
@@ -15,10 +9,6 @@
   max-width: 1500px;
   margin: 34px auto 0;
   height: 760px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 18px;
-  box-shadow: 0 14px 38px rgba(15, 23, 42, 0.08);
   overflow: hidden;
   background-color: #d5d5d5;
 }
@@ -96,10 +86,6 @@
     min-height: 420px;
     margin-top: 18px;
     border-radius: 14px;
-  }
-
-  .map-loading {
-    padding: 60px 20px;
   }
 
   .map-notice {

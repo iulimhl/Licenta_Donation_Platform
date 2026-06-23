@@ -1,6 +1,7 @@
 export default function EditProfileVerificationSection({
   userType,
   verificationStatus,
+  rejectionReason,
   verificationFile,
   resubmittingVerification,
   inputRef,
@@ -20,6 +21,11 @@ export default function EditProfileVerificationSection({
             ? "Your verification request is waiting for admin review."
             : "Upload the fiscal registration certificate again and send the account back to admin review."}
         </p>
+        {verificationStatus === "rejected" && rejectionReason && (
+          <p className="edit-profile-rejection-note">
+            Admin note: {rejectionReason}
+          </p>
+        )}
       </div>
 
       <input

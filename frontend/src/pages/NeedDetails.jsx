@@ -9,6 +9,8 @@ import {
   clampNeedOfferAmount,
   getRemainingNeedQuantity,
 } from "../utils/needOffers";
+import { useTimedNotification } from "../hooks/useTimedNotification";
+import { useLanguage } from "../language/useLanguage";
 import "../styles/pages/NeedDetails.css";
 
 export default function NeedDetails() {
@@ -22,6 +24,8 @@ export default function NeedDetails() {
   const [offerQuantities, setOfferQuantities] = useState({});
   const [recommendations, setRecommendations] = useState([]);
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+  const { notification, showNotification } = useTimedNotification(3200);
+  const { t } = useLanguage();
 
   const currentUserEmail = localStorage.getItem("userEmail");
   const isOwner = currentUserEmail === need?.organization_email;
@@ -114,14 +118,14 @@ export default function NeedDetails() {
       );
 
       if (!response.ok) {
-        alert(data?.detail || "Could not send your offer.");
+        showNotification(data?.detail || t("needDetails.offerSendError"), "error");
         return;
       }
 
       navigate(`/chat/${encodeURIComponent(need.organization_email)}?needId=${need.id}`);
     } catch (err) {
       console.error("Offer message error:", err);
-      alert("Could not contact the server.");
+      showNotification(t("needDetails.serverError"), "error");
     } finally {
       setOfferingIndex(null);
     }
@@ -133,7 +137,10 @@ export default function NeedDetails() {
       return;
     }
 
-    const content = `Hi! I saw your donation "${match.title}" and I think it could help us with "${group.item_name}" from our need list "${need.title}". Could we discuss the pickup details?`;
+    const content = t("needDetails.recommendedDonationDraft")
+      .replace("{donationTitle}", match.title)
+      .replace("{itemName}", group.item_name)
+      .replace("{needTitle}", need.title);
     const params = new URLSearchParams({
       donationId: String(match.donation_id),
       needId: String(need.id),
@@ -161,18 +168,19 @@ export default function NeedDetails() {
       if (!response.ok) {
         console.error("Eroare de la server:", data);
         setNeed(previousNeed);
-        alert("Eroare la salvarea modificarii. Te rog incearca din nou.");
+        showNotification(t("needDetails.saveChangeError"), "error");
       }
     } catch (err) {
       console.error("Eroare la salvarea bifei:", err);
       setNeed(previousNeed);
+      showNotification(t("needDetails.saveChangeError"), "error");
     }
   };
 
   if (loading) {
     return (
       <div className="need-details-page">
-        <div className="need-details-message">Loading need list...</div>
+        <div className="page-message surface-card">{t("needDetails.loading")}</div>
       </div>
     );
   }
@@ -180,7 +188,7 @@ export default function NeedDetails() {
   if (!need) {
     return (
       <div className="need-details-page">
-        <div className="need-details-message">Need list not found.</div>
+        <div className="page-message error surface-card">{t("needDetails.notFound")}</div>
       </div>
     );
   }
@@ -193,25 +201,31 @@ export default function NeedDetails() {
 
   return (
     <div className="need-details-page">
+      {notification.message && (
+        <div className={`page-notification ${notification.type === "error" ? "error" : "success"}`}>
+          {notification.message}
+        </div>
+      )}
+
       <div className="need-details-topbar">
-        <button onClick={() => navigate(-1)} className="need-details-back-button">
+        <button onClick={() => navigate(-1)} className="page-back-button">
           <HiOutlineArrowLeft size={16} />
-          <span>Back</span>
+          <span>{t("needDetails.back")}</span>
         </button>
       </div>
 
       <div className="need-details-layout">
-        <div className="need-details-image-card">
+        <div className="need-details-image-card surface-card">
           {need.image ? (
             <img src={need.image} alt={need.title} className="need-details-image" />
           ) : organization ? (
             <OrganizationPreviewCard organization={organization} />
           ) : (
-            <div className="need-details-placeholder">No image</div>
+            <div className="need-details-placeholder">{t("needDetails.noImage")}</div>
           )}
         </div>
 
-        <div className="need-details-card">
+        <div className="need-details-card surface-card">
           <div className="need-details-title-row">
             <div>
               <h1>{need.title}</h1>
@@ -222,23 +236,29 @@ export default function NeedDetails() {
               </p>
             </div>
 
-            <span className="need-details-progress-badge">{progress}% done</span>
+            <span className="need-details-progress-badge">
+              {t("needDetails.progressDone").replace("{progress}", progress)}
+            </span>
           </div>
 
           <div className="need-details-progress-summary">
-            <span>Progress</span>
-            <strong>{totalBrought} of {totalNeeded} brought</strong>
+            <span>{t("needDetails.progress")}</span>
+            <strong>
+              {t("needDetails.broughtSummary")
+                .replace("{brought}", totalBrought)
+                .replace("{total}", totalNeeded)}
+            </strong>
           </div>
 
           {need.description && (
             <div className="need-details-section">
-              <h3>Description</h3>
+              <h3>{t("needDetails.description")}</h3>
               <p>{need.description}</p>
             </div>
           )}
 
           <div className="need-details-section">
-            <h3>Items needed</h3>
+            <h3>{t("needDetails.itemsNeeded")}</h3>
 
             <div className="need-details-progress-wrap">
               <div className="need-details-progress-bar" style={{ width: `${progress}%` }}></div>
@@ -246,7 +266,7 @@ export default function NeedDetails() {
 
             <div className="need-details-items">
               {items.length === 0 ? (
-                <p className="need-details-empty-text">No items added yet.</p>
+                <p className="need-details-empty-text">{t("needDetails.noItems")}</p>
               ) : (
                 items.map((item, idx) => {
                   const isCompleted = item.brought >= item.quantity && item.quantity > 0;
@@ -280,7 +300,7 @@ export default function NeedDetails() {
                       <div className="need-details-item-right">
                         {isOwner ? (
                           <label className="need-details-owner-qty">
-                            <span>Received</span>
+                            <span>{t("needDetails.received")}</span>
                             <input
                               type="number"
                               min="0"
@@ -299,7 +319,7 @@ export default function NeedDetails() {
                         {!isOwner && !isAdmin && !isCompleted && (
                           <div className="need-details-offer-controls">
                             <label>
-                              <span>Qty</span>
+                              <span>{t("needDetails.qty")}</span>
                               <input
                                 type="number"
                                 min="1"
@@ -315,7 +335,7 @@ export default function NeedDetails() {
                               onClick={() => handleOfferItem(item, idx)}
                               disabled={offeringIndex === idx}
                             >
-                              {offeringIndex === idx ? "Sending..." : "I can bring"}
+                              {offeringIndex === idx ? t("needDetails.sending") : t("needDetails.iCanBring")}
                             </button>
                           </div>
                         )}
@@ -331,9 +351,9 @@ export default function NeedDetails() {
             <div className="need-details-owner-actions">
               <button
                 onClick={() => navigate(`/editneed/${need.id}`)}
-                className="need-details-contact-button"
+                className="action-button primary"
               >
-                Edit list
+                {t("needDetails.editList")}
               </button>
             </div>
           )}
@@ -341,28 +361,28 @@ export default function NeedDetails() {
           {isOwner && (
             <div className="need-details-section need-details-recommendations-section">
               <div className="need-details-recommendations-header">
-                <h3>Suggested donations</h3>
-                <span>AI matches</span>
+                <h3>{t("needDetails.suggestedDonations")}</h3>
+                <span>{t("needDetails.recommended")}</span>
               </div>
 
               {recommendationsLoading ? (
-                <div className="need-details-recommendations-empty">Loading matches...</div>
+                <div className="empty-panel">{t("needDetails.loadingMatches")}</div>
               ) : recommendationGroups.length === 0 ? (
-                <div className="need-details-recommendations-empty">No matching donations yet.</div>
+                <div className="empty-panel">{t("needDetails.noDonationMatches")}</div>
               ) : (
                 <div className="need-details-recommendations-list">
                   {recommendationGroups.map((group) => (
                     <div key={group.item_index} className="need-details-recommendation-group">
                       <div className="need-details-recommendation-group-title">
                         <strong>{group.item_name}</strong>
-                        <span>{group.remaining_quantity} still needed</span>
+                        <span>{t("needDetails.stillNeeded").replace("{count}", group.remaining_quantity)}</span>
                       </div>
 
                       <div className="need-details-recommendation-cards">
                         {group.matches.map((match) => (
                           <div
                             key={match.donation_id}
-                            className="need-details-recommendation-card"
+                            className="need-details-recommendation-card surface-card subtle"
                           >
                             <button
                               type="button"
@@ -372,7 +392,7 @@ export default function NeedDetails() {
                               {match.image ? (
                                 <img src={buildFileUrl(match.image)} alt={match.title} />
                               ) : (
-                                <span>No image</span>
+                                <span>{t("needDetails.noImage")}</span>
                               )}
                             </button>
 
@@ -385,17 +405,18 @@ export default function NeedDetails() {
                               <div className="need-details-recommendation-actions">
                                 <button
                                   type="button"
+                                  className="action-button small soft"
                                   onClick={() => navigate(`/donation/${match.donation_id}`)}
                                 >
-                                  Details
+                                  {t("needDetails.details")}
                                 </button>
 
                                 <button
                                   type="button"
-                                  className="primary"
+                                  className="action-button small solid"
                                   onClick={() => handleRecommendationContact(match, group)}
                                 >
-                                  Contact
+                                  {t("needDetails.contact")}
                                 </button>
                               </div>
                             </div>
@@ -415,19 +436,19 @@ export default function NeedDetails() {
                 {isAdmin ? (
                   <button
                     onClick={() => navigate("/admin/verifications")}
-                    className="need-details-contact-button"
+                    className="action-button primary"
                   >
-                    Back to admin panel
+                    {t("needDetails.backToAdmin")}
                   </button>
                 ) : (
-                  <button onClick={handleContact} className="need-details-contact-button">
-                    Send message
+                  <button onClick={handleContact} className="action-button primary">
+                    {t("needDetails.sendMessage")}
                   </button>
                 )}
 
                 {!isOwner && organization?.phone_visible && organization?.phone && (
-                  <a href={`tel:${organization.phone}`} className="need-details-call-link">
-                    Call
+                  <a href={`tel:${organization.phone}`} className="action-button secondary">
+                    {t("needDetails.call")}
                   </a>
                 )}
               </div>

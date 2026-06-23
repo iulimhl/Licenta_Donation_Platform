@@ -5,6 +5,7 @@ import { apiFetch } from "../api/api";
 import ListingPage from "../components/common/ListingPage";
 import { donationCategories } from "../constants/donationCategories";
 import { isAdminUser } from "../utils/auth";
+import { useTimedNotification } from "../hooks/useTimedNotification";
 import { useLanguage } from "../language/useLanguage";
 
 export default function Donations() {
@@ -12,6 +13,7 @@ export default function Donations() {
   const userEmail = localStorage.getItem("userEmail");
   const isAdmin = isAdminUser();
   const { t } = useLanguage();
+  const { notification, showNotification } = useTimedNotification(3200);
 
   const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
@@ -46,14 +48,16 @@ export default function Donations() {
       });
 
       if (!response.ok) {
-        alert(data?.detail || t("donations.updateError"));
-        return;
+        showNotification(data?.detail || t("donations.updateError"), "error");
+        return null;
       }
 
       setItems((prev) => prev.map((item) => (item.id === id ? data : item)));
+      return data;
     } catch (err) {
       console.error("Network error:", err);
-      alert(t("donations.networkError"));
+      showNotification(t("donations.networkError"), "error");
+      return null;
     }
   }
 
@@ -111,6 +115,12 @@ export default function Donations() {
       emptyTitle={t("donations.emptyTitle")}
       emptyText={t("donations.emptyText")}
     >
+      {notification.message && (
+        <div className={`page-notification ${notification.type === "error" ? "error" : "success"}`}>
+          {notification.message}
+        </div>
+      )}
+
       {filteredItems.map((donation) => (
         <DonationCard
           key={donation.id}

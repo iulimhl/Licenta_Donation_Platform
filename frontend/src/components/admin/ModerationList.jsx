@@ -22,7 +22,7 @@ export default function ModerationList({
   renderItem,
 }) {
   if (loading) {
-    return <div className="admin-verification-loading">Loading moderation queue...</div>;
+    return <div className="admin-verification-loading surface-card">Loading moderation queue...</div>;
   }
 
   const startItem = filteredCount === 0 ? 0 : (page - 1) * pageSize + 1;
@@ -43,7 +43,7 @@ export default function ModerationList({
 
   return (
     <div className="admin-moderation-panel">
-      <div className="admin-moderation-toolbar">
+      <div className="admin-moderation-toolbar surface-card">
         <input
           type="search"
           value={search}
@@ -94,7 +94,7 @@ export default function ModerationList({
       </div>
 
       {items.length === 0 ? (
-        <div className="admin-verification-empty">
+        <div className="admin-verification-empty surface-card">
           <h3>{totalItems > 0 ? "No matching posts" : emptyTitle}</h3>
           <p>{totalItems > 0 ? "Try another search term or status filter." : emptyText}</p>
         </div>
@@ -103,7 +103,7 @@ export default function ModerationList({
       )}
 
       {filteredCount > 0 && (
-        <div className="admin-moderation-pagination">
+        <div className="admin-moderation-pagination surface-card">
           <span>
             Page {page} of {totalPages}
           </span>

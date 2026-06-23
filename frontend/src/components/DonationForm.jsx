@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { donationCategories } from "../constants/donationCategories";
 import SectionBanner from "./common/SectionBanner";
+import { useLanguage } from "../language/useLanguage";
 import "../styles/components/DonationForm.css";
 
 export default function DonationForm({
@@ -14,6 +15,7 @@ export default function DonationForm({
   onUseLocation
 }) {
   const fileInputRef = useRef(null);
+  const { t } = useLanguage();
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -51,8 +53,8 @@ export default function DonationForm({
       <div className="donation-form-shell">
         <div className="donation-form-card">
           <div className="donation-form-photos">
-            <h3>Item Photos *</h3>
-            <p>Add up to 10 photos. The first photo will be the main cover. Click the X to remove.</p>
+            <h3>{t("donationForm.photos")}</h3>
+            <p>{t("donationForm.photosHelp")}</p>
 
             <input
               className="donation-form-hidden-input"
@@ -71,7 +73,7 @@ export default function DonationForm({
                     type="button"
                     onClick={() => removeImage(idx)}
                     className="donation-form-remove"
-                    aria-label="Remove photo"
+                    aria-label={t("donationForm.removePhoto")}
                   >
                     x
                   </button>
@@ -85,38 +87,38 @@ export default function DonationForm({
                   className="donation-form-add-photo"
                 >
                   <span>+</span>
-                  <strong>Add Photo</strong>
+                  <strong>{t("donationForm.addPhoto")}</strong>
                 </button>
               )}
             </div>
           </div>
 
           <div className="donation-form-details">
-            <h3>Details</h3>
+            <h3>{t("donationForm.details")}</h3>
 
             <form onSubmit={onSubmit} className="donation-form-fields">
               <div className="donation-form-field">
-                <label>Title *</label>
+                <label>{t("donationForm.title")}</label>
                 <input
                   name="title"
                   type="text"
                   value={formData.title}
                   onChange={handleChange}
                   required
-                  placeholder="e.g., Warm Winter Coat"
+                  placeholder={t("donationForm.titlePlaceholder")}
                 />
               </div>
 
               <div className="donation-form-two-col">
                 <div className="donation-form-field">
-                  <label>Location *</label>
+                  <label>{t("donationForm.location")}</label>
                   <input
                     name="location"
                     type="text"
                     value={formData.location}
                     onChange={handleChange}
                     required
-                    placeholder="City, Area"
+                    placeholder={t("donationForm.locationPlaceholder")}
                   />
 
                   {onUseLocation && (
@@ -125,13 +127,13 @@ export default function DonationForm({
                       onClick={onUseLocation}
                       className="donation-form-location-button"
                     >
-                      Use my current location
+                      {t("donationForm.useCurrentLocation")}
                     </button>
                   )}
                 </div>
 
                 <div className="donation-form-field">
-                  <label>Category *</label>
+                  <label>{t("donationForm.category")}</label>
                   <select name="category" value={formData.category} onChange={handleChange}>
                     {donationCategories.map((cat) => (
                       <option key={cat.value} value={cat.value}>
@@ -143,18 +145,18 @@ export default function DonationForm({
               </div>
 
               <div className="donation-form-field">
-                <label>Description</label>
+                <label>{t("donationForm.description")}</label>
                 <textarea
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
-                  placeholder="Describe the condition, size, or any other helpful details..."
+                  placeholder={t("donationForm.descriptionPlaceholder")}
                 />
               </div>
 
               <div className="donation-form-submit-row">
                 <button type="submit" disabled={loading} className="donation-form-submit">
-                  {loading ? "Processing..." : submitButtonText}
+                  {loading ? t("donationForm.processing") : submitButtonText}
                 </button>
               </div>
             </form>

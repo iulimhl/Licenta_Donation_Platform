@@ -1,0 +1,135 @@
+.section-banner {
+  width: 100%;
+  padding: 56px 24px;
+  box-sizing: border-box;
+  background-color: #2d4f2b;
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.1) 1.4px, transparent 1.4px),
+    linear-gradient(135deg, #1d3b1c 0%, #2d4f2b 50%, #55774b 100%);
+  background-size: 30px 30px, 100% 100%;
+  background-position: 0 0, 0 0;
+  display: flex;
+  justify-content: center;
+}
+
+.section-banner.with-stats {
+  padding: 48px 24px;
+}
+
+.section-banner-inner {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.section-banner.with-stats .section-banner-inner {
+  max-width: 1000px;
+}
+
+.section-banner h1 {
+  margin: 0 0 16px;
+  color: #ffffff;
+  font-size: 48px;
+  line-height: 1.1;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.section-banner.with-stats h1 {
+  font-size: 46px;
+}
+
+.section-banner-subtitle {
+  margin: 0;
+  max-width: 900px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+.section-banner.with-stats .section-banner-subtitle {
+  font-size: 18px;
+}
+
+.section-banner-subtitle.spaced {
+  margin-bottom: 36px;
+}
+
+.section-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+}
+
+.section-banner.with-stats .section-banner-actions {
+  margin-bottom: 60px;
+}
+
+.section-banner-stats {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 50px;
+}
+
+.section-banner-stat-group {
+  display: flex;
+  align-items: center;
+  gap: 50px;
+}
+
+.section-banner-stat {
+  text-align: center;
+}
+
+.section-banner-stat-value {
+  margin-bottom: 4px;
+  color: #ffffff;
+  font-size: 44px;
+  font-weight: 800;
+}
+
+.section-banner-stat-label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.section-banner-divider {
+  width: 2px;
+  height: 50px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+@media (max-width: 640px) {
+  .section-banner,
+  .section-banner.with-stats {
+    padding: 40px 18px;
+  }
+
+  .section-banner h1,
+  .section-banner.with-stats h1 {
+    font-size: 36px;
+  }
+
+  .section-banner-subtitle,
+  .section-banner.with-stats .section-banner-subtitle {
+    font-size: 15px;
+  }
+
+  .section-banner-stats,
+  .section-banner-stat-group {
+    gap: 24px;
+  }
+
+  .section-banner-divider {
+    display: none;
+  }
+}
