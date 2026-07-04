@@ -188,13 +188,52 @@ def extract_address(text: str) -> str | None:
         "certificat de inregistrare fiscala",
     }
 
+    stop_patterns = [
+        r"codul\s+de\s+inregistrare\s+fiscala",
+        r"\bc\.?\s*i\.?\s*f\.?\b",
+        r"data\s+atribuirii",
+        r"data\s+eliberarii",
+        r"\bemitent\b",
+        r"\bem[a-z]{2,6}t\b",
+        r"\bseria\b",
+        r"\bcod\s+m\.?\s*f\.?\b",
+    ]
+
+    def clean_address_candidate(value: str) -> str:
+        value = normalize_spaces(value)
+        value_norm = normalize_for_search(value)
+
+        stop_indexes = [
+            match.start()
+            for pattern in stop_patterns
+            if (match := re.search(pattern, value_norm))
+        ]
+        if stop_indexes:
+            value = value[: min(stop_indexes)]
+
+        value = re.sub(r"\s+\d{13,}.*$", "", value)
+        return normalize_spaces(value).strip(" ,;:-")
+
+    def non_address_line(value: str) -> bool:
+        value_norm = normalize_for_search(value)
+        if any(re.search(pattern, value_norm) for pattern in stop_patterns):
+            return True
+        if re.fullmatch(r"[0-9\s.,;:/-]+", value):
+            return True
+        if re.search(r"\d{13,}", value):
+            return True
+        return False
+
     def valid_address(value: str) -> bool:
+        value = clean_address_candidate(value)
         value_norm = normalize_for_search(value)
         if not value_norm:
             return False
         if value_norm in blacklist:
             return False
         if len(value_norm) < 6:
+            return False
+        if non_address_line(value):
             return False
         return True
 
@@ -214,50 +253,21 @@ def extract_address(text: str) -> str | None:
                 flags=re.IGNORECASE,
             )
             if match:
-                candidate = normalize_spaces(line[-len(match.group(2)):])
-                if valid_address(candidate) and "seria" not in normalize_for_search(candidate):
+                candidate = clean_address_candidate(line[-len(match.group(2)):])
+                if valid_address(candidate):
                     return candidate
 
             collected = []
-            for j in range(i + 1, min(i + 4, len(lines))):
-                candidate = normalize_spaces(lines[j])
+            for j in range(i + 1, min(i + 3, len(lines))):
+                candidate = clean_address_candidate(lines[j])
+                if non_address_line(lines[j]):
+                    break
                 if not valid_address(candidate):
-                    continue
-                if "seria" in normalize_for_search(candidate):
                     continue
                 collected.append(candidate)
 
             if collected:
                 return " ".join(collected)
-
-    address_keywords = [
-        "str.",
-        "strada",
-        "bulevard",
-        "bd.",
-        "calea",
-        "jud.",
-        "judet",
-        "sector",
-        "municipiul",
-        "oras",
-        "comuna",
-        "sat",
-        "nr.",
-        "bloc",
-        "sc.",
-        "ap.",
-    ]
-
-    for line in lines:
-        search_line = normalize_for_search(line)
-
-        if "seria" in search_line:
-            continue
-
-        if any(keyword in search_line for keyword in address_keywords):
-            if valid_address(line):
-                return line
 
     return None
 

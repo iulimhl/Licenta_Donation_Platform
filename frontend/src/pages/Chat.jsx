@@ -4,7 +4,6 @@ import { apiFetch, buildFileUrl } from "../api/api";
 import {
   HiOutlineInbox,
   HiOutlinePaperAirplane,
-  HiOutlineCheckCircle,
   HiOutlineUserCircle,
 } from "react-icons/hi2";
 import SectionBanner from "../components/common/SectionBanner";
@@ -34,21 +33,21 @@ export default function Chat() {
   const [otherUserLogo, setOtherUserLogo] = useState("");
   const [donationTitle, setDonationTitle] = useState("");
   const [needDetails, setNeedDetails] = useState(null);
-  const [isFulfilling, setIsFulfilling] = useState(false);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
-  const [showModal, setShowModal] = useState(false);
   const [reservationDraftActive, setReservationDraftActive] = useState(false);
   const [threadError, setThreadError] = useState("");
   const [sendError, setSendError] = useState("");
   const { t } = useLanguage();
 
   const scrollContainerRef = useRef(null);
+  const consumedDraftRef = useRef("");
 
   const searchParams = new URLSearchParams(location.search);
   const donationId = searchParams.get("donationId");
   const needId = searchParams.get("needId");
   const draftMessage = searchParams.get("draft");
   const draftType = searchParams.get("draftType");
+  const draftKey = [draftMessage, draftType].join("|");
   const {
     loading: loadingInbox,
     sortedConversations,
@@ -89,11 +88,12 @@ export default function Chat() {
   }, [messages, needDetails, userEmail, newMessage, draftMessage]);
 
   useEffect(() => {
-    if (draftMessage && !newMessage) {
+    if (draftMessage && consumedDraftRef.current !== draftKey && !newMessage) {
+      consumedDraftRef.current = draftKey;
       setNewMessage(draftMessage);
       setReservationDraftActive(draftType === "reserve");
     }
-  }, [draftMessage, draftType, newMessage]);
+  }, [draftMessage, draftKey, draftType, newMessage]);
 
   const loadConversation = useCallback(async () => {
     try {
@@ -165,39 +165,6 @@ export default function Chat() {
 
     return () => clearInterval(interval);
   }, [loadConversation, loadUserInfo, navigate, userEmail]);
-
-  const handleConfirmFulfillment = async () => {
-    if (!needDetails) return;
-    setIsFulfilling(true);
-    setShowModal(false);
-
-    try {
-      const items = needDetails.items || [];
-      for (let idx = 0; idx < items.length; idx++) {
-        await apiFetch(`/needs/${needDetails.id}/item/${idx}?brought=${items[idx].quantity}`, {
-          method: "PATCH",
-        });
-      }
-
-      await apiFetch(`/messages/?sender_email=${encodeURIComponent(userEmail)}`, {
-        method: "POST",
-        body: JSON.stringify({
-          recipient_email: otherEmail,
-          content: `[SYSTEM] The request "${needDetails.title}" has been successfully marked as fulfilled.`,
-          donation_id: null,
-          need_id: needId ? parseInt(needId) : null,
-        }),
-      });
-
-      const { data } = await apiFetch(`/needs/${needId}`);
-      setNeedDetails(data);
-      loadConversation();
-    } catch (err) {
-      console.error("Fulfillment process error:", err);
-    } finally {
-      setIsFulfilling(false);
-    }
-  };
 
   const confirmedOfferIds = useMemo(() => {
     const ids = new Set();
@@ -305,6 +272,16 @@ export default function Chat() {
       setMessages((prev) => [...prev, msg]);
       setNewMessage("");
       setReservationDraftActive(false);
+      const cleanParams = new URLSearchParams(location.search);
+      cleanParams.delete("draft");
+      cleanParams.delete("draftType");
+      navigate(
+        {
+          pathname: location.pathname,
+          search: cleanParams.toString() ? `?${cleanParams.toString()}` : "",
+        },
+        { replace: true }
+      );
       refreshInbox();
     } catch (err) {
       console.error("Error sending message:", err);
@@ -389,21 +366,14 @@ export default function Chat() {
               <div className={`chat-fulfillment ${isNeedComplete ? "complete" : "pending"}`}>
                 <div>
                   <div className="chat-fulfillment-title">
-                    {isNeedComplete ? "Request fulfilled" : "Did they complete the request?"}
+                    {isNeedComplete ? "Request fulfilled" : "Need list progress"}
                   </div>
                   <div className="chat-fulfillment-text">
                     {isNeedComplete
                       ? "Items delivered and system updated."
-                      : "Mark this request as resolved if the items were received."}
+                      : "Confirm each item offer from the message card below."}
                   </div>
                 </div>
-
-                {!isNeedComplete && (
-                  <button type="button" onClick={() => setShowModal(true)} disabled={isFulfilling}>
-                    <HiOutlineCheckCircle size={18} />
-                    <span>{isFulfilling ? "..." : "Confirm Delivery"}</span>
-                  </button>
-                )}
               </div>
             )}
 
@@ -501,28 +471,6 @@ export default function Chat() {
         </div>
       </div>
 
-      {showModal && (
-        <div className="chat-modal-backdrop">
-          <div className="chat-modal surface-card">
-            <h3>Confirm fulfillment?</h3>
-
-            <p>
-              Are you sure you want to mark all items in this request as fully delivered?
-              This will update the listing progress and add a confirmation in chat.
-            </p>
-
-            <div className="chat-modal-actions">
-              <button type="button" onClick={() => setShowModal(false)} className="secondary">
-                Cancel
-              </button>
-
-              <button type="button" onClick={handleConfirmFulfillment} className="primary">
-                Yes, confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

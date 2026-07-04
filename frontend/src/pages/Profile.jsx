@@ -70,7 +70,6 @@ export default function Profile() {
   const [userType, setUserType] = useState("");
   const [userName, setUserName] = useState("");
   const [verificationStatus, setVerificationStatus] = useState("");
-  const [verificationScore, setVerificationScore] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("donations");
   const [userData, setUserData] = useState(null);
@@ -89,7 +88,6 @@ export default function Profile() {
         setUserType(fetchedUserData.user_type);
         setUserName(fetchedUserData.name || userEmail);
         setVerificationStatus(fetchedUserData.verification_status || "unverified");
-        setVerificationScore(fetchedUserData.verification_score ?? null);
 
         const { data: donationsData } = await apiFetch("/donations/");
         const donations = donationsData || [];
@@ -256,7 +254,6 @@ export default function Profile() {
     <div className={`profile-verification-badge ${verificationBadge.className}`}>
       {verificationBadge.icon}
       <span>{verificationBadge.text}</span>
-      {verificationScore !== null && <span>({verificationScore}%)</span>}
     </div>
   ) : null;
 

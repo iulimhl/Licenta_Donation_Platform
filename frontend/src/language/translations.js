@@ -18,7 +18,7 @@ export const translations = {
       title: "Give your items a second life",
       subtitle: "Donate things you no longer need, support local organizations, and make a real impact in your community.",
       adminAction: "Open admin panel",
-      organizationAction: "Post a requirements list",
+      organizationAction: "Post a need list",
       donorAction: "Donate an item",
       availableItems: "Available items",
       needLists: "Need lists",
@@ -51,7 +51,7 @@ export const translations = {
       networkError: "Could not contact the server.",
     },
     needs: {
-      title: "Requirements lists",
+      title: "Need lists",
       subtitle: "Browse organization needs and check off the items you can bring to help out.",
       loading: "Loading needs...",
       search: "Search by title, location, or item...",
@@ -567,13 +567,13 @@ translations.en.postNeed = {
   serverError: "Could not contact the server.",
   disabledTitle: "Posting is disabled",
   pendingTitle: "Approval pending",
-  disabledText: "Your organization account was not approved by admin, so you cannot post requirement lists at the moment.",
-  pendingText: "Your organization account is waiting for admin approval. You will be able to post requirement lists after verification is completed.",
+  disabledText: "Your organization account was not approved by admin, so you cannot post need lists at the moment.",
+  pendingText: "Your organization account is waiting for admin approval. You will be able to post need lists after verification is completed.",
   backToProfile: "Back to profile",
-  title: "Post a requirement list",
+  title: "Post a need list",
   subtitle: "Tell the community what your organization needs.",
   posting: "Posting...",
-  submit: "Post Requirements",
+  submit: "Post Needs",
   itemsLabel: "Add items to list *",
 };
 
@@ -604,8 +604,8 @@ translations.en.editNeed = {
   updateError: "Error updating need.",
   serverError: "Could not contact the server.",
   loading: "Loading...",
-  title: "Edit need",
-  subtitle: "Update your list of requirements.",
+  title: "Edit need list",
+  subtitle: "Update your need list.",
   submit: "Save Changes",
 };
 

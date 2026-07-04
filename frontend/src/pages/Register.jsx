@@ -111,7 +111,10 @@ export default function Register() {
 
       if (data.name) setOrgName(data.name);
       if (data.cif) setCif(data.cif);
-      if (data.location) setLocation(data.location);
+      if (data.location) {
+        setLocation(data.location);
+        setCoords({ lat: null, lng: null });
+      }
 
       showNotification(t("register.documentProcessed"));
     } catch (error) {
@@ -408,7 +411,10 @@ export default function Register() {
                     type="text"
                     placeholder={t("register.addressPlaceholder")}
                     value={location}
-                    onChange={(e) => setLocation(e.target.value)}
+                    onChange={(e) => {
+                      setLocation(e.target.value);
+                      setCoords({ lat: null, lng: null });
+                    }}
                     required
                     className="form-input register-input"
                   />

@@ -27,6 +27,16 @@ export const cleanAddressPart = (value) => String(value || "")
   .trim();
 
 const uniqueValues = (values) => values.filter((value, index, array) => value && array.indexOf(value) === index);
+const geocodeCache = new Map();
+
+const stripHouseNumber = (value) => cleanAddressPart(value)
+  .replace(/\bnumarul\s+\d+[a-z]?\b/gi, "")
+  .replace(/\bnr\s*\.?\s*\d+[a-z]?\b/gi, "")
+  .replace(/\s+,/g, ",")
+  .replace(/,\s*,/g, ",")
+  .replace(/\s+/g, " ")
+  .replace(/,\s*$/g, "")
+  .trim();
 
 const makeRomaniaQuery = (...parts) => {
   const cleanParts = parts.filter(Boolean);
@@ -46,14 +56,51 @@ const getAdministrativeLocation = (location) => {
   return "";
 };
 
+const getCommaSeparatedLocation = (location) => {
+  const parts = cleanAddressPart(location)
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length >= 2) return `${parts[0]}, ${parts[1]}`;
+  return "";
+};
+
+const getStreetFirstAddress = (location) => {
+  const parts = cleanAddressPart(location)
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length < 3) return "";
+
+  const [locality, county, ...streetParts] = parts;
+  const street = streetParts
+    .join(", ")
+    .replace(/\bnumarul\s+(\d+[a-z]?)\b/gi, "$1")
+    .trim();
+
+  return street ? `${street}, ${locality}, ${county}` : "";
+};
+
 export const getGeocodingQueries = ({ location, city, pickup_address }) => {
   const pickupAddress = cleanAddressPart(pickup_address);
   const cleanLocation = cleanAddressPart(location);
   const cleanCity = cleanAddressPart(city);
-  const administrativeLocation = getAdministrativeLocation(location);
+  const administrativeLocation =
+    getAdministrativeLocation(location) ||
+    getCommaSeparatedLocation(location) ||
+    getAdministrativeLocation(pickup_address) ||
+    getCommaSeparatedLocation(pickup_address);
+  const streetFirstLocation = getStreetFirstAddress(location) || getStreetFirstAddress(pickup_address);
+  const locationWithoutNumber = stripHouseNumber(location);
+  const pickupWithoutNumber = stripHouseNumber(pickup_address);
 
   return uniqueValues([
     makeRomaniaQuery(pickupAddress, cleanCity),
+    makeRomaniaQuery(streetFirstLocation),
+    makeRomaniaQuery(locationWithoutNumber),
+    makeRomaniaQuery(pickupWithoutNumber, cleanCity),
     makeRomaniaQuery(administrativeLocation),
     makeRomaniaQuery(cleanLocation, cleanCity),
     makeRomaniaQuery(pickupAddress, cleanLocation),
@@ -65,19 +112,47 @@ export const getGeocodingQueries = ({ location, city, pickup_address }) => {
 
 export const geocodeAddress = async (addressData) => {
   const queries = getGeocodingQueries(addressData);
+  const cacheKey = queries.join("|").toLowerCase();
+
+  if (!queries.length) return { lat: null, lng: null };
+  if (geocodeCache.has(cacheKey)) return geocodeCache.get(cacheKey);
+
+  try {
+    const stored = typeof window !== "undefined"
+      ? window.sessionStorage.getItem(`geocode:${cacheKey}`)
+      : null;
+    if (stored) {
+      const cached = JSON.parse(stored);
+      geocodeCache.set(cacheKey, cached);
+      return cached;
+    }
+  } catch {
+    // Session storage is optional; geocoding still works without it.
+  }
 
   for (const query of queries) {
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=ro&limit=1&q=${encodeURIComponent(query)}`
       );
+      if (!response.ok) continue;
+
       const data = await response.json();
 
       if (Array.isArray(data) && data.length > 0) {
-        return {
+        const result = {
           lat: parseFloat(data[0].lat),
           lng: parseFloat(data[0].lon),
         };
+        geocodeCache.set(cacheKey, result);
+        try {
+          if (typeof window !== "undefined") {
+            window.sessionStorage.setItem(`geocode:${cacheKey}`, JSON.stringify(result));
+          }
+        } catch {
+          // Ignore storage failures.
+        }
+        return result;
       }
     } catch (err) {
       console.error("Address geocoding failed", err);

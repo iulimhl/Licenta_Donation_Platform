@@ -1,23 +1,13 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { HiOutlineMapPin } from "react-icons/hi2";
-import { apiFetch, buildFileUrl } from "../api/api";
-import {
-  buildNeedOfferMessage,
-  clampNeedOfferAmount,
-  getRemainingNeedQuantity,
-} from "../utils/needOffers";
+import { buildFileUrl } from "../api/api";
+import { getRemainingNeedQuantity } from "../utils/needOffers";
 import "../styles/components/NeedCard.css";
 
-export default function NeedCard({ need, onItemCheck, currentUserEmail, isOwner, isAdmin = false }) {
+export default function NeedCard({ need, onItemCheck, isOwner, isAdmin = false }) {
   const navigate = useNavigate();
   const items = need.items || [];
   const firstAvailableIndex = items.findIndex((item) => getRemainingNeedQuantity(item) > 0);
-  const [showOfferForm, setShowOfferForm] = useState(false);
-  const [selectedItemIndex, setSelectedItemIndex] = useState(firstAvailableIndex >= 0 ? firstAvailableIndex : 0);
-  const [offerAmount, setOfferAmount] = useState(1);
-  const [sendingOffer, setSendingOffer] = useState(false);
-  const [offerError, setOfferError] = useState("");
 
   const totalNeeded = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
   const totalBrought = items.reduce((sum, item) => sum + (item.brought || 0), 0);
@@ -34,76 +24,9 @@ export default function NeedCard({ need, onItemCheck, currentUserEmail, isOwner,
     navigate(`/editneed/${need.id}`);
   }
 
-  function handleToggleOffer(e) {
+  function handleOfferClick(e) {
     e.stopPropagation();
-
-    if (!currentUserEmail) {
-      navigate("/login");
-      return;
-    }
-
-    if (firstAvailableIndex >= 0 && getRemainingNeedQuantity(items[selectedItemIndex]) <= 0) {
-      setSelectedItemIndex(firstAvailableIndex);
-      setOfferAmount(1);
-    }
-
-    setShowOfferForm((prev) => !prev);
-  }
-
-  function handleSelectedItemChange(value) {
-    const nextIndex = Number(value);
-    setSelectedItemIndex(nextIndex);
-    setOfferAmount(1);
-  }
-
-  function handleAmountChange(value) {
-    setOfferAmount(clampNeedOfferAmount(items[selectedItemIndex], value));
-  }
-
-  async function handleSendOffer(e) {
-    e.stopPropagation();
-
-    if (!currentUserEmail) {
-      navigate("/login");
-      return;
-    }
-
-    const item = items[selectedItemIndex];
-    const remaining = getRemainingNeedQuantity(item);
-    const amount = clampNeedOfferAmount(item, offerAmount);
-
-    if (!item || remaining <= 0) return;
-
-    setSendingOffer(true);
-    setOfferError("");
-
-    try {
-      const content = buildNeedOfferMessage(selectedItemIndex, amount, item.name);
-      const { response, data } = await apiFetch(
-        `/messages/?sender_email=${encodeURIComponent(currentUserEmail)}`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            recipient_email: need.organization_email,
-            content,
-            donation_id: null,
-            need_id: need.id,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        setOfferError(data?.detail || "Could not send your offer.");
-        return;
-      }
-
-      navigate(`/chat/${encodeURIComponent(need.organization_email)}?needId=${need.id}`);
-    } catch (err) {
-      console.error("Offer message error:", err);
-      setOfferError("Could not contact the server.");
-    } finally {
-      setSendingOffer(false);
-    }
+    openDetails();
   }
 
   return (
@@ -166,53 +89,9 @@ export default function NeedCard({ need, onItemCheck, currentUserEmail, isOwner,
         )}
 
         {!isOwner && !isAdmin && hasAvailableItems && (
-          <div className={`need-card-offer ${showOfferForm ? "open" : ""}`} onClick={(e) => e.stopPropagation()}>
-            <button type="button" className="need-card-offer-toggle" onClick={handleToggleOffer}>
-              {showOfferForm ? "Close offer" : "I can bring"}
-            </button>
-
-            {showOfferForm && (
-              <div className="need-card-offer-form">
-                <label>
-                  <span>Item</span>
-                  <select value={selectedItemIndex} onChange={(e) => handleSelectedItemChange(e.target.value)}>
-                    {items.map((item, idx) => {
-                      const remaining = getRemainingNeedQuantity(item);
-                      if (remaining <= 0) return null;
-
-                      return (
-                        <option key={idx} value={idx}>
-                          {item.name} ({remaining} left)
-                        </option>
-                      );
-                    })}
-                  </select>
-                </label>
-
-                <label>
-                  <span>Qty</span>
-                  <input
-                    type="number"
-                    min="1"
-                    max={getRemainingNeedQuantity(items[selectedItemIndex])}
-                    value={offerAmount}
-                    onChange={(e) => handleAmountChange(e.target.value)}
-                  />
-                </label>
-
-                <button
-                  type="button"
-                  className="need-card-offer-submit"
-                  onClick={handleSendOffer}
-                  disabled={sendingOffer}
-                >
-                  {sendingOffer ? "Sending..." : "Send offer"}
-                </button>
-
-                {offerError && <div className="need-card-offer-error">{offerError}</div>}
-              </div>
-            )}
-          </div>
+          <button type="button" className="need-card-offer-toggle" onClick={handleOfferClick}>
+            I can bring
+          </button>
         )}
 
         <div className="need-footer">

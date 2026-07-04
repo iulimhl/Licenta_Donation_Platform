@@ -228,13 +228,9 @@
   line-height: 1;
 }
 
-.need-card-offer {
-  margin-top: 12px;
-  border-radius: 12px;
-}
-
 .need-card-offer-toggle {
   width: 100%;
+  margin-top: 12px;
   border: 1px solid #d6e3d2;
   background: #2f6b39;
   color: #ffffff;
@@ -243,64 +239,6 @@
   font-size: 14px;
   font-weight: 900;
   cursor: pointer;
-}
-
-.need-card-offer.open .need-card-offer-toggle {
-  background: #ffffff;
-  color: #24522d;
-}
-
-.need-card-offer-form {
-  margin-top: 10px;
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) 86px;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  background: #fafaf8;
-}
-
-.need-card-offer-form label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.need-card-offer-form select,
-.need-card-offer-form input {
-  width: 100%;
-  min-width: 0;
-  border: 1px solid #d6e3d2;
-  border-radius: 10px;
-  background: #ffffff;
-  color: #0f172a;
-  padding: 9px 10px;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.need-card-offer-submit {
-  grid-column: 1 / -1;
-  border: none;
-  border-radius: 10px;
-  background: #2f6b39;
-  color: #ffffff;
-  padding: 10px 12px;
-  font-size: 13px;
-  font-weight: 900;
-  cursor: pointer;
-}
-
-.need-card-offer-error {
-  grid-column: 1 / -1;
-  color: #991b1b;
-  font-size: 12px;
-  font-weight: 750;
 }
 
 @media (max-width: 560px) {
@@ -333,7 +271,4 @@
     white-space: nowrap;
   }
 
-  .need-card-offer-form {
-    grid-template-columns: 1fr;
-  }
 }

@@ -4,7 +4,6 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { apiFetch } from "../api/api";
-import { geocodeAddress } from "../api/geo";
 import SectionBanner from "../components/common/SectionBanner";
 import { useLanguage } from "../language/useLanguage";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
@@ -30,17 +29,9 @@ const userLocationIcon = L.divIcon({
 async function resolveOrganizationPosition(org) {
   const storedLat = org.lat != null ? Number(org.lat) : null;
   const storedLng = org.lng != null ? Number(org.lng) : null;
-  const hasAddress = org.location || org.city || org.pickup_address;
 
-  if (storedLat != null && storedLng != null) {
+  if (Number.isFinite(storedLat) && Number.isFinite(storedLng)) {
     return { ...org, lat: storedLat, lng: storedLng };
-  }
-
-  if (hasAddress) {
-    const geocoded = await geocodeAddress(org);
-    if (geocoded.lat != null && geocoded.lng != null) {
-      return { ...org, lat: geocoded.lat, lng: geocoded.lng };
-    }
   }
 
   return null;
