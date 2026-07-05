@@ -294,6 +294,13 @@
   border: 1px solid #e2e8f0;
 }
 
+.donation-details-owner-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .donation-details-owner-box p {
   margin: 0;
   font-size: 14px;
@@ -314,6 +321,23 @@
   color: #2f6b39;
   font-weight: 700;
   text-decoration: none;
+}
+
+.donation-details-profile-link {
+  border: 1px solid #cfe0cf;
+  border-radius: 10px;
+  background: #eef7ed;
+  color: #24522d;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 850;
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+.donation-details-profile-link:hover {
+  background: #dfeedd;
+  border-color: #a9caa8;
 }
 
 @media (max-width: 920px) {
@@ -362,6 +386,11 @@
 
   .donation-details-reservation-notice {
     align-items: stretch;
+    flex-direction: column;
+  }
+
+  .donation-details-owner-header {
+    align-items: flex-start;
     flex-direction: column;
   }
 }

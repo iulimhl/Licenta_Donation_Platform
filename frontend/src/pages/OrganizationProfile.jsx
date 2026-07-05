@@ -62,7 +62,6 @@ export default function OrganizationProfile() {
 
   const galleryImages = (organization.gallery_images || []).map(buildFileUrl);
   const needLists = organization.need_lists || [];
-  const currentUserEmail = localStorage.getItem("userEmail");
   const displayLocation = organization.city || organization.location;
   const coverImage = buildFileUrl(organization.cover_image_url);
   const avatarImage = buildFileUrl(organization.logo_url);
@@ -149,7 +148,6 @@ export default function OrganizationProfile() {
                 <NeedCard
                   key={need.id}
                   need={need}
-                  currentUserEmail={currentUserEmail}
                   isOwner={false}
                 />
               ))}

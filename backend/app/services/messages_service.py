@@ -1,9 +1,13 @@
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 from models.donation import DonationModel
 from models.message import Message
 from models.need import NeedModel
 from models.user import User
 import re
+
+
+OFFER_PATTERN = re.compile(r"^\[OFFER:item_index=(\d+)(?:;amount=(\d+))?\]\s*(.*)$")
 
 def create_message(db: Session, sender_email: str, recipient_email: str, content: str, donation_id: int | None = None, need_id: int | None = None):
     recipient = db.query(User).filter(User.email == recipient_email).first()
@@ -40,6 +44,76 @@ def create_message(db: Session, sender_email: str, recipient_email: str, content
     db.commit()
     db.refresh(db_message)
     return db_message, None
+
+
+def confirm_offer(db: Session, offer_id: int, actor_email: str):
+    offer = db.query(Message).filter(Message.id == offer_id).first()
+    if not offer:
+        return None, None, "offer_not_found"
+
+    match = OFFER_PATTERN.match(offer.content or "")
+    if not match:
+        return None, None, "not_offer"
+
+    if offer.recipient_email != actor_email:
+        return None, None, "forbidden"
+
+    if offer.need_id is None:
+        return None, None, "missing_need"
+
+    need = db.query(NeedModel).filter(NeedModel.id == offer.need_id).first()
+    if not need:
+        return None, None, "need_not_found"
+
+    actor = db.query(User).filter(User.email == actor_email).first()
+    is_owner = actor_email == need.organization_email
+    is_admin = actor and actor.user_type == "admin"
+    if not is_owner and not is_admin:
+        return None, None, "forbidden"
+
+    existing_confirmation = db.query(Message).filter(
+        Message.need_id == offer.need_id,
+        Message.content.like(f"[CONFIRMED_OFFER:offer_id={offer_id};%")
+    ).first()
+    if existing_confirmation:
+        return existing_confirmation, need, "already_confirmed"
+
+    item_index = int(match.group(1))
+    offered_amount = int(match.group(2) or 1)
+    items = list(need.items or [])
+
+    if item_index < 0 or item_index >= len(items):
+        return None, None, "invalid_item"
+
+    item = dict(items[item_index] or {})
+    quantity = int(item.get("quantity") or 0)
+    current_brought = int(item.get("brought") or 0)
+    remaining = max(quantity - current_brought, 0)
+
+    if quantity <= 0 or remaining <= 0:
+        return None, need, "item_fulfilled"
+
+    confirmed_amount = max(1, min(offered_amount, remaining))
+    item["brought"] = min(current_brought + confirmed_amount, quantity)
+    items[item_index] = item
+    need.items = items
+    flag_modified(need, "items")
+
+    confirmation = Message(
+        sender_email=actor_email,
+        recipient_email=offer.sender_email,
+        donation_id=None,
+        need_id=offer.need_id,
+        content=(
+            f"[CONFIRMED_OFFER:offer_id={offer_id};item_index={item_index};amount={confirmed_amount}] "
+            f"Confirmed received: {confirmed_amount} {item.get('name') or 'item'}."
+        ),
+    )
+    db.add(confirmation)
+    db.commit()
+    db.refresh(confirmation)
+    db.refresh(need)
+    return confirmation, need, None
 
 def get_conversation(db: Session, user_email: str, other_email: str, donation_id: int | None = None, need_id: int | None = None):
     query = db.query(Message).filter(
@@ -128,7 +202,7 @@ def get_sent_offers(db: Session, user_email: str):
 
     offers = []
     for message in offer_messages:
-        match = re.match(r"^\[OFFER:item_index=(\d+)(?:;amount=(\d+))?\]\s*(.*)$", message.content or "")
+        match = OFFER_PATTERN.match(message.content or "")
         if not match:
             continue
 

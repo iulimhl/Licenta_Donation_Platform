@@ -4,14 +4,16 @@ import DonationCard from "../components/DonationCard";
 import { apiFetch } from "../api/api";
 import ListingPage from "../components/common/ListingPage";
 import { donationCategories } from "../constants/donationCategories";
-import { isAdminUser } from "../utils/auth";
+import { getCurrentUserType, isAdminUser } from "../utils/auth";
 import { useTimedNotification } from "../hooks/useTimedNotification";
 import { useLanguage } from "../language/useLanguage";
 
 export default function Donations() {
   const navigate = useNavigate();
   const userEmail = localStorage.getItem("userEmail");
+  const userType = getCurrentUserType();
   const isAdmin = isAdminUser();
+  const canPostDonation = userType !== "organization" && !isAdmin;
   const { t } = useLanguage();
   const { notification, showNotification } = useTimedNotification(3200);
 
@@ -41,7 +43,6 @@ export default function Donations() {
   async function reserveDonation(id, newStatus) {
     try {
       const params = new URLSearchParams({ new_status: newStatus });
-      if (userEmail) params.set("user_email", userEmail);
 
       const { response, data } = await apiFetch(`/donations/${id}/status?${params.toString()}`, {
         method: "PATCH",
@@ -92,7 +93,7 @@ export default function Donations() {
       searchPlaceholder={t("donations.search")}
       onSearchChange={setQ}
       action={
-        !isAdmin && (
+        canPostDonation && (
           <button onClick={() => navigate("/postdonation")} className="listing-add-button">
             {t("donations.add")}
           </button>

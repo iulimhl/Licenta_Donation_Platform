@@ -125,7 +125,6 @@ export default function Needs() {
           key={need.id}
           need={need}
           onItemCheck={handleItemCheck}
-          currentUserEmail={userEmail}
           isOwner={userEmail === need.organization_email}
           isAdmin={isAdmin}
         />

@@ -104,18 +104,15 @@ export default function NeedDetails() {
 
     try {
       const content = buildNeedOfferMessage(itemIndex, amount, item.name);
-      const { response, data } = await apiFetch(
-        `/messages/?sender_email=${encodeURIComponent(currentUserEmail)}`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            recipient_email: need.organization_email,
-            content,
-            donation_id: null,
-            need_id: need.id,
-          }),
-        }
-      );
+      const { response, data } = await apiFetch("/messages/", {
+        method: "POST",
+        body: JSON.stringify({
+          recipient_email: need.organization_email,
+          content,
+          donation_id: null,
+          need_id: need.id,
+        }),
+      });
 
       if (!response.ok) {
         showNotification(data?.detail || t("needDetails.offerSendError"), "error");

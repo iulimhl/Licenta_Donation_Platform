@@ -72,10 +72,6 @@
 }
 
 .organization-preview-title-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
   margin-bottom: 10px;
 }
 
@@ -84,10 +80,15 @@
   color: #0f172a;
   font-size: 24px;
   font-weight: 850;
+  line-height: 1.25;
 }
 
 .organization-preview-title-row svg {
   color: #24522d;
+  display: inline-block;
+  margin-left: 6px;
+  vertical-align: -3px;
+  flex-shrink: 0;
 }
 
 .organization-preview-meta {

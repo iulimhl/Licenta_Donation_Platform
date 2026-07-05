@@ -2,6 +2,27 @@
   padding-bottom: 40px;
 }
 
+.edit-profile-toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  padding: 14px 28px;
+  border-radius: 14px;
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
+}
+
+.edit-profile-toast.success {
+  background: #2f6b39;
+}
+
+.edit-profile-toast.error {
+  background: #dc2626;
+}
+
 .form-container.wide.edit-profile-container {
   width: calc(100% - 64px);
   max-width: 1500px;
@@ -87,6 +108,32 @@
   padding: 14px;
 }
 
+.edit-profile-map-note.inline {
+  margin-top: 10px;
+  padding: 12px;
+}
+
+.edit-profile-map-helper {
+  margin-top: 8px;
+  border-left: 3px solid #cfe0cf;
+  padding-left: 10px;
+}
+
+.edit-profile-map-helper p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.edit-profile-map-helper span {
+  display: block;
+  margin-top: 4px;
+  color: #2f6b39;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .edit-profile-map-note strong {
   color: #0f172a;
   font-size: 15px;
@@ -130,6 +177,9 @@
 
 .edit-profile-textarea {
   min-height: 136px;
+  max-height: 136px;
+  overflow-y: auto;
+  resize: none;
 }
 
 .edit-profile-check {
@@ -194,11 +244,48 @@
   gap: 14px;
 }
 
+.edit-profile-media-item {
+  display: grid;
+  gap: 8px;
+}
+
+.edit-profile-media-item.compact {
+  justify-items: start;
+}
+
+.edit-profile-media-preview-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.edit-profile-media-preview-wrap.compact {
+  width: 160px;
+}
+
+.edit-profile-media-item-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.edit-profile-media-item-head h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.edit-profile-media-item.compact .edit-profile-media-item-head {
+  max-width: 160px;
+}
+
 .edit-profile-cover-preview {
   position: relative;
   width: 100%;
   min-height: 220px;
-  border: 1px solid #dbe4ee;
+  border: 2px dashed #cbd5e1;
   border-radius: 14px;
   padding: 0;
   background: #f8fafc;
@@ -215,6 +302,11 @@
   position: absolute;
   inset: 0;
   background: linear-gradient(180deg, transparent 45%, rgba(15, 23, 42, 0.62));
+}
+
+.edit-profile-cover-preview:not(:has(img))::after,
+.edit-profile-logo-preview:not(:has(img))::after {
+  content: none;
 }
 
 .edit-profile-cover-preview img {
@@ -240,6 +332,14 @@
   text-align: left;
 }
 
+.edit-profile-cover-preview > strong,
+.edit-profile-logo-preview > strong {
+  color: #2f6b39;
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
 .edit-profile-cover-preview .edit-profile-media-plus,
 .edit-profile-logo-preview .edit-profile-media-plus {
   position: relative;
@@ -256,13 +356,15 @@
   width: 160px;
   height: 160px;
   border-radius: 16px;
-  border: 1px solid #dbe4ee;
-  background: #ffffff;
+  border: 2px dashed #cbd5e1;
+  background: #f8fafc;
   box-shadow: none;
   cursor: pointer;
   overflow: hidden;
   font-family: inherit;
   display: flex;
+  flex-direction: column;
+  gap: 8px;
   align-items: center;
   justify-content: center;
 }
@@ -294,6 +396,29 @@
   bottom: 10px;
   font-size: 13px;
   text-align: center;
+}
+
+.edit-profile-remove-media {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 999px;
+  background: #991b1b;
+  color: #ffffff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 0;
+}
+
+.edit-profile-remove-media:hover {
+  background: #7f1d1d;
 }
 
 .edit-profile-gallery-block {
@@ -331,13 +456,39 @@
   gap: 12px;
 }
 
-.edit-profile-gallery img {
+.edit-profile-gallery-item {
+  position: relative;
+  min-width: 0;
+}
+
+.edit-profile-gallery-item img {
   width: 100%;
   height: 116px;
   object-fit: cover;
   border-radius: 14px;
   border: 1px solid #e2e8f0;
   background: #f8faf8;
+}
+
+.edit-profile-gallery-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(153, 27, 27, 0.94);
+  color: #ffffff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.edit-profile-gallery-remove:hover {
+  background: #7f1d1d;
 }
 
 .edit-profile-add-photo {
@@ -436,7 +587,7 @@
     grid-template-columns: 1fr;
   }
 
-  .edit-profile-gallery img,
+  .edit-profile-gallery-item img,
   .edit-profile-add-photo {
     height: 150px;
     min-height: 150px;

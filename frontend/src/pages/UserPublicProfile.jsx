@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { apiFetch, buildFileUrl } from "../api/api";
-import { HiOutlineArrowLeft, HiOutlineMapPin, HiOutlineXMark } from "react-icons/hi2";
+import ProfileHeroCard from "../components/profile/ProfileHeroCard";
+import { HiOutlineArrowLeft, HiOutlineXMark } from "react-icons/hi2";
+import "../styles/pages/Profile.css";
 import "../styles/pages/PublicProfile.css";
 
 export default function UserPublicProfile() {
@@ -48,41 +50,23 @@ export default function UserPublicProfile() {
     );
   }
 
+  const avatarImage = buildFileUrl(userProfile.logo_url);
+
   return (
-    <div className="public-profile-page">
+    <div className="public-profile-page user-public-profile-page">
       <button onClick={() => navigate(-1)} className="public-profile-back">
         <HiOutlineArrowLeft size={16} />
         <span>Back</span>
       </button>
 
-      <div className="public-profile-card">
-        <div className="public-profile-header center">
-          <div className="public-profile-avatar round">
-            {userProfile.logo_url ? (
-              <button
-                type="button"
-                className="public-profile-avatar-button"
-                onClick={() => setLightboxImage(buildFileUrl(userProfile.logo_url))}
-              >
-                <img src={buildFileUrl(userProfile.logo_url)} alt={userProfile.name} />
-              </button>
-            ) : (
-              <span>{userProfile.name?.charAt(0)?.toUpperCase() || "U"}</span>
-            )}
-          </div>
+      <ProfileHeroCard
+        title={userProfile.name || "User"}
+        subtitle="Personal account"
+        avatarImage={avatarImage}
+        onAvatarClick={avatarImage ? () => setLightboxImage(avatarImage) : undefined}
+      />
 
-          <div>
-            <h1 className="public-profile-title small">{userProfile.name || "User"}</h1>
-
-            {(userProfile.city || userProfile.location) && (
-              <p className="public-profile-meta top-gap">
-                <HiOutlineMapPin size={16} />
-                {userProfile.city || userProfile.location}
-              </p>
-            )}
-          </div>
-        </div>
-
+      <div className="public-profile-card public-profile-content-card">
         <div className="public-profile-section">
           <h3>Active donations</h3>
 

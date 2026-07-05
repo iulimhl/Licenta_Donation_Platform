@@ -77,8 +77,7 @@ export default function DonationDetails() {
     if (!confirmDelete) return;
 
     try {
-      const params = new URLSearchParams({ actor_email: currentUserEmail });
-      const { response } = await apiFetch(`/donations/${donation.id}?${params.toString()}`, {
+      const { response } = await apiFetch(`/donations/${donation.id}`, {
         method: "DELETE",
       });
 
@@ -371,12 +370,22 @@ export default function DonationDetails() {
           )}
 
           <div className="donation-details-owner-box">
-            <p>
-              {t("donationDetails.postedBy")}:{" "}
-              <strong onClick={() => navigate(`/user/${encodeURIComponent(donation.owner_email)}`)}>
-                {donation.donor_name || t("donationDetails.anonymous")}
-              </strong>
-            </p>
+            <div className="donation-details-owner-header">
+              <p>
+                {t("donationDetails.postedBy")}:{" "}
+                <strong onClick={() => navigate(`/user/${encodeURIComponent(donation.owner_email)}`)}>
+                  {donation.donor_name || t("donationDetails.anonymous")}
+                </strong>
+              </p>
+
+              <button
+                type="button"
+                className="donation-details-profile-link"
+                onClick={() => navigate(`/user/${encodeURIComponent(donation.owner_email)}`)}
+              >
+                {t("donationDetails.viewDonorProfile")}
+              </button>
+            </div>
 
             {donation.phone_visible && donation.phone && (
               <p className="donation-details-phone">

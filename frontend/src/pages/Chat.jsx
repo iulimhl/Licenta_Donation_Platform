@@ -97,9 +97,7 @@ export default function Chat() {
 
   const loadConversation = useCallback(async () => {
     try {
-      let path = `/messages/conversation?other_email=${encodeURIComponent(
-        otherEmail
-      )}&user_email=${encodeURIComponent(userEmail)}`;
+      let path = `/messages/conversation?other_email=${encodeURIComponent(otherEmail)}`;
 
       if (donationId) path += `&donation_id=${encodeURIComponent(donationId)}`;
       if (needId) path += `&need_id=${encodeURIComponent(needId)}`;
@@ -116,7 +114,7 @@ export default function Chat() {
       console.error("Error loading conversation:", err);
       setThreadError(t("messages.threadLoadError"));
     }
-  }, [donationId, needId, otherEmail, userEmail, t]);
+  }, [donationId, needId, otherEmail, t]);
 
   const loadUserInfo = useCallback(async () => {
     try {
@@ -194,40 +192,26 @@ export default function Chat() {
       amount: offeredAmount,
       text: match[3] || "I can bring this item.",
       item,
-      isConfirmed: confirmedOfferIds.has(message.id) || (item ? item.brought >= item.quantity && item.quantity > 0 : false),
+      remaining,
+      isConfirmed: confirmedOfferIds.has(message.id),
     };
   };
 
   const handleConfirmOffer = async (offer) => {
     if (!needDetails?.items?.[offer.itemIndex]) return;
 
-    const item = needDetails.items[offer.itemIndex];
-    const currentBrought = item.brought || 0;
-    const nextBrought = Math.min(currentBrought + offer.amount, item.quantity);
-
     try {
-      const { response } = await apiFetch(
-        `/needs/${needDetails.id}/item/${offer.itemIndex}?brought=${nextBrought}`,
-        { method: "PATCH" }
-      );
+      const { response, data: confirmationData } = await apiFetch(`/messages/offers/${offer.messageId}/confirm`, {
+        method: "POST",
+      });
 
       if (!response.ok) {
-        setSendError("Could not confirm this item.");
+        setSendError(confirmationData?.detail || "Could not confirm this item.");
         return;
       }
 
-      await apiFetch(`/messages/?sender_email=${encodeURIComponent(userEmail)}`, {
-        method: "POST",
-        body: JSON.stringify({
-          recipient_email: otherEmail,
-          content: `[CONFIRMED_OFFER:offer_id=${offer.messageId};item_index=${offer.itemIndex};amount=${offer.amount}] Confirmed received: ${offer.amount} ${item.name}.`,
-          donation_id: null,
-          need_id: needId ? parseInt(needId) : null,
-        }),
-      });
-
-      const { data } = await apiFetch(`/needs/${needId}`);
-      setNeedDetails(data);
+      const { data: refreshedNeed } = await apiFetch(`/needs/${needId}`);
+      setNeedDetails(refreshedNeed);
       loadConversation();
     } catch (err) {
       console.error("Confirm offer error:", err);
@@ -247,18 +231,15 @@ export default function Chat() {
           ? addReservationMetadata(newMessage, donationId)
           : newMessage;
 
-      const { response, data } = await apiFetch(
-        `/messages/?sender_email=${encodeURIComponent(userEmail)}`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            recipient_email: otherEmail,
-            content: messageContent,
-            donation_id: donationId ? parseInt(donationId) : null,
-            need_id: needId ? parseInt(needId) : null,
-          }),
-        }
-      );
+      const { response, data } = await apiFetch("/messages/", {
+        method: "POST",
+        body: JSON.stringify({
+          recipient_email: otherEmail,
+          content: messageContent,
+          donation_id: donationId ? parseInt(donationId) : null,
+          need_id: needId ? parseInt(needId) : null,
+        }),
+      });
 
       if (!response.ok) {
         setSendError(data?.detail || t("messages.sendError"));

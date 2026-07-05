@@ -227,8 +227,7 @@ export default function AdminVerification() {
 
     try {
       setActionLoadingId(`donation-${donation.id}`);
-      const params = new URLSearchParams({ actor_email: userEmail });
-      const { response } = await apiFetch(`/donations/${donation.id}?${params.toString()}`, { method: "DELETE" });
+      const { response } = await apiFetch(`/donations/${donation.id}`, { method: "DELETE" });
 
       if (!response.ok) {
         showNotification(t("admin.deleteDonationError"), "error");
@@ -255,8 +254,7 @@ export default function AdminVerification() {
 
     try {
       setActionLoadingId(`need-${need.id}`);
-      const params = new URLSearchParams({ actor_email: userEmail });
-      const { response } = await apiFetch(`/needs/${need.id}?${params.toString()}`, { method: "DELETE" });
+      const { response } = await apiFetch(`/needs/${need.id}`, { method: "DELETE" });
 
       if (!response.ok) {
         showNotification(t("admin.deleteNeedError"), "error");

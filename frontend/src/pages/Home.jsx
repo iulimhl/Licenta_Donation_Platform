@@ -84,7 +84,6 @@ export default function Home() {
   async function handleReserveDonation(id, newStatus) {
     try {
       const params = new URLSearchParams({ new_status: newStatus });
-      if (userEmail) params.set("user_email", userEmail);
 
       const { response, data } = await apiFetch(`/donations/${id}/status?${params.toString()}`, {
         method: "PATCH",
@@ -192,7 +191,6 @@ export default function Home() {
                     key={`need-${item.id}`}
                     need={item}
                     onItemCheck={handleItemCheck}
-                    currentUserEmail={userEmail}
                     isOwner={userEmail === item.organization_email}
                   />
                 )

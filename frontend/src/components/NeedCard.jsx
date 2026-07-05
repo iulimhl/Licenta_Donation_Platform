@@ -100,9 +100,15 @@ export default function NeedCard({ need, onItemCheck, isOwner, isAdmin = false }
           </span>
 
           {isOwner ? (
-            <button type="button" onClick={handleEdit} className="need-edit-btn">
-              Edit list
-            </button>
+            <div className="need-owner-actions">
+              <button type="button" onClick={(e) => { e.stopPropagation(); openDetails(); }} className="need-contact-btn">
+                Details
+              </button>
+
+              <button type="button" onClick={handleEdit} className="need-edit-btn">
+                Edit list
+              </button>
+            </div>
           ) : (
             <button type="button" onClick={(e) => { e.stopPropagation(); openDetails(); }} className="need-contact-btn">
               Details

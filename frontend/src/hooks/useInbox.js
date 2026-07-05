@@ -24,15 +24,11 @@ export function useInbox({
     if (!enabled || !userEmail) return;
 
     try {
-      const { data: inboxData } = await apiFetch(
-        `/messages/inbox?user_email=${encodeURIComponent(userEmail)}`
-      );
+      const { data: inboxData } = await apiFetch("/messages/inbox");
       setConversations(inboxData || []);
 
       if (includeUnreadCount) {
-        const { data: unreadData } = await apiFetch(
-          `/messages/unread-count?user_email=${encodeURIComponent(userEmail)}`
-        );
+        const { data: unreadData } = await apiFetch("/messages/unread-count");
         setUnreadCount(unreadData?.unread_count || 0);
       }
     } catch (err) {

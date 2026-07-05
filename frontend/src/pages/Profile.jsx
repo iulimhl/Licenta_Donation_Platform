@@ -88,6 +88,9 @@ export default function Profile() {
         setUserType(fetchedUserData.user_type);
         setUserName(fetchedUserData.name || userEmail);
         setVerificationStatus(fetchedUserData.verification_status || "unverified");
+        if (fetchedUserData.user_type === "organization") {
+          setTab("needs");
+        }
 
         const { data: donationsData } = await apiFetch("/donations/");
         const donations = donationsData || [];
@@ -125,8 +128,7 @@ export default function Profile() {
     if (!confirmed) return;
 
     try {
-      const params = new URLSearchParams({ actor_email: userEmail });
-      const { response } = await apiFetch(`/donations/${id}?${params.toString()}`, { method: "DELETE" });
+      const { response } = await apiFetch(`/donations/${id}`, { method: "DELETE" });
 
       if (!response.ok) {
         showNotification(t("profile.deleteDonationError"), "error");
@@ -144,7 +146,6 @@ export default function Profile() {
   async function handleStatusChange(id, newStatus) {
     try {
       const params = new URLSearchParams({ new_status: newStatus });
-      if (userEmail) params.set("user_email", userEmail);
 
       const { response, data } = await apiFetch(`/donations/${id}/status?${params.toString()}`, {
         method: "PATCH",
@@ -177,8 +178,7 @@ export default function Profile() {
     if (!confirmed) return;
 
     try {
-      const params = new URLSearchParams({ actor_email: userEmail });
-      const { response } = await apiFetch(`/needs/${id}?${params.toString()}`, { method: "DELETE" });
+      const { response } = await apiFetch(`/needs/${id}`, { method: "DELETE" });
 
       if (!response.ok) {
         showNotification(t("profile.deleteNeedError"), "error");
@@ -310,13 +310,14 @@ export default function Profile() {
               <h2>{t("profile.myPosts")}</h2>
               <p>
                 {isOrganization
-                  ? `${myDonations.length} ${t("profile.donations")}, ${myNeeds.length} ${t("profile.needLists")}`
+                  ? `${myNeeds.length} ${t("profile.needLists")}`
                   : `${myDonations.length} ${t("profile.donations")}, ${activeDonations} ${t("profile.active")}, ${reservedDonations.length} ${t("profile.reserved")}`}
               </p>
             </div>
 
             <div className="profile-tabs">
-              {renderTabButton("donations", `${t("profile.donationsTab")} (${myDonations.length})`, <HiOutlineGift size={18} />)}
+              {!isOrganization &&
+                renderTabButton("donations", `${t("profile.donationsTab")} (${myDonations.length})`, <HiOutlineGift size={18} />)}
 
               {isOrganization &&
                 renderTabButton("needs", `${t("profile.needListsTab")} (${myNeeds.length})`, <GoChecklist size={18} />)}

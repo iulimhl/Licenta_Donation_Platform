@@ -120,8 +120,7 @@ export default function EditNeed() {
     setLoading(true);
 
     try {
-      const params = new URLSearchParams({ actor_email: userEmail });
-      const { response, data } = await apiFetch(`/needs/${id}?${params.toString()}`, {
+      const { response, data } = await apiFetch(`/needs/${id}`, {
         method: "PATCH",
         body: JSON.stringify({ ...formData, items: normalizedItems }),
       });

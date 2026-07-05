@@ -123,15 +123,42 @@ export default function EditProfile() {
     setLogoPreview(file ? URL.createObjectURL(file) : "");
   }
 
+  function handleRemoveLogo() {
+    setLogoFile(null);
+    setLogoPreview("");
+    setForm((prev) => ({ ...prev, logo_url: "" }));
+    if (logoInputRef.current) logoInputRef.current.value = "";
+  }
+
   function handleCoverFile(file) {
     setCoverFile(file || null);
     setCoverPreview(file ? URL.createObjectURL(file) : "");
   }
 
+  function handleRemoveCover() {
+    setCoverFile(null);
+    setCoverPreview("");
+    setForm((prev) => ({ ...prev, cover_image_url: "" }));
+    if (coverInputRef.current) coverInputRef.current.value = "";
+  }
+
   function handleGalleryFiles(files) {
     const nextFiles = Array.from(files || []);
-    setGalleryFiles(nextFiles);
-    setGalleryPreviews(nextFiles.map((file) => URL.createObjectURL(file)));
+    setGalleryFiles((prev) => [...prev, ...nextFiles]);
+    setGalleryPreviews((prev) => [...prev, ...nextFiles.map((file) => URL.createObjectURL(file))]);
+    if (galleryInputRef.current) galleryInputRef.current.value = "";
+  }
+
+  function handleRemoveExistingGalleryImage(indexToRemove) {
+    setForm((prev) => ({
+      ...prev,
+      gallery_images: (prev.gallery_images || []).filter((_, index) => index !== indexToRemove),
+    }));
+  }
+
+  function handleRemoveNewGalleryImage(indexToRemove) {
+    setGalleryFiles((prev) => prev.filter((_, index) => index !== indexToRemove));
+    setGalleryPreviews((prev) => prev.filter((_, index) => index !== indexToRemove));
   }
 
   function handleVerificationFile(file) {
@@ -201,7 +228,9 @@ export default function EditProfile() {
 
   async function uploadGalleryIfNeeded() {
     if (!galleryFiles.length) return form.gallery_images || [];
-    return uploadProfileGallery(userEmail, galleryFiles);
+    const uploadedGallery = await uploadProfileGallery(userEmail, galleryFiles);
+    const newUploadedImages = uploadedGallery.slice(-galleryFiles.length);
+    return [...(form.gallery_images || []), ...newUploadedImages];
   }
 
   async function handleSubmit(e) {
@@ -323,7 +352,7 @@ export default function EditProfile() {
       />
 
       {notification.message && (
-        <div className={`page-notification centered ${notification.type === "error" ? "error" : "success"}`}>
+        <div className={`edit-profile-toast ${notification.type === "error" ? "error" : "success"}`}>
           {notification.message}
         </div>
       )}
@@ -345,6 +374,10 @@ export default function EditProfile() {
             onLogoFile={handleLogoFile}
             onCoverFile={handleCoverFile}
             onGalleryFiles={handleGalleryFiles}
+            onRemoveLogo={handleRemoveLogo}
+            onRemoveCover={handleRemoveCover}
+            onRemoveExistingGalleryImage={handleRemoveExistingGalleryImage}
+            onRemoveNewGalleryImage={handleRemoveNewGalleryImage}
           />
 
           <EditProfileVerificationSection
@@ -359,20 +392,6 @@ export default function EditProfile() {
           />
 
           <section className="edit-profile-section">
-            {userType === "organization" && (
-              <div className="edit-profile-map-note">
-                <strong>Map location</strong>
-                <p>
-                  The organization map uses the pickup address, location, and city from this profile. If the address was filled from OCR, check it before saving so the pin appears in the right place.
-                </p>
-                <span>
-                  {form.lat && form.lng
-                    ? "A map pin is already saved for this profile."
-                    : "Coordinates will be searched again when you save the profile."}
-                </span>
-              </div>
-            )}
-
             <div className="edit-profile-grid">
               <div className="edit-profile-field large">
                 <label className="form-label">
@@ -424,17 +443,30 @@ export default function EditProfile() {
                 <label className="form-label">Location</label>
                 <input name="location" value={form.location} onChange={handleChange} className="form-input" />
                 {userType === "organization" && (
-                  <div className="edit-profile-map-tools">
-                    <button
-                      type="button"
-                      onClick={handleUseCurrentLocation}
-                      disabled={loadingLocation || geocoding}
-                      className="edit-profile-location-button"
-                    >
-                      {loadingLocation ? "Detecting..." : "Use current location"}
-                    </button>
-                    {mapStatus && <p>{mapStatus}</p>}
-                  </div>
+                  <>
+                    <div className="edit-profile-map-helper">
+                      <p>
+                        Verified organizations with a saved location appear on the public map. Check the address before saving so the pin is placed correctly.
+                      </p>
+                      <span>
+                        {form.lat && form.lng
+                          ? "Map pin saved."
+                          : "Coordinates will be searched again when you save the profile."}
+                      </span>
+                    </div>
+
+                    <div className="edit-profile-map-tools">
+                      <button
+                        type="button"
+                        onClick={handleUseCurrentLocation}
+                        disabled={loadingLocation || geocoding}
+                        className="edit-profile-location-button"
+                      >
+                        {loadingLocation ? "Detecting..." : "Use current location"}
+                      </button>
+                      {mapStatus && <p>{mapStatus}</p>}
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -489,7 +521,7 @@ export default function EditProfile() {
             </button>
 
             <button type="submit" disabled={saving} className="form-button primary">
-              {saving ? "Saving..." : "Save changes"}
+              {saving ? t("editProfile.saving") : t("editProfile.submit")}
             </button>
           </div>
         </form>

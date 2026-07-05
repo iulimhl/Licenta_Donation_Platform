@@ -29,11 +29,11 @@ export default function OrganizationPreviewCard({ organization }) {
         <div className="organization-preview-title-row">
           <h3>
             {organization.name}
-          </h3>
 
-          {isVerified && (
-            <HiOutlineCheckBadge size={20} />
-          )}
+            {isVerified && (
+              <HiOutlineCheckBadge size={20} />
+            )}
+          </h3>
         </div>
 
         {organization.city && (

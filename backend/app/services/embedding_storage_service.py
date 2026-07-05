@@ -27,26 +27,56 @@ def vector_to_json(vector):
     return [float(value) for value in vector]
 
 
+def embedding_payload(text, vector):
+    vector_json = vector_to_json(vector)
+    if vector_json is None:
+        return None
+
+    return {
+        "text": text,
+        "vector": vector_json,
+    }
+
+
+def get_stored_vector(stored_value, expected_text):
+    if not stored_value:
+        return None
+
+    if isinstance(stored_value, dict):
+        if stored_value.get("text") == expected_text and isinstance(stored_value.get("vector"), list):
+            return stored_value["vector"]
+        return None
+
+    if isinstance(stored_value, list) and all(isinstance(value, (int, float)) for value in stored_value):
+        return stored_value
+
+    return None
+
+
 def ensure_donation_embedding(donation):
     if not donation:
         return None
 
-    if donation.recommendation_embedding:
-        return donation.recommendation_embedding
+    text = build_donation_recommendation_text(donation)
+    stored_vector = get_stored_vector(donation.recommendation_embedding, text)
+    if stored_vector:
+        return stored_vector
 
-    embedding = vector_to_json(get_text_embedding(build_donation_recommendation_text(donation)))
-    donation.recommendation_embedding = embedding
-    return embedding
+    embedding = get_text_embedding(text)
+    donation.recommendation_embedding = embedding_payload(text, embedding)
+    flag_modified(donation, "recommendation_embedding")
+    return vector_to_json(embedding)
 
 
 def refresh_donation_embedding(donation):
     if not donation:
         return None
 
-    donation.recommendation_embedding = vector_to_json(
-        get_text_embedding(build_donation_recommendation_text(donation))
-    )
-    return donation.recommendation_embedding
+    text = build_donation_recommendation_text(donation)
+    embedding = get_text_embedding(text)
+    donation.recommendation_embedding = embedding_payload(text, embedding)
+    flag_modified(donation, "recommendation_embedding")
+    return vector_to_json(embedding)
 
 
 def ensure_need_item_embedding(need, item_index, item):
@@ -57,23 +87,27 @@ def ensure_need_item_embedding(need, item_index, item):
     while len(embeddings) < len(need.items or []):
         embeddings.append(None)
 
-    if item_index < len(embeddings) and embeddings[item_index]:
-        return embeddings[item_index]
+    text = build_need_item_recommendation_text(need, item)
+    if item_index < len(embeddings):
+        stored_vector = get_stored_vector(embeddings[item_index], text)
+        if stored_vector:
+            return stored_vector
 
-    embedding = vector_to_json(get_text_embedding(build_need_item_recommendation_text(need, item)))
-    embeddings[item_index] = embedding
+    embedding = get_text_embedding(text)
+    embeddings[item_index] = embedding_payload(text, embedding)
     need.item_embeddings = embeddings
     flag_modified(need, "item_embeddings")
-    return embedding
+    return vector_to_json(embedding)
 
 
 def refresh_need_embeddings(need):
     if not need:
         return None
 
-    need.item_embeddings = [
-        vector_to_json(get_text_embedding(build_need_item_recommendation_text(need, item)))
-        for item in (need.items or [])
-    ]
+    need.item_embeddings = []
+    for item in (need.items or []):
+        text = build_need_item_recommendation_text(need, item)
+        need.item_embeddings.append(embedding_payload(text, get_text_embedding(text)))
+
     flag_modified(need, "item_embeddings")
     return need.item_embeddings

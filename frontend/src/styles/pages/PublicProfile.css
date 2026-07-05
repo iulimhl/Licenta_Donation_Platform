@@ -350,6 +350,39 @@
   color: #64748b;
 }
 
+.user-public-profile-page .public-profile-content-card {
+  width: 100%;
+  max-width: none;
+  padding: 28px;
+}
+
+.user-public-profile-page .public-profile-grid {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 260px));
+  justify-content: start;
+}
+
+.user-public-profile-page .public-profile-donation-card {
+  border-radius: 14px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
+}
+
+.user-public-profile-page .public-profile-donation-image {
+  height: 150px;
+}
+
+.user-public-profile-page .public-profile-donation-body {
+  padding: 12px 14px;
+}
+
+.user-public-profile-page .public-profile-donation-body h4 {
+  font-size: 15px;
+  margin-bottom: 6px;
+}
+
+.user-public-profile-page .public-profile-donation-body p {
+  font-size: 12px;
+}
+
 .public-profile-empty {
   background: #fafaf8;
   border: 1px solid #e2e8f0;

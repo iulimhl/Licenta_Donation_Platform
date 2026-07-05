@@ -37,7 +37,7 @@ export default function App() {
         <Route
           path="/postdonation"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute blockedUserTypes={["organization"]} redirectTo="/profile">
               <PostDonation />
             </ProtectedRoute>
           }

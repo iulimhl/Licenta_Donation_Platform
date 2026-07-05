@@ -3,13 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/api";
 import { reverseGeocode, getShortAddress } from "../api/geo";
 import DonationForm from "../components/DonationForm";
-import { isAdminUser } from "../utils/auth";
+import { getCurrentUserType, isAdminUser } from "../utils/auth";
 import { useTimedNotification } from "../hooks/useTimedNotification";
 import { useLanguage } from "../language/useLanguage";
 import "../styles/formPages.css";
 
 export default function PostDonation() {
   const isAdmin = isAdminUser();
+  const isOrganization = getCurrentUserType() === "organization";
   const [formData, setFormData] = useState({
     title: "",
     location: "",
@@ -26,10 +27,14 @@ export default function PostDonation() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (isAdmin) {
-      navigate("/admin/verifications");
+    if (isAdmin || isOrganization) {
+      navigate(isAdmin ? "/admin/verifications" : "/profile", { replace: true });
     }
-  }, [isAdmin, navigate]);
+  }, [isAdmin, isOrganization, navigate]);
+
+  if (isAdmin || isOrganization) {
+    return null;
+  }
 
   const handleUseMyLocation = () => {
     if (!navigator.geolocation) return;

@@ -28,6 +28,9 @@ def create_donation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    if current_user.user_type != "user":
+        raise HTTPException(status_code=403, detail="Only regular users can post donations")
+
     return donations_service.create_new(db, payload, current_user.email)
 
 
@@ -50,13 +53,9 @@ def update_donation(
 def update_status(
     donation_id: int,
     new_status: str,
-    user_email: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if user_email and user_email != current_user.email:
-        raise HTTPException(status_code=403, detail="You can only update donations as yourself")
-
     updated, error = donations_service.update_status_for_user(db, donation_id, new_status, current_user.email)
     if not updated:
         if error == "already_reserved":
@@ -72,13 +71,9 @@ def update_status(
 @router.delete("/{donation_id}")
 def delete_donation(
     donation_id: int,
-    actor_email: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if actor_email and actor_email != current_user.email:
-        raise HTTPException(status_code=403, detail="You can only delete as yourself")
-
     deleted, error = donations_service.delete_by_id(db, donation_id, current_user.email)
     if not deleted:
         if error == "forbidden":

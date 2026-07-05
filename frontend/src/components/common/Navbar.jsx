@@ -40,9 +40,7 @@ export default function Navbar() {
         setUserName(userData.name || userEmail);
         setUserLogo(userData.logo_url || "");
 
-        const { data: unreadData } = await apiFetch(
-          `/messages/unread-count?user_email=${encodeURIComponent(userEmail)}`
-        );
+        const { data: unreadData } = await apiFetch("/messages/unread-count");
         setUnreadCount(unreadData.unread_count || 0);
       } catch (err) {
         console.error("Navbar error:", err);

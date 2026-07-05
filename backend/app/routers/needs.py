@@ -50,7 +50,6 @@ def get_need(need_id: int, db: Session = Depends(get_db)):
 def update_need(
     need_id: int,
     payload: NeedUpdate,
-    actor_email: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -58,9 +57,6 @@ def update_need(
 
     if not db_need:
         raise HTTPException(status_code=404, detail="Need list not found")
-
-    if actor_email and actor_email != current_user.email:
-        raise HTTPException(status_code=403, detail="You can only edit as yourself")
 
     is_owner = current_user.email == db_need.organization_email
     is_admin = current_user.user_type == "admin"
@@ -102,13 +98,9 @@ def update_item_brought(
 @router.delete("/{need_id}")
 def delete_need(
     need_id: int,
-    actor_email: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if actor_email and actor_email != current_user.email:
-        raise HTTPException(status_code=403, detail="You can only delete as yourself")
-
     deleted_need, error = needs_service.delete_by_id(db, need_id, current_user.email)
     if not deleted_need:
         if error == "forbidden":
