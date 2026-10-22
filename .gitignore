@@ -13,3 +13,5 @@ backend/app/uploads/
 coverage.xml
 test-results.xml
 htmlcov/
+playwright-report/
+test-results/

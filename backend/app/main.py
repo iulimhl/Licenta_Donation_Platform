@@ -1,3 +1,4 @@
+import os
 import threading
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -47,7 +48,8 @@ def warm_registry_cache_safely():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    threading.Thread(target=warm_registry_cache_safely, daemon=True).start()
+    if os.getenv("WARM_REGISTRY_CACHE", "true").lower() == "true":
+        threading.Thread(target=warm_registry_cache_safely, daemon=True).start()
     yield
 
 
@@ -55,7 +57,9 @@ app = FastAPI(title="IASIdoneaza API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=[origin.strip() for origin in os.getenv(
+        "CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
+    ).split(",") if origin.strip()],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

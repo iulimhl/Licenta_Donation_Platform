@@ -52,8 +52,9 @@ export default function Login() {
 
           <form onSubmit={handleLogin} className="login-form">
             <div>
-              <label className="form-label">{t("auth.email")}</label>
+              <label htmlFor="login-email" className="form-label">{t("auth.email")}</label>
               <input
+                id="login-email"
                 type="email"
                 placeholder="ana@example.com"
                 value={email}
@@ -64,8 +65,9 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="form-label">{t("auth.password")}</label>
+              <label htmlFor="login-password" className="form-label">{t("auth.password")}</label>
               <input
+                id="login-password"
                 type="password"
                 placeholder="********"
                 value={password}

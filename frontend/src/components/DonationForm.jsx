@@ -57,6 +57,8 @@ export default function DonationForm({
             <p>{t("donationForm.photosHelp")}</p>
 
             <input
+              id="donation-photos"
+              aria-label={t("donationForm.photos")}
               className="donation-form-hidden-input"
               type="file"
               accept="image/*"
@@ -98,8 +100,9 @@ export default function DonationForm({
 
             <form onSubmit={onSubmit} className="donation-form-fields">
               <div className="donation-form-field">
-                <label>{t("donationForm.title")}</label>
+                <label htmlFor="donation-title">{t("donationForm.title")}</label>
                 <input
+                  id="donation-title"
                   name="title"
                   type="text"
                   value={formData.title}
@@ -111,8 +114,9 @@ export default function DonationForm({
 
               <div className="donation-form-two-col">
                 <div className="donation-form-field">
-                  <label>{t("donationForm.location")}</label>
+                  <label htmlFor="donation-location">{t("donationForm.location")}</label>
                   <input
+                    id="donation-location"
                     name="location"
                     type="text"
                     value={formData.location}
@@ -133,8 +137,8 @@ export default function DonationForm({
                 </div>
 
                 <div className="donation-form-field">
-                  <label>{t("donationForm.category")}</label>
-                  <select name="category" value={formData.category} onChange={handleChange}>
+                  <label htmlFor="donation-category">{t("donationForm.category")}</label>
+                  <select id="donation-category" name="category" value={formData.category} onChange={handleChange}>
                     {donationCategories.map((cat) => (
                       <option key={cat.value} value={cat.value}>
                         {cat.label}
@@ -145,8 +149,9 @@ export default function DonationForm({
               </div>
 
               <div className="donation-form-field">
-                <label>{t("donationForm.description")}</label>
+                <label htmlFor="donation-description">{t("donationForm.description")}</label>
                 <textarea
+                  id="donation-description"
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
