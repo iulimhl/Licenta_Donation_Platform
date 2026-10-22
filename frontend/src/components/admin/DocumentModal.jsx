@@ -1,5 +1,6 @@
 import { HiOutlineXMark } from "react-icons/hi2";
-import { API_BASE } from "../../api/api";
+import { useEffect, useState } from "react";
+import { API_BASE, getAuthHeaders } from "../../api/api";
 
 export default function DocumentModal({
   organization,
@@ -8,10 +9,44 @@ export default function DocumentModal({
   onApprove,
   onReject,
 }) {
+  const documentPath = organization?.document_url;
+  const [document, setDocument] = useState(null);
+
+  useEffect(() => {
+    if (!documentPath) return;
+    const controller = new AbortController();
+    let objectUrl;
+
+    async function loadDocument() {
+      try {
+        const response = await fetch(`${API_BASE}${documentPath}`, {
+          headers: getAuthHeaders(),
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error("Could not load document. Please try again.");
+        const blob = await response.blob();
+        if (controller.signal.aborted) return;
+        objectUrl = URL.createObjectURL(blob);
+        setDocument({ path: documentPath, url: objectUrl });
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          setDocument({ path: documentPath, error: error.message });
+        }
+      }
+    }
+
+    loadDocument();
+    return () => {
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [documentPath]);
+
   if (!organization) return null;
 
-  const documentUrl = organization.document_url ? `${API_BASE}${organization.document_url}` : null;
-  const normalizedUrl = String(documentUrl || "").toLowerCase();
+  const currentDocument = document?.path === documentPath ? document : null;
+  const documentUrl = currentDocument?.url;
+  const normalizedUrl = String(documentPath || "").toLowerCase();
   const isImage =
     normalizedUrl.endsWith(".png") ||
     normalizedUrl.endsWith(".jpg") ||
@@ -35,7 +70,11 @@ export default function DocumentModal({
         </div>
 
         <div className="admin-verification-modal-body">
-          {isImage ? (
+          {currentDocument?.error ? (
+            <p role="alert">{currentDocument.error}</p>
+          ) : !documentUrl ? (
+            <p>{documentPath ? "Loading document..." : "No document uploaded."}</p>
+          ) : isImage ? (
             <img src={documentUrl} alt="Verification document" className="admin-verification-modal-image" />
           ) : isPdf ? (
             <iframe src={documentUrl} title="Verification document" className="admin-verification-modal-pdf" />

@@ -1,8 +1,10 @@
 import os
 import tempfile
+from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from dependencies.auth import get_current_user, require_admin_user
@@ -29,9 +31,29 @@ from services.upload_security import (
 )
 
 router = APIRouter(prefix="/verification", tags=["verification"])
+document_router = APIRouter(prefix="/uploads/verification_documents", tags=["verification"])
 
-UPLOAD_DIR = "uploads/verification_documents"
+UPLOAD_DIR = str(Path(__file__).resolve().parent.parent / "uploads" / "verification_documents")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+@document_router.get("/{filename}")
+def get_verification_document(
+    filename: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    document_url = f"/uploads/verification_documents/{filename}"
+    organization = db.query(User).filter(User.document_url == document_url).first()
+    if not organization:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if current_user.email != organization.email and current_user.user_type != "admin":
+        raise HTTPException(status_code=403, detail="You cannot access this document")
+
+    path = Path(UPLOAD_DIR) / filename
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Document not found")
+    return FileResponse(path, headers={"Cache-Control": "private, no-store"})
 
 
 @router.post("/organization", response_model=OrganizationVerificationResponse)

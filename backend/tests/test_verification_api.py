@@ -79,6 +79,14 @@ def test_organization_can_upload_document(client, db_session, users, auth_header
     db_session.refresh(users["organization"])
     assert users["organization"].document_url == url
 
+    for role in ["organization", "admin"]:
+        downloaded = client.get(url, headers=auth_headers(role))
+        assert downloaded.status_code == 200
+        assert downloaded.content == b"%PDF-test"
+        assert downloaded.headers["cache-control"] == "private, no-store"
+    assert client.get(url).status_code == 401
+    assert client.get(url, headers=auth_headers("other")).status_code == 403
+
 
 def test_user_cannot_upload_document_for_another_account(client, users, auth_headers, document_directory):
     response = client.post(

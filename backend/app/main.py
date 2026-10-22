@@ -73,12 +73,13 @@ app.include_router(auth.router)
 app.include_router(messages.router)
 app.include_router(organizations.router)
 app.include_router(verification.router)
+app.include_router(verification.document_router)
 app.include_router(recommendations.router)
 
 (UPLOADS_DIR / "verification_documents").mkdir(parents=True, exist_ok=True)
 (UPLOADS_DIR / "profiles").mkdir(parents=True, exist_ok=True)
 
-app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
+app.mount("/uploads/profiles", StaticFiles(directory=str(UPLOADS_DIR / "profiles")), name="profiles")
 
 @app.get("/")
 def read_root():
