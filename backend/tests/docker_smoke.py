@@ -50,6 +50,12 @@ response = requests.post(f"{api_url}/verification/organization", headers=org_hea
 response.raise_for_status()
 assert response.json()["status"] == "pending"
 
+memory = subprocess.run([
+    "docker", "compose", "exec", "-T", "backend", "cat", "/sys/fs/cgroup/memory.peak",
+], capture_output=True, text=True)
+if memory.returncode == 0:
+    print(f"Backend memory peak after AI and registry lookup: {int(memory.stdout) / 1024 / 1024:.1f} MiB", flush=True)
+
 subprocess.run(["docker", "compose", "down"], check=True)
 subprocess.run(["docker", "compose", "up", "-d", "--wait", "--wait-timeout", "120"], check=True)
 

@@ -37,6 +37,6 @@ RUN useradd --uid 10001 --create-home app \
     && mkdir -p /app/uploads/profiles /app/uploads/verification_documents \
     && chown -R app:app /app/uploads
 USER app
-RUN python -c "import os; from services.onnx_embedding_service import OnnxEmbeddingModel; assert len(OnnxEmbeddingModel(os.environ['EMBEDDING_MODEL_NAME']).encode('Carti pentru copii')) == 384"
+RUN python -c "from services.semantic_matching_service import get_text_embedding as encode, cosine_similarity; a = encode('Haine pentru copii'); b = encode('Children clothing'); c = encode('Laptop cu procesor rapid'); assert len(a) == 384; assert cosine_similarity(a, b) > cosine_similarity(a, c)"
 EXPOSE 8000
 CMD ["sh", "-c", "exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]

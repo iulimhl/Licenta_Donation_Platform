@@ -83,6 +83,9 @@ jobs:
         run: npm run test:e2e
       - name: Check data persistence and AI embeddings
         run: python backend/tests/docker_smoke.py
+      - name: Check public database access is denied
+        if: matrix.configuration == 'compose.demo.yaml'
+        run: docker compose exec -T backend python < backend/tests/check_postgres_security.py
       - name: Show container logs
         if: always()
         run: docker compose logs --no-color --tail=100
