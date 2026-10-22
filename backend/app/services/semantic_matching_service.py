@@ -1,3 +1,4 @@
+import logging
 import os
 import threading
 from functools import lru_cache
@@ -37,7 +38,8 @@ def get_embedding_model():
 
                         _MODEL = SentenceTransformer(MODEL_NAME)
                     _MODEL_AVAILABLE = True
-                except Exception:
+                except Exception as exc:
+                    logging.getLogger(__name__).warning("Semantic matching model unavailable: %s", exc)
                     _MODEL_AVAILABLE = False
                     return None
 

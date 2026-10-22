@@ -25,6 +25,7 @@ RUN useradd --uid 10001 --create-home app \
     && chown -R app:app /data /app/uploads
 
 USER app
+RUN python -c "import os; from sentence_transformers import SentenceTransformer; model = SentenceTransformer(os.environ['EMBEDDING_MODEL_NAME'], local_files_only=True); assert model.get_sentence_embedding_dimension() == 384"
 EXPOSE 8000
 
 ENTRYPOINT ["python", "/usr/local/bin/docker_entrypoint.py"]
