@@ -10,8 +10,7 @@ COPY backend/requirements.txt backend/requirements-ai.txt /tmp/requirements/
 RUN python -m pip install torch==2.12.0 --index-url https://download.pytorch.org/whl/cpu \
     && python -m pip install -r /tmp/requirements/requirements-ai.txt
 
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', revision='e8f8c211226b894fcb81acc59f3b34ba3efd5f42', cache_folder='/tmp/model-cache').save('/opt/models/donation-matching')" \
-    && rm -rf /tmp/model-cache
+RUN python -c "from huggingface_hub import snapshot_download; snapshot_download('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', revision='e8f8c211226b894fcb81acc59f3b34ba3efd5f42', local_dir='/opt/models/donation-matching', allow_patterns=['*.json', '*.safetensors', '*.txt', '*.model'])"
 
 ENV EMBEDDING_MODEL_NAME=/opt/models/donation-matching \
     HF_HUB_OFFLINE=1 \
