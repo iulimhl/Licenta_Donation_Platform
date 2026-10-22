@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { Buffer } from 'node:buffer';
+import process from 'node:process';
 
-const apiURL = 'http://127.0.0.1:8001';
+const apiURL = process.env.PLAYWRIGHT_API_URL || 'http://127.0.0.1:8001';
 const password = 'DonationBrowser123!';
 const photo = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII=',

@@ -15,7 +15,7 @@ export default defineConfig({
     ['junit', { outputFile: 'test-results/e2e-results.xml' }],
   ],
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:4173',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
@@ -26,7 +26,7 @@ export default defineConfig({
       channel: process.env.CI ? 'chrome' : undefined,
     },
   }],
-  webServer: [
+  webServer: process.env.PLAYWRIGHT_BASE_URL ? undefined : [
     {
       command: process.platform === 'win32'
         ? '..\\backend\\venv\\Scripts\\python.exe ../backend/tests/browser_server.py'

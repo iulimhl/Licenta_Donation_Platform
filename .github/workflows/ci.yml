@@ -47,6 +47,51 @@ jobs:
             backend/htmlcov/
           retention-days: 90
 
+  docker:
+    name: Docker application
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install browser test dependencies
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund
+      - name: Install smoke test dependencies
+        run: python -m pip install requests==2.34.2
+      - name: Build and start application
+        run: docker compose up -d --build --wait --wait-timeout 180
+      - name: Run browser tests against containers
+        working-directory: frontend
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:8080
+          PLAYWRIGHT_API_URL: http://127.0.0.1:8080/api
+        run: npm run test:e2e
+      - name: Check data persistence and AI embeddings
+        run: python backend/tests/docker_smoke.py
+      - name: Show container logs
+        if: always()
+        run: docker compose logs --no-color --tail=100
+      - name: Save Docker test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: docker-test-reports
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          retention-days: 90
+      - name: Stop containers
+        if: always()
+        run: docker compose down -v
+
   frontend:
     name: Frontend build
     runs-on: ubuntu-24.04
