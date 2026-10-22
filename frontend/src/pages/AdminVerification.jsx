@@ -401,6 +401,7 @@ export default function AdminVerification() {
       </div>
 
       <DocumentModal
+        key={selectedOrg?.document_url || "closed"}
         organization={selectedOrg}
         actionLoadingId={actionLoadingId}
         onClose={() => setSelectedOrg(null)}
