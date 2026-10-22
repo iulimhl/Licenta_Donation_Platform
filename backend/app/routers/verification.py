@@ -4,7 +4,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 
 from dependencies.auth import get_current_user, require_admin_user
@@ -24,6 +24,8 @@ from services.semantic_matching_service import (
     semantic_score_to_verification_score,
 )
 from models.user import User
+from models.uploaded_file import UploadedFile
+from services.file_storage_service import save_upload, uses_database_uploads
 from services.upload_security import (
     ALLOWED_DOCUMENT_EXTENSIONS,
     ALLOWED_DOCUMENT_TYPES,
@@ -50,10 +52,17 @@ def get_verification_document(
     if current_user.email != organization.email and current_user.user_type != "admin":
         raise HTTPException(status_code=403, detail="You cannot access this document")
 
+    headers = {"Cache-Control": "private, no-store"}
+    if uses_database_uploads():
+        stored_file = db.get(UploadedFile, document_url)
+        if not stored_file:
+            raise HTTPException(status_code=404, detail="Document not found")
+        return Response(content=stored_file.content, media_type=stored_file.content_type, headers=headers)
+
     path = Path(UPLOAD_DIR) / filename
     if not path.is_file():
         raise HTTPException(status_code=404, detail="Document not found")
-    return FileResponse(path, headers={"Cache-Control": "private, no-store"})
+    return FileResponse(path, headers=headers)
 
 
 @router.post("/organization", response_model=OrganizationVerificationResponse)
@@ -149,13 +158,11 @@ async def upload_verification_document(
 
     content, ext = await read_limited_upload(file, ALLOWED_DOCUMENT_EXTENSIONS, ALLOWED_DOCUMENT_TYPES)
     safe_name = f"{uuid4().hex}{ext}"
-    save_path = os.path.join(UPLOAD_DIR, safe_name)
+    save_path = Path(UPLOAD_DIR) / safe_name
 
     try:
-        with open(save_path, "wb") as buffer:
-            buffer.write(content)
-
         user.document_url = f"/uploads/verification_documents/{safe_name}"
+        save_upload(db, user.document_url, save_path, content)
         db.commit()
         db.refresh(user)
 

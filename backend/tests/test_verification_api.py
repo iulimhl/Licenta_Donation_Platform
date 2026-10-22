@@ -66,7 +66,13 @@ def test_admin_can_reject_organization_with_reason(client, db_session, users, au
     assert users["organization"].rejection_reason == "Document ilizibil"
 
 
-def test_organization_can_upload_document(client, db_session, users, auth_headers, document_directory):
+@pytest.mark.parametrize("storage", ["local", "database"])
+def test_organization_can_upload_document(
+    client, db_session, users, auth_headers, document_directory, monkeypatch, storage
+):
+    from models.uploaded_file import UploadedFile
+
+    monkeypatch.setenv("UPLOAD_STORAGE", storage)
     response = client.post(
         "/verification/upload-document", data={"email": users["organization"].email},
         files={"file": ("certificate.pdf", b"%PDF-test", "application/pdf")},
@@ -75,7 +81,11 @@ def test_organization_can_upload_document(client, db_session, users, auth_header
 
     assert response.status_code == 200
     url = response.json()["document_url"]
-    assert (document_directory / url.rsplit("/", 1)[-1]).read_bytes() == b"%PDF-test"
+    if storage == "local":
+        assert (document_directory / url.rsplit("/", 1)[-1]).read_bytes() == b"%PDF-test"
+    else:
+        assert db_session.get(UploadedFile, url).content == b"%PDF-test"
+        assert list(document_directory.iterdir()) == []
     db_session.refresh(users["organization"])
     assert users["organization"].document_url == url
 

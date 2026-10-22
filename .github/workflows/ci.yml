@@ -48,9 +48,16 @@ jobs:
           retention-days: 90
 
   docker:
-    name: Docker application
+    name: Docker application (${{ matrix.configuration }})
     runs-on: ubuntu-24.04
     timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [compose.yaml, compose.demo.yaml]
+    env:
+      COMPOSE_FILE: ${{ matrix.configuration }}
+      APP_SECRET_KEY: ci-docker-test-secret
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -83,7 +90,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: docker-test-reports
+          name: docker-test-reports-${{ matrix.configuration }}
           path: |
             frontend/playwright-report/
             frontend/test-results/

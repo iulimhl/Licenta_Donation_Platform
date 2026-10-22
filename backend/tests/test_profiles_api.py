@@ -37,7 +37,13 @@ def test_other_user_cannot_update_profile(client, db_session, users, auth_header
     assert users["owner"].name == "Donor"
 
 
-def test_profile_image_upload_saves_file_and_url(client, db_session, users, auth_headers, profile_files):
+@pytest.mark.parametrize("storage", ["local", "database"])
+def test_profile_image_upload_saves_file_and_url(
+    client, db_session, users, auth_headers, profile_files, monkeypatch, storage
+):
+    from models.uploaded_file import UploadedFile
+
+    monkeypatch.setenv("UPLOAD_STORAGE", storage)
     response = client.post(
         f"/auth/user/{users['owner'].email}/upload-logo",
         files={"file": ("photo.png", b"image-content", "image/png")},
@@ -46,7 +52,14 @@ def test_profile_image_upload_saves_file_and_url(client, db_session, users, auth
 
     assert response.status_code == 200
     url = response.json()["logo_url"]
-    assert (profile_files / url.lstrip("/")).read_bytes() == b"image-content"
+    if storage == "local":
+        assert (profile_files / url.lstrip("/")).read_bytes() == b"image-content"
+    else:
+        assert db_session.get(UploadedFile, url).content == b"image-content"
+        downloaded = client.get(url)
+        assert downloaded.status_code == 200
+        assert downloaded.content == b"image-content"
+        assert list(profile_files.rglob("*.png")) == []
     db_session.refresh(users["owner"])
     assert users["owner"].logo_url == url
 

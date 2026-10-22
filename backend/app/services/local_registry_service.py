@@ -1,4 +1,5 @@
 import os
+import json
 import re
 import threading
 import unicodedata
@@ -50,9 +51,6 @@ def normalize_text(value):
 def normalize_cif(value):
     if value is None:
         return ""
-    if get_pandas().isna(value):
-        return ""
-
     if not isinstance(value, str):
         try:
             numeric_value = float(value)
@@ -106,6 +104,10 @@ def safe_read_excel_auto_header(path):
 
 
 def load_registry_files():
+    cache_path = os.getenv("REGISTRY_CACHE_PATH")
+    if cache_path:
+        with open(cache_path, encoding="utf-8") as cache_file:
+            return {source: CompactRegistry(rows) for source, rows in json.load(cache_file).items()}
     return {
         "asociatii": safe_read_excel_auto_header(os.path.join(ONG_DIR, "asociatii.xlsx")),
         "fundatii": safe_read_excel_auto_header(os.path.join(ONG_DIR, "fundatii.xlsx")),
@@ -114,6 +116,16 @@ def load_registry_files():
         "furnizori_acreditati": safe_read_excel_auto_header(os.path.join(SOCIAL_DIR, "furnizori_acreditati.xlsx")),
         "servicii_licentiate": safe_read_excel_auto_header(os.path.join(SOCIAL_DIR, "servicii_licentiate.xlsx")),
     }
+
+
+class CompactRegistry:
+    def __init__(self, rows):
+        self.rows = rows
+        self.empty = not rows
+        self.columns = list(rows[0]) if rows else []
+
+    def iterrows(self):
+        return enumerate(self.rows)
 
 
 def get_cached_registries():

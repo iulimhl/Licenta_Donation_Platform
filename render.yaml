@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: iasi-doneaza
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./backend/Dockerfile.demo
+    dockerContext: .
+    healthCheckPath: /api/ping
+    envVars:
+      - key: APP_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: OCR_SPACE_API_KEY
+        sync: false

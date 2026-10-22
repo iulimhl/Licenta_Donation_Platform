@@ -13,6 +13,7 @@ from schemas.auth import (
 )
 from services import auth_service
 from services.token_service import create_auth_token
+from services.file_storage_service import save_upload
 from services.upload_security import (
     ALLOWED_IMAGE_EXTENSIONS,
     ALLOWED_IMAGE_TYPES,
@@ -148,15 +149,13 @@ def update_user_info(
     }
 
 
-async def save_uploaded_file(file: UploadFile, folder: Path):
-    folder.mkdir(parents=True, exist_ok=True)
-
+async def save_uploaded_file(file: UploadFile, folder: Path, db: Session):
     content, extension = await read_limited_upload(file, ALLOWED_IMAGE_EXTENSIONS, ALLOWED_IMAGE_TYPES)
     unique_name = f"{uuid.uuid4().hex}{extension}"
     file_path = folder / unique_name
 
-    with open(file_path, "wb") as buffer:
-        buffer.write(content)
+    relative_url = "/" + file_path.relative_to(BASE_DIR).as_posix()
+    save_upload(db, relative_url, file_path, content)
 
     return file_path
 
@@ -176,7 +175,7 @@ async def upload_logo(
     safe_email = email.replace("@", "_").replace(".", "_")
     folder = UPLOADS_DIR / "profiles" / safe_email / "logo"
 
-    saved_path = await save_uploaded_file(file, folder)
+    saved_path = await save_uploaded_file(file, folder, db)
 
     relative_url = "/" + saved_path.relative_to(BASE_DIR).as_posix()
     user.logo_url = relative_url
@@ -202,7 +201,7 @@ async def upload_cover(
     safe_email = email.replace("@", "_").replace(".", "_")
     folder = UPLOADS_DIR / "profiles" / safe_email / "cover"
 
-    saved_path = await save_uploaded_file(file, folder)
+    saved_path = await save_uploaded_file(file, folder, db)
 
     relative_url = "/" + saved_path.relative_to(BASE_DIR).as_posix()
     user.cover_image_url = relative_url
@@ -237,7 +236,7 @@ async def upload_gallery(
 
     new_images = []
     for file in files:
-        saved_path = await save_uploaded_file(file, folder)
+        saved_path = await save_uploaded_file(file, folder, db)
         relative_url = "/" + saved_path.relative_to(BASE_DIR).as_posix()
         new_images.append(relative_url)
 

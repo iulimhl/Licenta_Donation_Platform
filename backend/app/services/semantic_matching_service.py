@@ -26,6 +26,13 @@ def get_embedding_model():
         with _MODEL_LOCK:
             if _MODEL is None:
                 try:
+                    if os.getenv("EMBEDDING_BACKEND") == "onnx":
+                        from services.onnx_embedding_service import OnnxEmbeddingModel
+
+                        _MODEL = OnnxEmbeddingModel(MODEL_NAME)
+                        _MODEL_AVAILABLE = True
+                        return _MODEL
+
                     from sentence_transformers import SentenceTransformer
 
                     try:

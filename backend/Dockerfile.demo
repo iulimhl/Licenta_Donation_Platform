@@ -1,0 +1,42 @@
+FROM node:24-bookworm-slim AS frontend
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
+WORKDIR /app/frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY frontend/ ./
+ENV VITE_API_BASE_URL=/api
+RUN npm run build
+
+FROM python:3.13-slim-bookworm
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+WORKDIR /app
+COPY backend/requirements.txt backend/requirements-demo.txt /tmp/requirements/
+RUN python -m pip install -r /tmp/requirements/requirements-demo.txt
+RUN python -c "from huggingface_hub import snapshot_download; snapshot_download('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', revision='e8f8c211226b894fcb81acc59f3b34ba3efd5f42', local_dir='/opt/models/donation-matching', allow_patterns=['tokenizer.json', 'onnx/model_quint8_avx2.onnx'])" \
+    && mv /opt/models/donation-matching/onnx/model_quint8_avx2.onnx /opt/models/donation-matching/model.onnx
+
+ENV EMBEDDING_MODEL_NAME=/opt/models/donation-matching \
+    EMBEDDING_BACKEND=onnx \
+    HF_HUB_OFFLINE=1 \
+    ALLOW_EMBEDDING_MODEL_DOWNLOAD=false \
+    WARM_REGISTRY_CACHE=false \
+    UPLOAD_STORAGE=database \
+    API_PREFIX=/api \
+    REGISTRY_CACHE_PATH=/opt/registries.json \
+    FRONTEND_DIR=/opt/frontend
+
+COPY backend/app/ /app/
+COPY backend/build_registry_cache.py /tmp/build_registry_cache.py
+RUN PYTHONPATH=/app REGISTRY_CACHE_PATH= python /tmp/build_registry_cache.py /opt/registries.json
+COPY --from=frontend /app/frontend/dist/ /opt/frontend/
+RUN useradd --uid 10001 --create-home app \
+    && mkdir -p /app/uploads/profiles /app/uploads/verification_documents \
+    && chown -R app:app /app/uploads
+USER app
+RUN python -c "import os; from services.onnx_embedding_service import OnnxEmbeddingModel; assert len(OnnxEmbeddingModel(os.environ['EMBEDDING_MODEL_NAME']).encode('Carti pentru copii')) == 384"
+EXPOSE 8000
+CMD ["sh", "-c", "exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]

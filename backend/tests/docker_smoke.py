@@ -33,6 +33,23 @@ response = requests.post(f"{api_url}/auth/user/{email}/upload-logo", headers=hea
 response.raise_for_status()
 logo_url = f"{api_url}{response.json()['logo_url']}"
 
+org_email = f"organization-{uuid4().hex}@example.invalid"
+response = requests.post(f"{api_url}/auth/register", json={
+    "email": org_email, "password": "DonationDocker123!", "name": "Organizatie Demo",
+    "user_type": "organization", "cif": "99999999",
+}, timeout=30)
+response.raise_for_status()
+org_headers = {"Authorization": f"Bearer {response.json()['auth_token']}"}
+response = requests.post(f"{api_url}/verification/upload-document", headers=org_headers,
+                         data={"email": org_email},
+                         files={"file": ("certificate.pdf", b"%PDF-test", "application/pdf")}, timeout=30)
+response.raise_for_status()
+document_url = f"{api_url}{response.json()['document_url']}"
+response = requests.post(f"{api_url}/verification/organization", headers=org_headers,
+                         json={"email": org_email, "name": "Organizatie Demo", "cif": "99999999"}, timeout=180)
+response.raise_for_status()
+assert response.json()["status"] == "pending"
+
 subprocess.run(["docker", "compose", "down"], check=True)
 subprocess.run(["docker", "compose", "up", "-d", "--wait", "--wait-timeout", "120"], check=True)
 
@@ -55,13 +72,16 @@ assert response.json()["email"] == email
 response = requests.get(logo_url, timeout=30)
 response.raise_for_status()
 assert response.content == photo
+assert requests.get(document_url, timeout=30).status_code == 401
+response = requests.get(document_url, headers=org_headers, timeout=30)
+response.raise_for_status()
+assert response.content == b"%PDF-test"
 
 result = subprocess.run([
     "docker", "compose", "exec", "-T", "backend", "python", "-c",
-    "import json, sqlite3; "
-    "row = sqlite3.connect('/data/donations.db').execute("
-    f"'SELECT recommendation_embedding FROM donations WHERE id = ?', ({donation['id']},)).fetchone(); "
-    "print(json.dumps(json.loads(row[0])))",
+    "import json; from db.database import SessionLocal; from models.donation import DonationModel; "
+    f"db = SessionLocal(); item = db.get(DonationModel, {donation['id']}); "
+    "print(json.dumps(item.recommendation_embedding)); db.close()",
 ], check=True, capture_output=True, text=True)
 assert len(json.loads(result.stdout)["vector"]) == 384
-print("Donation, authentication, uploaded image and AI embedding survive container recreation.")
+print("Donation, authentication, images, private documents and AI embeddings survive container recreation.")
