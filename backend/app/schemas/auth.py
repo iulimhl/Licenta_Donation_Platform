@@ -1,12 +1,12 @@
 from pydantic import BaseModel, field_validator
 import re
-from typing import Optional
+from typing import Literal, Optional
 
 class UserCreate(BaseModel):
     email: str
     password: str
     name: Optional[str] = None
-    user_type: str = "user"
+    user_type: Literal["user", "organization"] = "user"
     location: str | None = None
     lat: float | None = None
     lng: float | None = None
