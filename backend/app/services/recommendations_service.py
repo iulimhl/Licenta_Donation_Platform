@@ -102,17 +102,22 @@ def lexical_bonus(item_name, donation):
     return min(bonus, 75)
 
 
-def score_match(need, item_index, item, donation):
-    need_embedding = ensure_need_item_embedding(need, item_index, item)
-    donation_embedding = ensure_donation_embedding(donation)
-
+def score_vectors(item_name, donation, need_embedding, donation_embedding):
     if need_embedding and donation_embedding:
         semantic_score = round(cosine_similarity(need_embedding, donation_embedding) * 100, 2)
     else:
         semantic_score = 0
 
-    match_score = min(100, semantic_score + lexical_bonus(item.get("name"), donation))
+    match_score = min(100, semantic_score + lexical_bonus(item_name, donation))
     return round(semantic_score, 2), round(match_score, 2)
+
+
+def score_match(need, item_index, item, donation):
+    return score_vectors(
+        item.get("name"), donation,
+        ensure_need_item_embedding(need, item_index, item),
+        ensure_donation_embedding(donation),
+    )
 
 
 def get_need_recommendations(db: Session, need_id: int, limit: int = 3, min_score: float = 58):

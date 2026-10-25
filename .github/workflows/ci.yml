@@ -86,6 +86,17 @@ jobs:
       - name: Check public database access is denied
         if: matrix.configuration == 'compose.demo.yaml'
         run: docker compose exec -T backend python < backend/tests/check_postgres_security.py
+      - name: Evaluate recommendation quality
+        run: |
+          docker compose run --name matching-evaluation --no-deps backend python evaluate_matching.py --output /tmp/matching-evaluation
+          docker cp matching-evaluation:/tmp/matching-evaluation backend/evaluation/reports
+      - name: Save matching evaluation
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: matching-evaluation-${{ matrix.configuration }}
+          path: backend/evaluation/reports/
+          retention-days: 90
       - name: Show container logs
         if: always()
         run: docker compose logs --no-color --tail=100
@@ -100,7 +111,11 @@ jobs:
           retention-days: 90
       - name: Stop containers
         if: always()
-        run: docker compose down -v
+        run: |
+          if docker container inspect matching-evaluation > /dev/null 2>&1; then
+            docker rm -f matching-evaluation
+          fi
+          docker compose down -v
 
   frontend:
     name: Frontend build

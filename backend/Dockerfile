@@ -17,6 +17,8 @@ ENV EMBEDDING_MODEL_NAME=/opt/models/donation-matching \
     ALLOW_EMBEDDING_MODEL_DOWNLOAD=false
 
 COPY backend/app/ /app/
+COPY backend/evaluate_matching.py /app/evaluate_matching.py
+COPY backend/evaluation/ /app/evaluation/
 COPY backend/docker_entrypoint.py /usr/local/bin/docker_entrypoint.py
 
 RUN useradd --uid 10001 --create-home app \

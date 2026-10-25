@@ -22,3 +22,5 @@
 **/*.zip
 **/uploads
 OlariuFlorin_MihalescuIulia_Licenta
+backend/.models
+backend/evaluation/reports

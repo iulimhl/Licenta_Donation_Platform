@@ -30,6 +30,8 @@ ENV EMBEDDING_MODEL_NAME=/opt/models/donation-matching \
     FRONTEND_DIR=/opt/frontend
 
 COPY backend/app/ /app/
+COPY backend/evaluate_matching.py /app/evaluate_matching.py
+COPY backend/evaluation/ /app/evaluation/
 COPY backend/build_registry_cache.py /tmp/build_registry_cache.py
 RUN PYTHONPATH=/app REGISTRY_CACHE_PATH= python /tmp/build_registry_cache.py /opt/registries.json
 COPY --from=frontend /app/frontend/dist/ /opt/frontend/
