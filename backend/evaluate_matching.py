@@ -4,7 +4,6 @@ import json
 import math
 import os
 import sys
-import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from time import perf_counter
@@ -172,13 +171,12 @@ def main():
     dataset = load_dataset(args.dataset)
     current = "onnx" if os.getenv("EMBEDDING_BACKEND") == "onnx" else "full"
     modes = list(dict.fromkeys(current if mode == "current" else mode for mode in args.modes))
-    with tempfile.TemporaryDirectory(prefix="donation-evaluation-") as temporary_directory:
-        os.environ["DATABASE_URL"] = f"sqlite:///{Path(temporary_directory, 'unused.db').as_posix()}"
-        sys.path.insert(0, str(BACKEND_DIR / "app"))
-        runs = []
-        for mode in modes:
-            print(f"Evaluating {mode}...", flush=True)
-            runs.append(evaluate_mode(mode, dataset, args))
+    os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+    sys.path.insert(0, str(BACKEND_DIR / "app"))
+    runs = []
+    for mode in modes:
+        print(f"Evaluating {mode}...", flush=True)
+        runs.append(evaluate_mode(mode, dataset, args))
 
     report = {
         "created_at": datetime.now(timezone.utc).isoformat(),
